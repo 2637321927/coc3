@@ -110,12 +110,12 @@ C:/Program Files/CMake/share/cmake-4.0/Modules/Platform/Windows-MSVC-CXX.cmake
 C:/Program Files/CMake/share/cmake-4.0/Modules/Platform/Windows-MSVC.cmake
 C:/Program Files/CMake/share/cmake-4.0/Modules/Platform/Windows.cmake
 C:/Program Files/CMake/share/cmake-4.0/Modules/Platform/WindowsPaths.cmake
-D:/coc/CMakeLists.txt
-D:/coc/cocos2d/cmake/Modules/CocosBuildHelpers.cmake
-D:/coc/cocos2d/cmake/Modules/CocosBuildSet.cmake
-D:/coc/cocos2d/cmake/Modules/CocosConfigDefine.cmake
-D:/coc/cocos2d/cmake/Modules/CocosConfigDepend.cmake
-D:/coc/proj.win32/CMakeFiles/4.0.2/CMakeCCompiler.cmake
-D:/coc/proj.win32/CMakeFiles/4.0.2/CMakeCXXCompiler.cmake
-D:/coc/proj.win32/CMakeFiles/4.0.2/CMakeRCCompiler.cmake
-D:/coc/proj.win32/CMakeFiles/4.0.2/CMakeSystem.cmake
+D:/coc1/coc3/CMakeLists.txt
+D:/coc1/coc3/cocos2d/cmake/Modules/CocosBuildHelpers.cmake
+D:/coc1/coc3/cocos2d/cmake/Modules/CocosBuildSet.cmake
+D:/coc1/coc3/cocos2d/cmake/Modules/CocosConfigDefine.cmake
+D:/coc1/coc3/cocos2d/cmake/Modules/CocosConfigDepend.cmake
+D:/coc1/coc3/proj.win32/CMakeFiles/4.0.2/CMakeCCompiler.cmake
+D:/coc1/coc3/proj.win32/CMakeFiles/4.0.2/CMakeCXXCompiler.cmake
+D:/coc1/coc3/proj.win32/CMakeFiles/4.0.2/CMakeRCCompiler.cmake
+D:/coc1/coc3/proj.win32/CMakeFiles/4.0.2/CMakeSystem.cmake

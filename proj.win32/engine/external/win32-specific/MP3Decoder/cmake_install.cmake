@@ -1,4 +1,4 @@
-# Install script for directory: D:/coc/cocos2d/external/win32-specific/MP3Decoder
+# Install script for directory: D:/coc1/coc3/cocos2d/external/win32-specific/MP3Decoder
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -35,6 +35,6 @@ endif()
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "D:/coc/proj.win32/engine/external/win32-specific/MP3Decoder/install_local_manifest.txt"
+  file(WRITE "D:/coc1/coc3/proj.win32/engine/external/win32-specific/MP3Decoder/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

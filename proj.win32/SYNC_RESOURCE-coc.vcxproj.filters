@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="D:\coc\proj.win32\CMakeFiles\88aec54677e486961d0580be8fb77c84\SYNC_RESOURCE-coc.rule">
+    <CustomBuild Include="D:\coc1\coc3\proj.win32\CMakeFiles\322bd969981fe97e6ada2f5cea3d0fd1\SYNC_RESOURCE-coc.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="D:\coc\CMakeLists.txt" />
+    <CustomBuild Include="D:\coc1\coc3\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="D:\coc\proj.win32\CMakeFiles\SYNC_RESOURCE-coc" />
+    <None Include="D:\coc1\coc3\proj.win32\CMakeFiles\SYNC_RESOURCE-coc" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{F71EA0B1-89EB-3584-9EB6-EA9B164A79E5}</UniqueIdentifier>
+      <UniqueIdentifier>{8FE0D431-3B6B-3E77-A33A-577ADEE10AB5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
