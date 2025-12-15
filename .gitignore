@@ -23,12 +23,15 @@ CMakeFiles/
 *.tlog
 *.log
 *.lastbuildstate
-*.vcxproj.user
 # VS解决方案临时文件
 .vs/
 *.sdf
 *.opensdf
 *.suo
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 # 编译输出目录（Debug/Release）
 Debug/
 Release/
