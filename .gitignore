@@ -1,2 +1,57 @@
-# Cocos2d 项目忽略规则
+# ===================== Cocos2d-x 通用编译产物 =====================
+# 库文件目录（编译生成的.lib/.a等）
+lib/
+# 可执行文件/输出目录
+bin/
+# CMake/build产物
+build/
+*/build/
+proj.win32/build/
+# Cocos控制台生成的临时文件
+compile_commands.json
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+# VS编译中间文件
+*.ilk
+*.pdb
+*.obj
+*.pch
+*.idb
+*.ipdb
+*.iobj
+*.tlog
+*.log
+*.lastbuildstate
+*.vcxproj.user
+# VS解决方案临时文件
 .vs/
+*.sdf
+*.opensdf
+*.suo
+# 编译输出目录（Debug/Release）
+Debug/
+Release/
+Win32/
+x64/
+# ===================== 系统/编辑器临时文件 =====================
+# Windows系统文件
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+# macOS系统文件
+.DS_Store
+.AppleDouble
+.LSOverride
+# 编辑器临时文件（VSCode/CLion等）
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+# ===================== Cocos2d-x 特定忽略 =====================
+# 自动生成的资源文件（如果是自动生成，可忽略；如果手动改了，注释掉）
+proj.win32/resource.h
+proj.win32/resource.rc
+# external目录（如果是git子模块，忽略；否则注释掉）
+# cocos2d/external/
