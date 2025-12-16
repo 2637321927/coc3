@@ -1,5 +1,5 @@
 #include "TitleScene.h"
-//#include "VillageScene.h" // 后续要跳转的主村庄场景（之前定义的）
+#include "VillageScene.h" // 后续要跳转的主村庄场景（之前定义的）
 #include "cocos2d.h"
 //#include "SimpleAudioEngine.h" // 音效（可选）
 
@@ -93,13 +93,22 @@ void TitleScene::onStartGameClick(Ref* pSender)
 {
     /* // 可选：播放点击音效
      SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
-
-     // 创建目标场景（之前写的VillageScene）
-     Scene* villageScene = VillageScene::create();
-     //场景切换（加淡入淡出动画，提升体验）
-     TransitionFade* transition = TransitionFade::create(0.5f, villageScene);
-     Director::getInstance()->replaceScene(transition);
      */
+     // 创建目标场景（之前写的VillageScene）
+      Scene* villageScene = VillageScene::createScene();
+     //场景切换（加淡入淡出动画，提升体验）
+      if (!villageScene) {
+          log("VillageScene 创建失败！");
+          return;
+      }
+      log("VillageScene 创建成功，准备切换");
+      Director::getInstance()->replaceScene(villageScene);
+     //TransitionFade* transition = TransitionFade::create(0.5f, villageScene);
+     //Director::getInstance()->replaceScene(transition);
+    
+    // 切换场景（使用过渡动画，可选）
+
+    
 }
 
 // 关卡选择按钮回调（预留，先打印日志，后续实现）
