@@ -5,7 +5,7 @@ using namespace cocos2d;
 bool VillageScene::init()
 {
     if (!Scene::init()) return false;
-
+    //scsdcs
     // 初始化流程
     initMap();
 	//TODO：建筑和触摸暂时屏蔽
