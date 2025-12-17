@@ -3,8 +3,6 @@
 #include "cocos2d.h"
 //#include "SimpleAudioEngine.h" // “Ù–ß£®ø…—°£©
 
-using namespace cocos2d;
-//using namespace CocosDenshion;
 
 bool TitleScene::init()
 {

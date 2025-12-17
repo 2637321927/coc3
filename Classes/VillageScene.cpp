@@ -1,6 +1,6 @@
 #include "VillageScene.h"
 #include "cocos2d.h"
-using namespace cocos2d;
+#include "Building.h"
 
 bool VillageScene::init()
 {
@@ -8,23 +8,10 @@ bool VillageScene::init()
 
     // 初始化流程
     initMap();
-	//TODO：建筑和触摸暂时屏蔽
+    //TODO：建筑和触摸暂时屏蔽
     //initBuildPreview();
     //initTouchEvent();
-        // 新增：屏幕居中+适配
-    Size visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
 
-    // 让地图居中显示
-    Vec2 mapCenter = Vec2(
-        _tileMap->getContentSize().width / 2,
-        _tileMap->getContentSize().height / 2
-    );
-    Vec2 screenCenter = Vec2(
-        origin.x + visibleSize.width / 2,
-        origin.y + visibleSize.height / 2
-    );
-    _tileMap->setPosition(screenCenter - mapCenter);
     //  监听鼠标滚轮事件
     auto  mouseListener = EventListenerMouse::create();
     // 绑定滚轮回调
@@ -40,7 +27,7 @@ bool VillageScene::init()
 // 鼠标按下：开始拖拽
 void VillageScene::onMouseDown(Event* event)
 {
-	//TODO: 划分不可拖拽区域（放置建筑和一些按钮的位置）和拖拽区域
+    //TODO: 划分不可拖拽区域（放置建筑和一些按钮的位置）和拖拽区域
     EventMouse* e = (EventMouse*)event;
     // 只响应鼠标左键
     if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
@@ -116,7 +103,7 @@ void VillageScene::onMouseScroll(Event* event)
     float newScale = currentScale;
 
     // 1. 计算新缩放比例（不变）
-    if (scrollY <0) {
+    if (scrollY < 0) {
         newScale = MIN(currentScale + _scaleStep, _maxScale);
     }
     else {
@@ -147,8 +134,6 @@ void VillageScene::initMap()
 {
     // 加载地图文件
     _tileMap = TMXTiledMap::create("map/map1.tmx");
-    _tileMap->setAnchorPoint(Vec2::ZERO);
-    _tileMap->setPosition(Vec2::ZERO);
     this->addChild(_tileMap, 0);
 
     // 记录地图参数
@@ -157,10 +142,9 @@ void VillageScene::initMap()
 
     // 获取关键图层（与Tiled中命名对应）
     _bgLayer = _tileMap->getLayer("bg_layer"); // 背景图层（有视觉纹理）
-    _placeLayer = _tileMap->getLayer("place_layer");
     Size visibleSize = Director::getInstance()->getVisibleSize();
     _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f)); // 锚点居中（拖拽/缩放都依赖）
-    _tileMap->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    _tileMap->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));//初始位置居中
     _tileMap->setScale(1.0f);
     //TODO
    // _pathLayer = _tileMap->getLayer("path_layer");
@@ -249,27 +233,29 @@ Vec2 VillageScene::isoTileToScreen(Vec2 tilePos)
 }
 
 // 检测瓦片是否可放置建筑
+//用途：判断某个瓦片是否允许放置建筑，在建筑放置预览和实际放置时调用，根据这个建筑覆盖的所有瓦片依次调用
 bool VillageScene::checkCanPlace(Vec2 tilePos)
 {
-    // 1. 校验瓦片坐标是否越界
+    // 校验瓦片坐标是否越界
     if (tilePos.x < 0 || tilePos.x >= _mapSize.width
         || tilePos.y < 0 || tilePos.y >= _mapSize.height) {
         return false;
     }
 
-    // 2. 获取place_layer中该位置的瓦片GID
-    unsigned int tileGID = _placeLayer->getTileGIDAt(tilePos);
+    // 获取bg_layer中该位置的瓦片GID 
+    unsigned int tileGID = _bgLayer->getTileGIDAt(tilePos);
     if (tileGID == 0) { // 空瓦片（无属性）
         return false;
     }
 
-    // 3. 直接获取属性并转为ValueMap（4.0版本无需类型判断，强转即可）
+    // 直接获取属性并转为ValueMap
     ValueMap tileProps = _tileMap->getPropertiesForGID(tileGID).asValueMap();
 
-    // 4. 读取canPlace属性（容错：无该属性则返回false）
+    // 读取canPlace属性（容错：无该属性则返回false）
     if (tileProps.count("canPlace") == 0) {
         return false;
     }
+
     return tileProps["canPlace"].asBool();
 }
 

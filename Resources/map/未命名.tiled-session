@@ -1,0 +1,57 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1
+        },
+        "1.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "map0.tmx": {
+            "scale": 0.7305245535714285,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 895.931556030861,
+                "y": 448.3079978611259
+            }
+        },
+        "map1.tmx": {
+            "scale": 0.33,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 2086.3636363636365,
+                "y": 934.8484848484848
+            }
+        },
+        "map1.tmx#2": {
+            "scaleInDock": 1
+        }
+    },
+    "last.imagePath": "D:/coc1/coc3/Resources/map",
+    "map.height": 60,
+    "map.lastUsedFormat": "tmx",
+    "map.orientation": "2",
+    "map.tileWidth": 64,
+    "map.width": 80,
+    "openFiles": [
+    ],
+    "project": "未命名.tiled-project",
+    "property.type": "bool",
+    "recentFiles": [
+        "1.tsx",
+        "map0.tmx",
+        "map1.tmx"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 32,
+        "width": 64
+    }
+}

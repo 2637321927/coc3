@@ -27,6 +27,7 @@ private:
     TMXLayer* _placeLayer;       // 可放置建筑的图层（对应Tiled的place_layer）
      TMXLayer* _pathLayer;      // 后续可启用：可通行图层（暂注释）
      TMXLayer* _bgLayer;
+     Node* _mapContainer;
     // 建筑放置相关（暂时屏蔽但保留声明）
     Sprite* _buildPreview;       // 建筑放置预览图
     // 缩放相关
@@ -69,4 +70,4 @@ private:
     void placeBuilding(Vec2 tilePos);
 };
 
-#endif // __VILLAGE_SCENE_H__#pragma once
+#endif // __VILLAGE_SCENE_H__
