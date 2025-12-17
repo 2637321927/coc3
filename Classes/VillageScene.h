@@ -29,8 +29,24 @@ private:
      TMXLayer* _bgLayer;
     // 建筑放置相关（暂时屏蔽但保留声明）
     Sprite* _buildPreview;       // 建筑放置预览图
-
+    // 缩放相关
+    float _minScale = 0.5f;      // 最小缩放比例（避免缩太小）
+    float _maxScale = 2.0f;      // 最大缩放比例（避免缩太大）
+    float _scaleStep = 0.1f;     // 滚轮每滚一次的缩放步长
+    // 拖拽相关
+    bool _isDragging = false;    // 是否正在拖拽
+    Vec2 _lastMousePos;          // 上一帧鼠标位置
+    Vec2 _mapOriginPos;          // 地图初始位置（用于计算偏移）
     // -------------------------- 方法声明 --------------------------
+    // 滚轮回调函数
+    // 事件回调（新增鼠标按下/移动/松开）
+    void onMouseScroll(Event* event);
+    void onMouseDown(Event* event);
+    void onMouseMove(Event* event);
+    void onMouseUp(Event* event);
+
+    // 限制地图拖动范围（新增）
+    void clampMapPosition();
     // 初始化地图
     void initMap();
 

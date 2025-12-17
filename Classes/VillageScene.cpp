@@ -15,7 +15,7 @@ bool VillageScene::init()
     Size visibleSize = Director::getInstance()->getVisibleSize();
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
 
-    // 1. 让地图居中显示
+    // 让地图居中显示
     Vec2 mapCenter = Vec2(
         _tileMap->getContentSize().width / 2,
         _tileMap->getContentSize().height / 2
@@ -25,9 +25,116 @@ bool VillageScene::init()
         origin.y + visibleSize.height / 2
     );
     _tileMap->setPosition(screenCenter - mapCenter);
+    //  监听鼠标滚轮事件
+    auto  mouseListener = EventListenerMouse::create();
+    // 绑定滚轮回调
+    mouseListener->onMouseScroll = CC_CALLBACK_1(VillageScene::onMouseScroll, this);
+    mouseListener->onMouseDown = CC_CALLBACK_1(VillageScene::onMouseDown, this);    // 鼠标按下
+    mouseListener->onMouseMove = CC_CALLBACK_1(VillageScene::onMouseMove, this);    // 鼠标移动
+    mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
+    // 添加监听到事件分发器
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
     return true;
 
 }
+// 鼠标按下：开始拖拽
+void VillageScene::onMouseDown(Event* event)
+{
+	//TODO: 划分不可拖拽区域（放置建筑和一些按钮的位置）和拖拽区域
+    EventMouse* e = (EventMouse*)event;
+    // 只响应鼠标左键
+    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
+        _isDragging = true;
+        _lastMousePos = Vec2(e->getCursorX(), e->getCursorY()); // 记录按下时鼠标位置
+        _mapOriginPos = _tileMap->getPosition();                // 记录按下时地图位置
+    }
+}
+
+// 鼠标移动：处理拖拽偏移
+void VillageScene::onMouseMove(Event* event)
+{
+    if (!_isDragging) return; // 未拖拽则跳过
+
+    EventMouse* e = (EventMouse*)event;
+    Vec2 currentMousePos = Vec2(e->getCursorX(), e->getCursorY());
+    // 计算鼠标移动的偏移量（反向：鼠标右移→地图左移，符合直觉）
+    Vec2 offset = currentMousePos - _lastMousePos;
+    // 更新地图位置
+    _tileMap->setPosition(_mapOriginPos + offset);
+    _mapOriginPos += offset;
+    // 限制地图不能拖出屏幕（关键：避免地图拖没）
+    clampMapPosition();
+    // 更新上一帧鼠标位置（用于下一帧计算）
+    _lastMousePos = currentMousePos;
+}
+
+//鼠标松开：结束拖拽
+void VillageScene::onMouseUp(Event* event)
+{
+    EventMouse* e = (EventMouse*)event;
+    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
+        // 计算鼠标移动距离，小于5像素则视为“点击”，否则是“拖拽”
+        Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
+        float moveDistance = currentPos.distance(_lastMousePos);
+        if (moveDistance < 5.0f) {
+            log("鼠标点击了地图，位置：%f, %f", currentPos.x, currentPos.y);
+            // 这里可以加点击建筑/瓦片的逻辑
+        }
+        _isDragging = false;
+    }
+}
+
+// 限制地图拖动范围（核心：避免地图拖出屏幕）
+//TODO: 需要优化，保证不超过地图范围，但是目前地图还没做完
+void VillageScene::clampMapPosition()
+{
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    Vec2 mapPos = _tileMap->getPosition();
+    float mapScale = _tileMap->getScale();
+
+    // 计算地图缩放后的实际尺寸
+    float mapWidth = _tileMap->getContentSize().width * mapScale;
+    float mapHeight = _tileMap->getContentSize().height * mapScale;
+
+    // 计算地图可拖动的边界（保证至少有一部分地图在屏幕内）
+    float minX = visibleSize.width - mapWidth / 2;  // 左边界
+    float maxX = mapWidth / 2;                      // 右边界
+    float minY = visibleSize.height - mapHeight / 2;// 下边界
+    float maxY = mapHeight / 2;                     // 上边界
+
+    // 限制地图位置在边界内
+    float clampedX = clampf(mapPos.x, minX, maxX);
+    float clampedY = clampf(mapPos.y, minY, maxY);
+    _tileMap->setPosition(Vec2(clampedX, clampedY));
+}
+// 滚轮缩放核心函数
+void VillageScene::onMouseScroll(Event* event)
+{
+    EventMouse* e = (EventMouse*)event;
+    float scrollY = e->getScrollY();
+    float currentScale = _tileMap->getScale();
+    float newScale = currentScale;
+
+    // 1. 计算新缩放比例（不变）
+    if (scrollY <0) {
+        newScale = MIN(currentScale + _scaleStep, _maxScale);
+    }
+    else {
+        newScale = MAX(currentScale - _scaleStep, _minScale);
+    }
+
+    // 获取鼠标当前位置（相对于屏幕）
+    Vec2 mousePos = Vec2(e->getCursorX(), e->getCursorY());
+    // 计算缩放前鼠标到地图中心的偏移
+    Vec2 mapPos = _tileMap->getPosition();
+    Vec2 offset = mousePos - mapPos;
+    // 缩放偏移量（按缩放比例调整）
+    offset = offset * (newScale / currentScale);
+    // 重新设置地图位置（跟随鼠标）
+    _tileMap->setScale(newScale);
+    _tileMap->setPosition(mousePos - offset);
+}
+
 Scene* VillageScene::createScene()
 {
     auto scene = Scene::create();
@@ -38,19 +145,23 @@ Scene* VillageScene::createScene()
 // 加载等轴测地图
 void VillageScene::initMap()
 {
-    // 1. 加载地图文件
+    // 加载地图文件
     _tileMap = TMXTiledMap::create("map/map1.tmx");
     _tileMap->setAnchorPoint(Vec2::ZERO);
     _tileMap->setPosition(Vec2::ZERO);
     this->addChild(_tileMap, 0);
 
-    // 2. 记录地图参数
+    // 记录地图参数
     _tileSize = _tileMap->getTileSize();
     _mapSize = _tileMap->getMapSize();
 
-    // 3. 获取关键图层（与Tiled中命名对应）
+    // 获取关键图层（与Tiled中命名对应）
     _bgLayer = _tileMap->getLayer("bg_layer"); // 背景图层（有视觉纹理）
     _placeLayer = _tileMap->getLayer("place_layer");
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f)); // 锚点居中（拖拽/缩放都依赖）
+    _tileMap->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    _tileMap->setScale(1.0f);
     //TODO
    // _pathLayer = _tileMap->getLayer("path_layer");
 }
