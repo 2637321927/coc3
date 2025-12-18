@@ -11,8 +11,8 @@ class VillageScene;
 
 // 建筑类型枚举
 enum class BuildingType {
-    TOWN_HALL,   // 城镇中心
-    FARM,        // 农场
+    TOWN_HALL,   // 大本营
+	GOLD_MINE,   // 金矿
     BARRACKS,    // 兵营
     UNKNOWN
 };
@@ -27,11 +27,13 @@ enum class BuildingState {
 };
 
 // 通用建筑配置（所有建筑都有的属性）
+//特有属性在子类内部praivate
 struct BuildingConfig {
     int id;                     // 唯一ID
     BuildingType type;          // 建筑类型
     std::string name;           // 名称
     std::string imgPath;        // 纹理路径
+	int hp;                     // 生命值
     int tileWidth;              // 占用瓦片宽
     int tileHeight;             // 占用瓦片高
     std::unordered_map<std::string, int> cost; // 建造消耗（金币/木材）

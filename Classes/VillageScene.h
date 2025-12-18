@@ -1,11 +1,8 @@
 #ifndef __VILLAGE_SCENE_H__
 #define __VILLAGE_SCENE_H__
-
+#include "Building.h"
 #include "cocos2d.h"
-
-// 使用命名空间（和cpp文件保持一致）
 using namespace cocos2d;
-
 class VillageScene : public cocos2d::Scene
 {
 public:
@@ -19,6 +16,10 @@ public:
     CREATE_FUNC(VillageScene);
 
 private:
+    enum class Mode {
+        NONE,       // 无建造模式
+        PLACE_BUILDING  // 放置建筑模式
+    };
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
     TMXTiledMap* _tileMap;       // 等轴测地图对象
@@ -28,8 +29,13 @@ private:
      TMXLayer* _pathLayer;      // 后续可启用：可通行图层（暂注释）
      TMXLayer* _bgLayer;
      Node* _mapContainer;
-    // 建筑放置相关（暂时屏蔽但保留声明）
+     Mode _Mode = Mode::NONE;  // 当前模式
+    // 建筑放置相关
     Sprite* _buildPreview;       // 建筑放置预览图
+    BuildingType _selectedBuildingType;      // 选中的建筑类型
+    std::vector<Vec2> _occupiedTiles;        // 已占用的瓦片
+    bool _isBuildBarShow = false; // 建筑栏是否显示
+    Layer* _buildBarLayer = nullptr; // 建筑栏容器层
     // 缩放相关
     float _minScale = 0.5f;      // 最小缩放比例（避免缩太小）
     float _maxScale = 2.0f;      // 最大缩放比例（避免缩太大）
@@ -46,28 +52,34 @@ private:
     void onMouseMove(Event* event);
     void onMouseUp(Event* event);
 
-    // 限制地图拖动范围（新增）
+    // 限制地图拖动范围
     void clampMapPosition();
     // 初始化地图
     void initMap();
-
     // 初始化建筑预览（暂时屏蔽）
     void initBuildPreview();
-
-    // 初始化触摸事件（暂时屏蔽）
+	// 显示无法放置提示
+    void VillageScene::showCannotPlaceTip(Vec2 pos);
+    // 初始化触摸事件（暂时屏蔽）(手机版用，如时间不够则放弃）
     void initTouchEvent();
-
     // 坐标转换：屏幕坐标 → 等轴测瓦片坐标
     Vec2 screenToIsoTile(Vec2 screenPos);
 
     // 坐标转换：等轴测瓦片坐标 → 屏幕坐标
     Vec2 isoTileToScreen(Vec2 tilePos);
-
+	// 初始化建筑放置按钮
+    void VillageScene::initBuildModeBtn();
     // 检测瓦片是否可放置建筑
     bool checkCanPlace(Vec2 tilePos);
 
     // 放置建筑
-    void placeBuilding(Vec2 tilePos);
+    void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type);
+	// 切换建筑栏显示/隐藏
+    void VillageScene::toggleBuildBar();
+    // 创建建筑栏（仅第一次调用时创建）
+    void createBuildBar();  
+    // 隐藏建筑栏
+    void hideBuildBar();  
 };
 
 #endif // __VILLAGE_SCENE_H__

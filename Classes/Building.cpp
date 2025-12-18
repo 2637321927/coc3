@@ -2,14 +2,16 @@
 #include "cocos2d.h"
 USING_NS_CC;
 
-// 工厂方法：根据类型创建子类实例（核心：面向抽象编程）
+// 根据类型创建子类实例
+//直接在Building.h中声明，在Building.cpp中实现
+
 BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float mapScale) {
     BaseBuilding* building = nullptr;
     // 按类型创建子类（后续新增建筑只需加case，无需改基类）
     switch (type) {
-    case BuildingType::FARM:
-        // 后续实现FarmBuilding后替换
-        // building = FarmBuilding::create(tilePos, mapScale);
+    case BuildingType::GOLD_MINE:
+        // 后续实现GOLD_MINE后替换
+        // building = GoldMineBuilding::create(tilePos, mapScale);
         break;
     case BuildingType::TOWN_HALL:
         // building = TownHallBuilding::create(tilePos, mapScale);
