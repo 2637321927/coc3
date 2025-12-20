@@ -1,4 +1,8 @@
 #include "Troop.h"
+#include "Barbarian.h"
+#include "Archer.h"
+#include "Giant.h"
+#include "Bomber.h"
 #include "Building.h"
 #include "cocos2d.h"
 USING_NS_CC;
@@ -9,17 +13,16 @@ BaseTroop* BaseTroop::create(TroopType type, const Vec2& spawnPos, float mapScal
     // 按类型创建子类（后续新增兵种只需加case，无需改基类）
     switch (type) {
     case TroopType::BARBARIAN:
-        // 后续实现Barbarian后替换
-        // troop = BarbarianTroop::create(spawnPos, mapScale);
+        troop = BarbarianTroop::create(spawnPos, mapScale);
         break;
     case TroopType::ARCHER:
-        // troop = ArcherTroop::create(spawnPos, mapScale);
+        troop = ArcherTroop::create(spawnPos, mapScale);
         break;
     case TroopType::GIANT:
-        // troop = GiantTroop::create(spawnPos, mapScale);
+        troop = GiantTroop::create(spawnPos, mapScale);
         break;
     case TroopType::BOMBER:
-        // troop = BomberTroop::create(spawnPos, mapScale);
+        troop = BomberTroop::create(spawnPos, mapScale);
         break;
     default:
         break;
