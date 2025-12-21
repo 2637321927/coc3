@@ -1,6 +1,7 @@
 #ifndef __VILLAGE_SCENE_H__
 #define __VILLAGE_SCENE_H__
 #include "Building.h"
+#include "Troop.h"
 #include "cocos2d.h"
 using namespace cocos2d;
 class VillageScene : public Scene
@@ -18,7 +19,8 @@ public:
 private:
     enum class Mode {
         NONE,       // 无建造模式
-        PLACE_BUILDING  // 放置建筑模式
+        PLACE_BUILDING,  // 放置建筑模式
+        SPAWN_TROOP          // 放置兵种模式
     };
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
@@ -49,6 +51,14 @@ private:
     Vec2 _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
+
+    // -------------------------- 兵种相关成员变量 --------------------------
+    bool _isTroopBarShow = false;// 兵种栏是否显示
+    Sprite* _troopPreview;               // 兵种放置预览图
+    TroopType _selectedTroopType = TroopType::UNKNOWN; // 选中的兵种类型
+    std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期）
+    Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
+
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
@@ -89,6 +99,24 @@ private:
     void hideBuildBar();  
 	// 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
+
+    // -------------------------- 兵种相关方法声明 --------------------------
+    // 初始化兵种放置预览
+    void initTroopPreview();
+    // 创建兵种栏（训练按钮）
+    void createTroopBar();
+    // 切换兵种栏显示/隐藏
+    void toggleTroopBar();
+    // 隐藏兵种栏
+    void hideTroopBar();
+    // 放置（生成）兵种
+    void spawnTroop(Vec2 screenPos, TroopType type);
+    // 初始化兵种训练按钮
+    void initTroopModeBtn();
+    // 检测兵种可生成位置（空地/非建筑占用）
+    bool checkCanSpawnTroop(Vec2 tilePos);
+    // 兵种攻击回调（处理伤害结算）
+    void onTroopAttack(BaseTroop* troop, BaseBuilding* target);
 };
 
 #endif // __VILLAGE_SCENE_H__

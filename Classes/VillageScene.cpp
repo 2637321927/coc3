@@ -11,6 +11,8 @@ bool VillageScene::init()
     initMap();
     initBuildPreview();
     initBuildModeBtn(); 
+    initTroopModeBtn();
+    initTroopPreview();
     //TODO：建筑和触摸暂时屏蔽
  
     //initTouchEvent();
@@ -89,6 +91,15 @@ void VillageScene::onMouseDown(Event* event)
                 showCannotPlaceTip(currentPos);
             }
         }
+        // 兵种放置逻辑
+        if (_isTroopBarShow && _Mode == Mode::SPAWN_TROOP) {
+            Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
+            spawnTroop(currentPos, _selectedTroopType);
+            // 可选：放置后不退出模式，继续生成同类型兵种
+            // _Mode = Mode::NONE;
+            // _troopPreview->setVisible(false);
+        }
+
     }
 }
 // 鼠标移动：处理拖拽偏移/建筑预览跟随
@@ -126,7 +137,16 @@ void VillageScene::onMouseMove(Event* event)
             _buildPreview->setColor(checkCanPlace(tilePos) ? Color3B::GREEN : Color3B::RED);
         }
     }
-    
+    // 兵种预览跟随
+    if (_Mode == Mode::SPAWN_TROOP && _troopPreview && _troopPreview->isVisible()) {
+        Vec2 tilePos = screenToIsoTile(currentMousePos);
+        // 核心：和建筑预览用同一个位置计算方式
+        Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
+        _troopPreview->setPosition(containerLocalPos);
+        _troopPreview->setScale(_mapContainer->getScale());
+        // 临时：和建筑用同一个检测函数，确保预览颜色正确
+        _troopPreview->setColor(checkCanPlace(tilePos) ? Color3B::GREEN : Color3B::RED);
+    }
  
 }
 // 显示无法放置提示
@@ -533,4 +553,228 @@ bool VillageScene::isTileOccupied(Vec2 tilePos) {
         }
     }
     return false;
+}
+
+// 初始化兵种放置预览图
+void VillageScene::initTroopPreview() {
+    if (!_mapContainer) return;
+
+    _troopPreview = Sprite::create();
+    if (_troopPreview) {
+        _troopPreview->setVisible(false);
+        _troopPreview->setOpacity(180); // 比建筑预览更亮一点
+        _troopPreview->setAnchorPoint(Vec2(0.5f, 0.0f)); // 兵种锚点在底部（贴合地面）
+        _troopPreview->setScale(_mapContainer->getScale());
+        _mapContainer->addChild(_troopPreview, 100); // 层级高于建筑
+    }
+    else {
+        CCLOG("Error: Could not create _troopPreview sprite!");
+    }
+}
+// 初始化兵种训练/放置按钮
+void VillageScene::initTroopModeBtn() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 兵种模式开关按钮（在建筑按钮左侧）
+    auto troopModeBtn = MenuItemImage::create(
+        "ui/build_mode_btn_normal.png",  // 正常状态图片
+        "ui/build_mode_btn_selected.png",// 按下状态图片
+        [this](Ref* sender) {
+            this->toggleTroopBar(); // 点击切换兵种栏
+        }
+    );
+    troopModeBtn->setScale(0.8f);
+    troopModeBtn->setPosition(Vec2(visibleSize.width - 120, visibleSize.height - 50)); // 建筑按钮左侧
+
+    auto menu = Menu::create(troopModeBtn, nullptr);
+    menu->setPosition(Vec2::ZERO);
+    this->addChild(menu, 100); // 最高层级
+}
+// 创建兵种栏（训练/放置按钮）
+void VillageScene::createTroopBar() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 兵种栏容器层（在建筑栏下方）
+    auto troopBarLayer = Layer::create();
+    this->addChild(troopBarLayer, 99);
+    troopBarLayer->setTag(1001); // 用Tag标记，方便后续查找
+
+    // 兵种栏背景
+    auto barBg = Sprite::create("ui/build_bar_bg.png"); // 兵种栏背景
+    barBg->setPosition(Vec2(visibleSize.width / 2, 50)); // 建筑栏同位置
+    barBg->setScaleX(visibleSize.width / barBg->getContentSize().width * 0.8f);
+    troopBarLayer->addChild(barBg);
+
+    // 野蛮人训练按钮
+    auto barbarianBtn = MenuItemImage::create(
+        "building/town_hall_icon.png",  // 野蛮人图标
+        "building/town_hall_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::SPAWN_TROOP;
+            _selectedTroopType = TroopType::BARBARIAN;
+            // 设置预览图纹理
+            _troopPreview->setTexture("building/town_hall_preview.png");
+            _troopPreview->setVisible(true);
+        }
+    );
+    barbarianBtn->setScale(0.8f);
+
+    // 取消放置按钮
+    auto cancelTroopBtn = MenuItemImage::create(
+        "ui/cancel_place_btn.png",
+        "ui/cancel_place_btn_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::NONE;
+            _troopPreview->setVisible(false);
+        }
+    );
+
+    // 排列按钮
+    auto menu = Menu::create(barbarianBtn, cancelTroopBtn, nullptr);
+    menu->alignItemsHorizontallyWithPadding(30);
+    menu->setPosition(Vec2(visibleSize.width / 2, 50));
+    troopBarLayer->addChild(menu);
+}
+// 切换兵种栏显示/隐藏
+void VillageScene::toggleTroopBar() {
+    Layer* troopBarLayer = (Layer*)this->getChildByTag(1001);
+    if (!_isTroopBarShow) {
+        if (!troopBarLayer) {
+            this->createTroopBar();
+        }
+        else {
+            troopBarLayer->setVisible(true);
+        }
+        _isTroopBarShow = true;
+        // 初始化兵种预览（首次调用）
+        if (!_troopPreview) {
+            initTroopPreview();
+        }
+    }
+    else {
+        // 隐藏兵种栏+退出放置模式
+        if (troopBarLayer) {
+            troopBarLayer->setVisible(false);
+        }
+        _isTroopBarShow = false;
+        _Mode = Mode::NONE;
+        if (_troopPreview) {
+            _troopPreview->setVisible(false);
+        }
+    }
+}
+// 隐藏兵种栏
+void VillageScene::hideTroopBar() {
+    Layer* troopBarLayer = (Layer*)this->getChildByTag(1001);
+    if (troopBarLayer) {
+        troopBarLayer->setVisible(false);
+    }
+}
+// 检测瓦片是否可生成兵种（空地+未被建筑占用）
+bool VillageScene::checkCanSpawnTroop(Vec2 tilePos) {
+    // 1. 坐标越界检测
+    if (tilePos.x < 0 || tilePos.x >= _mapSize.width
+        || tilePos.y < 0 || tilePos.y >= _mapSize.height) {
+        return false;
+    }
+
+    // 2. 检测是否被建筑占用
+    if (isTileOccupied(tilePos)) {
+        return false;
+    }
+
+    // 3. 检测瓦片是否为可通行区域（复用建筑可放置属性）
+    unsigned int tileGID = _bgLayer->getTileGIDAt(tilePos);
+    if (tileGID == 0) {
+        return false;
+    }
+    ValueMap tileProps = _tileMap->getPropertiesForGID(tileGID).asValueMap();
+
+    // 优先级：canWalk > canPlace > 默认true（确保能看到预览）
+    if (tileProps.count("canWalk") > 0) {
+        return tileProps["canWalk"].asBool();
+    }
+    else if (tileProps.count("canPlace") > 0) {
+        return tileProps["canPlace"].asBool();
+    }
+    else {
+        return true; // 无属性时默认可放置
+    }
+}
+// 生成兵种（放置到地图）
+void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
+    // ===== 第一步：完全复用建筑的坐标逻辑 =====
+    Vec2 tilePos = screenToIsoTile(screenPos); // 和建筑用同一个转换函数
+    tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
+
+    // 调试日志（必看！）
+    CCLOG("兵种生成：屏幕坐标(%.1f,%.1f) → 瓦片坐标(%.1f,%.1f)",
+        screenPos.x, screenPos.y, tilePos.x, tilePos.y);
+
+    // ===== 第二步：复用建筑的可放置检测（简化版，先确保能生成） =====
+    // 临时跳过兵种专属检测，直接用建筑的checkCanPlace（建筑能放的地方兵种也能放）
+    if (!checkCanPlace(tilePos)) {
+        showCannotPlaceTip(screenPos);
+        CCLOG("失败：该瓦片不可放置");
+        return;
+    }
+
+    // ===== 第三步：复用建筑的位置计算逻辑（核心！） =====
+    // 建筑用的是 convertToNodeSpaceAR，兵种也用这个，不自定义公式
+    Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(screenPos);
+
+    // ===== 第四步：按建筑的方式创建对象（加容错） =====
+    // 模仿 BaseBuilding::create 的参数格式（类型+瓦片坐标+缩放）
+    BaseTroop* troop = BaseTroop::create(type, tilePos, _mapContainer->getScale());
+    if (!troop) {
+        // 极简兜底：直接创建纯色Sprite，不依赖BaseTroop
+        CCLOG("BaseTroop创建失败，创建纯色占位");
+        auto troopSprite = LayerColor::create(Color4B(255, 150, 0, 200), 40, 60);
+        if (!troopSprite) {
+            CCLOG("占位都创建失败！");
+            return;
+        }
+        troopSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
+        troopSprite->setPosition(containerLocalPos);
+        troopSprite->setLocalZOrder(2000 - (tilePos.x + tilePos.y));
+        _mapContainer->addChild(troopSprite);
+
+        // 记录到_spawnedTroops（如果需要）：用void*兼容，后续重构时再改
+        _spawnedTroops.push_back(nullptr); // 临时占位，不影响显示
+        CCLOG("成功：纯色占位已生成");
+        return; // 跳过后续BaseTroop相关逻辑
+    }
+
+    // ===== 第五步：完全复用建筑的容器适配逻辑 =====
+    troop->setPosition(containerLocalPos); // 和建筑用同一个位置
+    troop->setLocalZOrder(2000 - (tilePos.x + tilePos.y)); // 层级比建筑高
+    _mapContainer->addChild(troop); // 加到同一个容器
+
+    // ===== 第六步：记录+调试 =====
+    _spawnedTroops.push_back(troop);
+    CCLOG("成功：兵种已生成，总数=%zu，容器位置(%.1f,%.1f)",
+        _spawnedTroops.size(), containerLocalPos.x, containerLocalPos.y);
+
+    // 暂时注释自动寻路，先确保能看到兵种
+    /*
+    scheduleOnce([=](float dt) {
+        if (!_occupiedTiles.empty()) {
+            Vec2 targetTilePos = _occupiedTiles[0];
+            Vec2 targetContainerPos = _mapContainer->convertToNodeSpaceAR(isoTileToScreen(targetTilePos));
+            troop->setTargetPos(targetContainerPos);
+        }
+    }, 2.0f, "FindTarget");
+    */
+}
+
+// 兵种攻击回调（处理伤害结算）
+void VillageScene::onTroopAttack(BaseTroop* troop, BaseBuilding* target) {
+    if (!troop || !target) return;
+
+    // 简化：建筑受到伤害（需扩展BaseBuilding的takeDamage方法）
+    // target->takeDamage(troop->getConfig().attackPower);
+
+    CCLOG("野蛮人攻击了%s，造成%d点伤害",
+        target->getConfig().name.c_str(),
+        troop->getConfig().attackPower);
 }

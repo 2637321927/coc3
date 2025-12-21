@@ -2,6 +2,7 @@
 #define __BARBARIAN_TROOP_H__
 
 #include "Troop.h"
+#include "cocos2d.h"
 
 class BarbarianTroop : public BaseTroop {
 public:

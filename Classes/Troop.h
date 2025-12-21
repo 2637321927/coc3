@@ -64,7 +64,10 @@ public:
     virtual void die();                 // 死亡（通用逻辑）
     void setState(TroopState state);    // 设置状态（通用）
     TroopState getState() const { return _state; }
-
+    void setTargetPos(const Vec2& targetPos) {
+        _targetPos = targetPos;
+        setState(TroopState::MOVING);
+    }
     // ========== 通用属性接口（所有兵种都有） ==========
     TroopType getType() const { return _config.type; }
     cocos2d::Vec2 getSpawnPos() const { return _spawnPos; }
