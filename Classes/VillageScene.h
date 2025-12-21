@@ -45,7 +45,7 @@ private:
     bool _isDragging = false;    // 是否正在拖拽
     Vec2 _lastMousePos;          // 上一帧鼠标位置
     Vec2 _mapOriginPos;          // 地图初始位置（用于计算偏移）
-	// 瓦片高亮相关
+	// 瓦片高亮相关(测试用）
     Vec2 _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
@@ -71,14 +71,14 @@ private:
     void initTouchEvent();
     // 坐标转换：屏幕坐标 → 等轴测瓦片坐标
     Vec2 screenToIsoTile(Vec2 screenPos);
-
     // 坐标转换：等轴测瓦片坐标 → 屏幕坐标
     Vec2 isoTileToScreen(Vec2 tilePos);
+	// 坐标转换：瓦片坐标 → 容器坐标
+    Vec2 isoTileToContainerPos(Vec2 tilePos);
 	// 初始化建筑放置按钮
     void VillageScene::initBuildModeBtn();
     // 检测瓦片是否可放置建筑
     bool checkCanPlace(Vec2 tilePos);
-
     // 放置建筑
     void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type);
 	// 切换建筑栏显示/隐藏
@@ -87,6 +87,8 @@ private:
     void createBuildBar();  
     // 隐藏建筑栏
     void hideBuildBar();  
+	// 检测瓦片是否被占用
+    bool isTileOccupied(Vec2 tilePos);
 };
 
 #endif // __VILLAGE_SCENE_H__

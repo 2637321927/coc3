@@ -26,9 +26,9 @@ bool VillageScene::init()
     return true;
 
 }
-
+//设置瓦片颜色（测试坐标转换函数是否正确）
 void VillageScene::setTileColor(Vec2 tilePos, Color3B color) {
-    // 1. 校验瓦片坐标是否有效
+    // 1校验瓦片坐标是否有效
     if (tilePos.x < 0 || tilePos.x >= _tileMap->getMapSize().width
         || tilePos.y < 0 || tilePos.y >= _tileMap->getMapSize().height) {
         return;
@@ -78,8 +78,9 @@ void VillageScene::onMouseDown(Event* event)
         if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING) {
             Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
             Vec2 tilePos = screenToIsoTile(currentPos);
+            tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
             if (checkCanPlace(tilePos)) {
-                placeBuilding(tilePos, _selectedBuildingType);
+				placeBuilding(currentPos, _selectedBuildingType);//应该传瓦片坐标更合适，不过瓦片转容器有误，先传入屏幕坐标，屏幕转容器和屏幕转瓦片坐标是正确的
                 // 可选：放置后不清空建造模式，继续放置同类型建筑
                 // _buildMode = BuildMode::NONE;
                 // _buildPreview->setVisible(false);
@@ -98,25 +99,18 @@ void VillageScene::onMouseMove(Event* event)
     /*
     float mouseX = e->getCursorX(); // 屏幕X（原点左上角，向右为+）
     float mouseY = e->getCursorY(); // 屏幕Y（原点左上角，向下为+）
-
-
-
-    // 方式1：屏幕坐标 → 地图容器局部坐标（用于地图拖拽/缩放后的坐标）
-    Vec2 mapContainerPos = _mapContainer->convertToNodeSpace(Vec2(mouseX, mouseY));
-    // 方式2：屏幕坐标 → 瓦片地图坐标（等轴/正交地图的瓦片索引）
-    Vec2 tilePos = screenToIsoTile(Vec2(mouseX, mouseY)); // 你的坐标转换函数
     Vec2 currentTilePos = screenToIsoTile(Vec2(mouseX, mouseY));
     // 转为整数（瓦片坐标是索引，必须是整数）
     currentTilePos = Vec2(floor(currentTilePos.x), floor(currentTilePos.y));
     // 先恢复上一个瓦片的颜色
     restoreLastTileColor();
-
     //  给当前瓦片设置高亮色（比如半透明红色/绿色）
     setTileColor(currentTilePos, Color3B::YELLOW); // 黄色高亮，可改为Color3B(255,0,0,180)（半透红）
 
     //记录当前瓦片为“上一个瓦片”，用于下次恢复
     _lastTilePos = currentTilePos;
-    _hasLastTile = true;*/
+    _hasLastTile = true;
+    */
     if (_isDragging&& _Mode != Mode::PLACE_BUILDING) {
         Vec2 offset = currentMousePos - _lastMousePos;
         _mapContainer->setPosition(_mapOriginPos + offset);
@@ -127,10 +121,13 @@ void VillageScene::onMouseMove(Event* event)
         if (_Mode == Mode::PLACE_BUILDING && _buildPreview->isVisible()) {
             Vec2 tilePos = screenToIsoTile(currentMousePos);
             // 将预览图位置设为容器本地坐标
-            _buildPreview->setPosition(isoTileToScreen(tilePos));
+            Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
+            _buildPreview->setPosition(containerLocalPos);
             _buildPreview->setColor(checkCanPlace(tilePos) ? Color3B::GREEN : Color3B::RED);
         }
     }
+    
+ 
 }
 // 显示无法放置提示
 void VillageScene::showCannotPlaceTip(Vec2 pos) {
@@ -232,7 +229,7 @@ void VillageScene::initMap()
     // 整个容器居中
     _mapContainer->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
     // 地图在容器内部居中（相对于容器原点）
-    _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f));
+    _tileMap->setAnchorPoint(Vec2(0.5f, 0.0f));
     _tileMap->setPosition(Vec2::ZERO);
     /*
     // 加载地图文件
@@ -262,8 +259,9 @@ void VillageScene::initBuildPreview() {
     if (_buildPreview) {
         _buildPreview->setVisible(false);
         _buildPreview->setOpacity(150);
-        _buildPreview->setAnchorPoint(Vec2(0.5f, 0.0f)); // 建议设置底部锚点
+        _buildPreview->setAnchorPoint(Vec2(0.5f, 0.5f)); // 建议设置底部锚点
         // 添加到地图容器，层级设高一点（比如 99），确保在建筑上方
+        _buildPreview->setScale(_mapContainer->getScale());
         _mapContainer->addChild(_buildPreview, 99); 
     } else {
         CCLOG("Error: Could not create _buildPreview sprite!");
@@ -315,9 +313,9 @@ void VillageScene::initBuildPreview() {
 */
 // 屏幕坐标 → 等轴测瓦片坐标
 Vec2 VillageScene::screenToIsoTile(Vec2 screenPos)
-{
+{    
     // 首先：将屏幕坐标转换为地图层（_tileMap）的本地坐标
-    // 这一步会自动处理地图的拖拽位置和缩放（Scale）
+       // 这一步会自动处理地图的拖拽位置和缩放（Scale）
     Vec2 localPos = _tileMap->convertToNodeSpace(screenPos);
 
     /* 等轴测 45° 转换公式逻辑：
@@ -345,48 +343,33 @@ Vec2 VillageScene::screenToIsoTile(Vec2 screenPos)
     int tileY = (int)(mh - isoy - (isox - originShift));
 
     return Vec2(tileX, tileY);
-    /*
-    float tileW = _tileSize.width;
-    float tileH = _tileSize.height;
-
-    // 等轴测核心转换公式
-    int tileX = (screenPos.x / tileW + screenPos.y / tileH) / 2;
-    int tileY = (screenPos.y / tileH - screenPos.x / tileW) / 2;
-
-    // 限制在地图范围内
-    tileX = clampf(tileX, 0, _mapSize.width - 1);
-    tileY = clampf(tileY, 0, _mapSize.height - 1);
-
-    return Vec2(tileX, tileY);
-    */
 }
 
 // 等轴测瓦片坐标 → 屏幕坐标
 Vec2 VillageScene::isoTileToScreen(Vec2 tilePos)
 {
-    // 使用 TMXLayer 自带的 getPositionAt 可以获得瓦片的顶点
+// 使用 TMXLayer 自带的 getPositionAt 可以获得瓦片的顶点
     // 如果你想手动计算以便更灵活地控制偏移：
     float tw = _tileSize.width;
     float th = _tileSize.height;
     float mw = _mapSize.width;
-
+    
     // 计算该瓦片在地图本地坐标系下的位置
     float posX = (tilePos.x - tilePos.y) * (tw / 2.0f) + (mw * tw / 2.0f);
     float posY = (_mapSize.width + _mapSize.height - tilePos.x - tilePos.y - 2) * (th / 2.0f);
 
     // 将地图本地坐标转回世界坐标（屏幕坐标）
     return _tileMap->convertToWorldSpace(Vec2(posX, posY));
-    /*
-    float tileW = _tileSize.width;
-    float tileH = _tileSize.height;
-
-    float x = (tilePos.x - tilePos.y) * (tileW / 2);
-    float y = (tilePos.x + tilePos.y) * (tileH / 2);
-
-    return Vec2(x, y);
-    */
 }
-
+// 瓦片逻辑坐标 → 容器本地坐标
+Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
+    float tileW_half = _tileSize.width / 2.0f; // 32
+    float tileH_half = _tileSize.height / 2.0f; // 16
+    // 等轴核心公式：逻辑坐标转容器本地像素坐标
+    float x = (tilePos.x - tilePos.y) * tileW_half;
+    float y = (tilePos.x + tilePos.y) * tileH_half;
+    return Vec2(x, y);
+}
 // 检测瓦片是否可放置建筑
 //用途：判断某个瓦片是否允许放置建筑，在建筑放置预览和实际放置时调用，根据这个建筑覆盖的所有瓦片依次调用
 bool VillageScene::checkCanPlace(Vec2 tilePos)
@@ -471,7 +454,6 @@ void VillageScene::createBuildBar() {
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     _buildBarLayer->addChild(menu);
 }
-
 // 隐藏建筑栏
 void VillageScene::hideBuildBar() {
     if (_buildBarLayer) {
@@ -480,23 +462,25 @@ void VillageScene::hideBuildBar() {
 }
 // 放置建筑
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
-    auto building = BaseBuilding::create(type, tilePos, _mapContainer->getScale());
+    Vec2 tilePos1 = screenToIsoTile(tilePos);
+    auto building = BaseBuilding::create(type, tilePos1, 1.0f);
     if (building) {
         auto config = building->getConfig();
 
         // 记录该建筑占用的所有瓦片
         for (int x = 0; x < config.tileWidth; ++x) {
             for (int y = 0; y < config.tileHeight; ++y) {
-                _occupiedTiles.push_back(Vec2(tilePos.x + x, tilePos.y + y));
+                _occupiedTiles.push_back(Vec2(tilePos1.x + x, tilePos1.y + y));
             }
         }
-
-        building->setAnchorPoint(Vec2(0.5f, 0.0f));
-        building->setPosition(isoTileToScreen(tilePos));
+        Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(tilePos);
+        building->setPosition(containerLocalPos);
         _mapContainer->addChild(building);
 
         // Z-Order 排序建议：使用底部中心点的 Y 坐标
-        building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
+        building->setLocalZOrder(1000 - (tilePos1.x + tilePos1.y));
+        // 记录占用
+        _occupiedTiles.push_back(tilePos1);
     }
 }
 // 初始化建筑模式切换按钮
@@ -540,4 +524,13 @@ void VillageScene::toggleBuildBar() {
             _buildPreview->setVisible(false);
         }
     }
+}
+// 校验瓦片是否已占用
+bool VillageScene::isTileOccupied(Vec2 tilePos) {
+    for (const auto& pos : _occupiedTiles) {
+        if (pos.equals(tilePos)) {
+            return true;
+        }
+    }
+    return false;
 }
