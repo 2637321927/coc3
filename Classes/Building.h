@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <functional>
-
+using namespace cocos2d;
 // 前置声明
 class VillageScene;
 
@@ -42,7 +42,8 @@ struct BuildingConfig {
 };
 
 // 抽象基类（不可实例化，只能继承）
-class BaseBuilding : public cocos2d::Sprite {
+class BaseBuilding : public cocos2d::Sprite 
+{
 public:
     // 工厂方法（创建子类实例，基类指针接收）
     static BaseBuilding* create(BuildingType type, const cocos2d::Vec2& tilePos, float mapScale);
@@ -94,5 +95,26 @@ protected:
     // 交互回调
     std::function<void(BaseBuilding*)> _clickCallback;
 };
+class GoldMine : public BaseBuilding {
+public:
+    static GoldMine* create(const cocos2d::Vec2& tilePos, float mapScale);
+    virtual bool init(const cocos2d::Vec2& tilePos, float mapScale);
 
+    // 实现基类虚函数
+    virtual void doSpecialAction() override; // 产出金币逻辑
+    virtual std::string getSpecialDesc() override { return "持续产出金币"; }
+
+    //CREATE_FUNC_PARAM(GoldMine, const cocos2d::Vec2&, float); // 自定义宏或手动实现
+};
+
+// ========== 大本营类 ==========
+class TownHall : public BaseBuilding {
+public:
+    static TownHall* create(const cocos2d::Vec2& tilePos, float mapScale);
+    virtual bool init(const cocos2d::Vec2& tilePos, float mapScale);
+
+    // 实现基类虚函数
+    virtual void doSpecialAction() override; // 升级解锁逻辑
+    virtual std::string getSpecialDesc() override { return "村庄的核心建筑"; }
+};
 #endif // __BUILDING_H__

@@ -3,8 +3,9 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "map1.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
         "": {
@@ -24,7 +25,7 @@
         },
         "map1.tmx": {
             "scale": 0.33,
-            "selectedLayer": 1,
+            "selectedLayer": 0,
             "viewCenter": {
                 "x": 2086.3636363636365,
                 "y": 934.8484848484848
@@ -41,13 +42,14 @@
     "map.tileWidth": 64,
     "map.width": 80,
     "openFiles": [
+        "map1.tmx"
     ],
     "project": "未命名.tiled-project",
     "property.type": "bool",
     "recentFiles": [
+        "map1.tmx",
         "1.tsx",
-        "map0.tmx",
-        "map1.tmx"
+        "map0.tmx"
     ],
     "tileset.embedInMap": true,
     "tileset.tileSize": {

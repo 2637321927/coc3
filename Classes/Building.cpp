@@ -4,17 +4,16 @@ USING_NS_CC;
 
 // 根据类型创建子类实例
 //直接在Building.h中声明，在Building.cpp中实现
-
 BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float mapScale) {
     BaseBuilding* building = nullptr;
     // 按类型创建子类（后续新增建筑只需加case，无需改基类）
     switch (type) {
     case BuildingType::GOLD_MINE:
         // 后续实现GOLD_MINE后替换
-        // building = GoldMineBuilding::create(tilePos, mapScale);
+        building = GoldMine::create(tilePos, mapScale);
         break;
     case BuildingType::TOWN_HALL:
-        // building = TownHallBuilding::create(tilePos, mapScale);
+        building = TownHall::create(tilePos, mapScale);
         break;
     case BuildingType::BARRACKS:
         // building = BarracksBuilding::create(tilePos, mapScale);
@@ -149,4 +148,65 @@ void BaseBuilding::update(float dt) {
 void BaseBuilding::updateProgress() {
     float progress = _progressTimer / _config.buildTime;
     _progressBar->setPercentage(clampf(progress, 0.0f, 1.0f) * 100);
+}
+// GoldMine 子类实现
+GoldMine* GoldMine::create(const Vec2& tilePos, float mapScale) {
+    GoldMine* sprite = new (std::nothrow) GoldMine();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
+}
+
+bool GoldMine::init(const Vec2& tilePos, float mapScale) {
+    BuildingConfig config;
+    config.type = BuildingType::GOLD_MINE;
+    config.name = "金矿";
+    config.imgPath = "building/gold_mine.png"; // 确保路径正确
+    config.hp = 500;
+    config.tileWidth = 2;  // 占地 2x2
+    config.tileHeight = 2;
+    config.buildTime = 10.0f; // 10秒建完
+
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+
+    _state = BuildingState::IDLE;
+    return true;
+}
+
+void GoldMine::doSpecialAction() {
+    // 逻辑：每隔一段时间增加玩家金币
+    CCLOG("金矿正在产出资源...");
+}
+// TownHall 子类实现
+TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {
+    TownHall* sprite = new (std::nothrow) TownHall();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
+}
+
+bool TownHall::init(const Vec2& tilePos, float mapScale) {
+    BuildingConfig config;
+    config.type = BuildingType::TOWN_HALL;
+    config.name = "大本营";
+    config.imgPath = "building/town_hall.png";
+    config.hp = 2000;
+    config.tileWidth = 3;  // 占地 3x3
+    config.tileHeight = 3;
+    config.buildTime = 30.0f;
+
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+
+    _state = BuildingState::IDLE;
+    return true;
+}
+
+void TownHall::doSpecialAction() {
+    CCLOG("大本营管理中心已就绪");
 }

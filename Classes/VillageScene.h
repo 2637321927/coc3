@@ -3,7 +3,7 @@
 #include "Building.h"
 #include "cocos2d.h"
 using namespace cocos2d;
-class VillageScene : public cocos2d::Scene
+class VillageScene : public Scene
 {
 public:
     // Cocos2d-x 标准创建方法（必须）
@@ -28,8 +28,9 @@ private:
     TMXLayer* _placeLayer;       // 可放置建筑的图层（对应Tiled的place_layer）
      TMXLayer* _pathLayer;      // 后续可启用：可通行图层（暂注释）
      TMXLayer* _bgLayer;
-     Node* _mapContainer;
+	 Node* _mapContainer;	  // 地图容器节点（用于整体缩放/拖拽）
      Mode _Mode = Mode::NONE;  // 当前模式
+     Sprite* _mousePosSprite;//测试用，显示鼠标位置
     // 建筑放置相关
     Sprite* _buildPreview;       // 建筑放置预览图
     BuildingType _selectedBuildingType;      // 选中的建筑类型
@@ -44,6 +45,10 @@ private:
     bool _isDragging = false;    // 是否正在拖拽
     Vec2 _lastMousePos;          // 上一帧鼠标位置
     Vec2 _mapOriginPos;          // 地图初始位置（用于计算偏移）
+	// 瓦片高亮相关
+    Vec2 _lastTilePos;           // 上一个选中的瓦片坐标
+    bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
+    Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
@@ -51,7 +56,9 @@ private:
     void onMouseDown(Event* event);
     void onMouseMove(Event* event);
     void onMouseUp(Event* event);
-
+	// 鼠标移动时高亮瓦片(测试坐标转换函数是否正确)
+	void VillageScene::setTileColor(Vec2 tilePos, Color3B color);//测试用
+    void restoreLastTileColor();
     // 限制地图拖动范围
     void clampMapPosition();
     // 初始化地图
