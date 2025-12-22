@@ -1,5 +1,5 @@
-#ifndef TITLE_SCENE_H
-#define TITLE_SCENE_H
+#ifndef __TITLE_SCENE_H__
+#define __TITLE_SCENE_H__
 
 #include "cocos2d.h"
 
@@ -24,4 +24,4 @@ private:
     cocos2d::Rect getButtonRect(cocos2d::Sprite* btnSprite);
 };
 
-#endif // TITLE_SCENE_H#pragma once#pragma once
+#endif // __TITLE_SCENE_H__

@@ -7,6 +7,7 @@ using namespace cocos2d;
 //using namespace CocosDenshion;
 auto myLabel = Label::createWithTTF("myFont.ttf", "My Label Text", 16);
 
+
 bool TitleScene::init()
 {
     if (!Scene::init())
