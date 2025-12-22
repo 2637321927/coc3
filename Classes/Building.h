@@ -25,7 +25,6 @@ enum class BuildingState {
     DESTROYED,   // 摧毁
     UNKNOWN
 };
-
 // 通用建筑配置（所有建筑都有的属性）
 //特有属性在子类内部praivate
 struct BuildingConfig {

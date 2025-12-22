@@ -28,27 +28,34 @@ bool VillageScene::init()
     return true;
 
 }
-//设置瓦片颜色（测试坐标转换函数是否正确）
-void VillageScene::setTileColor(Vec2 tilePos, Color3B color) {
+//设置瓦片颜色（放置预览）
+void VillageScene::setTileColor(Vec2 tilePos, Color3B color,BuildingType type) {
+    auto config = getBuildingConfigByType(_selectedBuildingType);
     // 1校验瓦片坐标是否有效
-    if (tilePos.x < 0 || tilePos.x >= _tileMap->getMapSize().width
-        || tilePos.y < 0 || tilePos.y >= _tileMap->getMapSize().height) {
-        return;
+   // 校验瓦片坐标是否越界
+    if (tilePos.x < 0 || tilePos.x + config.tileHeight - 1 >= _mapSize.width
+        || tilePos.y < 0 || tilePos.y + config.tileWidth - 1 >= _mapSize.height) {
+        return ;
     }
+    // 获取瓦片对应的精灵（TMXLayer本质是SpriteBatchNode，每个瓦片是Sprite）
+    for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
+        for (int j = tilePos.y;j < tilePos.y + config.tileWidth - 1;j++) {
+            Sprite* tileSprite = _bgLayer->getTileAt(Vec2(i,j));
+            if (!tileSprite) { // 空瓦片（无精灵）
+                return;
+            }
 
-    // 2. 获取瓦片对应的精灵（TMXLayer本质是SpriteBatchNode，每个瓦片是Sprite）
-    Sprite* tileSprite = _bgLayer->getTileAt(tilePos);
-    if (!tileSprite) { // 空瓦片（无精灵）
-        return;
+            // 记录原始颜色（仅第一次设置时记录）
+            if (!_hasLastTile) {
+                _originalTileColor = tileSprite->getColor();
+            }
+
+            // 设置瓦片颜色（叠加色，白色为原始色）
+            tileSprite->setColor(color);
+            //记录当前瓦片为“上一个瓦片”，用于下次恢复
+            _lastTilePos.push_back(Vec2(i, j));
+        }
     }
-
-    // 3. 记录原始颜色（仅第一次设置时记录）
-    if (!_hasLastTile) {
-        _originalTileColor = tileSprite->getColor();
-    }
-
-    // 4. 设置瓦片颜色（叠加色，白色为原始色）
-    tileSprite->setColor(color);
 }
 
 // 新增：恢复上一个瓦片的原始颜色
@@ -56,12 +63,12 @@ void VillageScene::restoreLastTileColor() {
     if (!_hasLastTile) {
         return;
     }
-
-    Sprite* lastTileSprite = _bgLayer->getTileAt(_lastTilePos);
-    if (lastTileSprite) {
-        lastTileSprite->setColor(_originalTileColor); // 恢复原始颜色
+    for (int i = 0;i < _lastTilePos.size();i++) {
+        Sprite* lastTileSprite = _bgLayer->getTileAt(_lastTilePos[i]);
+        if (lastTileSprite) {
+            lastTileSprite->setColor(_originalTileColor); // 恢复原始颜色
+        }
     }
-
     _hasLastTile = false; // 重置标记
 }
 // 鼠标按下：开始拖拽/记录位置
@@ -71,6 +78,24 @@ void VillageScene::onMouseDown(Event* event)
     //TODO: 划分不可拖拽区域（放置建筑和一些按钮的位置）和拖拽区域;
     // 只响应鼠标左键
     EventMouse* e = (EventMouse*)event;
+    /*
+    float mouseX = e->getCursorX(); // 屏幕X（原点左上角，向右为+）
+    float mouseY = e->getCursorY(); // 屏幕Y（原点左上角，向下为+）
+    Vec2 currentTilePos = screenToIsoTile(Vec2(mouseX, mouseY));
+    // 转为整数（瓦片坐标是索引，必须是整数）
+    currentTilePos = Vec2(floor(currentTilePos.x), floor(currentTilePos.y));
+    // 先恢复上一个瓦片的颜色
+    restoreLastTileColor();
+    //  给当前瓦片设置高亮色（比如半透明红色/绿色）
+    unsigned int tileGID = _bgLayer->getTileGIDAt(currentTilePos);
+    if (tileGID != 0) { // 空瓦片（无属性）
+        setTileColor(currentTilePos, Color3B::YELLOW); // 黄色高亮，可改为Color3B(255,0,0,180)（半透红）
+    }
+
+    //记录当前瓦片为“上一个瓦片”，用于下次恢复
+    _lastTilePos = currentTilePos;
+    _hasLastTile = true;
+    */
     if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
         _isDragging = true;
         _lastMousePos = Vec2(e->getCursorX(), e->getCursorY());
@@ -81,8 +106,8 @@ void VillageScene::onMouseDown(Event* event)
             Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
             Vec2 tilePos = screenToIsoTile(currentPos);
             tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
-            if (checkCanPlace(tilePos)) {
-				placeBuilding(currentPos, _selectedBuildingType);//应该传瓦片坐标更合适，不过瓦片转容器有误，先传入屏幕坐标，屏幕转容器和屏幕转瓦片坐标是正确的
+            if (checkCanPlace(tilePos, _selectedBuildingType)) {
+				placeBuilding(tilePos, _selectedBuildingType);//应该传瓦片坐标更合适，不过瓦片转容器有误，先传入屏幕坐标，屏幕转容器和屏幕转瓦片坐标是正确的
                 // 可选：放置后不清空建造模式，继续放置同类型建筑
                 // _buildMode = BuildMode::NONE;
                 // _buildPreview->setVisible(false);
@@ -107,21 +132,6 @@ void VillageScene::onMouseMove(Event* event)
 {
     EventMouse* e = (EventMouse*)event;
     Vec2 currentMousePos = Vec2(e->getCursorX(), e->getCursorY());
-    /*
-    float mouseX = e->getCursorX(); // 屏幕X（原点左上角，向右为+）
-    float mouseY = e->getCursorY(); // 屏幕Y（原点左上角，向下为+）
-    Vec2 currentTilePos = screenToIsoTile(Vec2(mouseX, mouseY));
-    // 转为整数（瓦片坐标是索引，必须是整数）
-    currentTilePos = Vec2(floor(currentTilePos.x), floor(currentTilePos.y));
-    // 先恢复上一个瓦片的颜色
-    restoreLastTileColor();
-    //  给当前瓦片设置高亮色（比如半透明红色/绿色）
-    setTileColor(currentTilePos, Color3B::YELLOW); // 黄色高亮，可改为Color3B(255,0,0,180)（半透红）
-
-    //记录当前瓦片为“上一个瓦片”，用于下次恢复
-    _lastTilePos = currentTilePos;
-    _hasLastTile = true;
-    */
     if (_isDragging&& _Mode != Mode::PLACE_BUILDING) {
         Vec2 offset = currentMousePos - _lastMousePos;
         _mapContainer->setPosition(_mapOriginPos + offset);
@@ -131,10 +141,23 @@ void VillageScene::onMouseMove(Event* event)
         // 建造预览跟随（磁吸效果）
         if (_Mode == Mode::PLACE_BUILDING && _buildPreview->isVisible()) {
             Vec2 tilePos = screenToIsoTile(currentMousePos);
+			currentMousePos.y += 50; // 微调Y轴位置，以便显示真实放置格子
             // 将预览图位置设为容器本地坐标
             Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
             _buildPreview->setPosition(containerLocalPos);
-            _buildPreview->setColor(checkCanPlace(tilePos) ? Color3B::GREEN : Color3B::RED);
+            float mouseX = e->getCursorX(); 
+            float mouseY = e->getCursorY(); 
+            // 转为整数（瓦片坐标是索引，必须是整数）
+            //currentTilePos = Vec2(floor(currentTilePos.x), floor(currentTilePos.y));
+            // 先恢复上一个瓦片的颜色
+            restoreLastTileColor();
+            //  给当前瓦片设置高亮色（比如半透明红色/绿色）
+            setTileColor(tilePos, checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED, _selectedBuildingType); // 黄色高亮，可改为Color3B(255,0,0,180)（半透红）
+			//TODO：越界会报错，需要修复
+
+            
+            _hasLastTile = true;
+            _buildPreview->setColor(checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED);
         }
     }
     // 兵种预览跟随
@@ -145,7 +168,7 @@ void VillageScene::onMouseMove(Event* event)
         _troopPreview->setPosition(containerLocalPos);
         _troopPreview->setScale(_mapContainer->getScale());
         // 临时：和建筑用同一个检测函数，确保预览颜色正确
-        _troopPreview->setColor(checkCanPlace(tilePos) ? Color3B::GREEN : Color3B::RED);
+        _troopPreview->setColor(checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED);
     }
  
 }
@@ -368,35 +391,57 @@ Vec2 VillageScene::screenToIsoTile(Vec2 screenPos)
 // 等轴测瓦片坐标 → 屏幕坐标
 Vec2 VillageScene::isoTileToScreen(Vec2 tilePos)
 {
-// 使用 TMXLayer 自带的 getPositionAt 可以获得瓦片的顶点
-    // 如果你想手动计算以便更灵活地控制偏移：
-    float tw = _tileSize.width;
-    float th = _tileSize.height;
-    float mw = _mapSize.width;
-    
-    // 计算该瓦片在地图本地坐标系下的位置
-    float posX = (tilePos.x - tilePos.y) * (tw / 2.0f) + (mw * tw / 2.0f);
-    float posY = (_mapSize.width + _mapSize.height - tilePos.x - tilePos.y - 2) * (th / 2.0f);
+    // 基础参数获取
+    const float tileW = _tileSize.width;    // 单个瓦片宽度
+    const float tileH = _tileSize.height;   // 单个瓦片高度
+    const float mapHalfW = _mapSize.width * tileW / 2.0f; // 地图宽度的一半
 
-    // 将地图本地坐标转回世界坐标（屏幕坐标）
-    return _tileMap->convertToWorldSpace(Vec2(posX, posY));
+    // 计算瓦片中心点在瓦片地图节点内的本地坐标（等距投影核心公式）
+    // 等距地图坐标转换原理：
+    // X = (tileX - tileY) * 瓦片半宽 + 地图半宽（居中偏移）
+    // Y = (tileX + tileY) * 瓦片半高
+    float tileMapLocalX = (tilePos.x - tilePos.y) * (tileW / 2.0f) + mapHalfW;
+    float tileMapLocalY = (tilePos.x + tilePos.y) * (tileH / 2.0f);
+    Vec2 tileCenterInTileMap(tileMapLocalX, tileMapLocalY);
+
+    // 转换为世界坐标（屏幕坐标）
+    // 步骤：
+    // - 先将瓦片地图内的本地坐标转换为瓦片地图节点的世界坐标
+    // - 再转换为屏幕坐标（cocos2d-x中世界坐标等价于屏幕坐标，除了UI坐标系）
+    Vec2 tileMapWorldPos = _tileMap->convertToWorldSpaceAR(tileCenterInTileMap);
+
+    // 4. 兼容多分辨率适配（可选，根据你的屏幕适配策略调整）
+    // 如果项目使用了多分辨率适配（如FitWidth/FitHeight），可添加适配偏移
+    // 示例：
+    // Size visibleSize = Director::getInstance()->getVisibleSize();
+    // Vec2 origin = Director::getInstance()->getVisibleOrigin();
+    // tileMapWorldPos += origin;
+
+    return tileMapWorldPos;
 }
 // 瓦片逻辑坐标 → 容器本地坐标
 Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
-    float tileW_half = _tileSize.width / 2.0f; // 32
-    float tileH_half = _tileSize.height / 2.0f; // 16
-    // 等轴核心公式：逻辑坐标转容器本地像素坐标
-    float x = (tilePos.x - tilePos.y) * tileW_half;
-    float y = (tilePos.x + tilePos.y) * tileH_half;
-    return Vec2(x, y);
+    // 1. 获取该瓦片在 Layer 内部的局部坐标（官方函数）
+        // 注意：getPositionAt 返回的是瓦片菱形的底端点
+    Vec2 basePos = _bgLayer->getPositionAt(tilePos);
+
+    // 2. 计算中心点偏移：向上移动半个瓦片高度
+    // Cocos2d-x 坐标系 Y 轴向上，所以是 + height/2
+    Vec2 localCenter = basePos + Vec2(0, _tileSize.height / 2.0f);
+
+    // 3. 将 Layer 内部坐标转换为容器 (_mapContainer) 的坐标
+    // 考虑到你可能有多个 Layer 或者 Layer 做了偏移，用转换函数最安全
+    return _mapContainer->convertToNodeSpace(_bgLayer->convertToWorldSpace(localCenter));
 }
+
 // 检测瓦片是否可放置建筑
 //用途：判断某个瓦片是否允许放置建筑，在建筑放置预览和实际放置时调用，根据这个建筑覆盖的所有瓦片依次调用
-bool VillageScene::checkCanPlace(Vec2 tilePos)
+bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
 {
+    auto config = getBuildingConfigByType(_selectedBuildingType);
     // 校验瓦片坐标是否越界
-    if (tilePos.x < 0 || tilePos.x >= _mapSize.width
-        || tilePos.y < 0 || tilePos.y >= _mapSize.height) {
+    if (tilePos.x < 0 || tilePos.x+ config.tileHeight-1 >= _mapSize.width
+        || tilePos.y < 0 || tilePos.y+ config.tileWidth-1 >= _mapSize.height) {
         return false;
     }
 
@@ -412,9 +457,17 @@ bool VillageScene::checkCanPlace(Vec2 tilePos)
     }
     // 直接获取属性并转为ValueMap
     ValueMap tileProps = _tileMap->getPropertiesForGID(tileGID).asValueMap();
-
+    //多格建筑判断
+    bool isOccupied = 0;
+    for (int i = tilePos.x;i <= tilePos.x + config.tileHeight-1;i++) {
+        for (int j = tilePos.y;j < tilePos.y + config.tileWidth-1;j++) {
+            if (isTileOccupied(Vec2(i, j))) {
+				isOccupied = 1;
+            }
+        }
+    }
     // 读取canPlace属性（容错：无该属性则返回false）
-    if (tileProps.count("canPlace") == 0) {
+    if (tileProps.count("canPlace") == 0|| isOccupied) {
         return false;
     }
 
@@ -482,25 +535,32 @@ void VillageScene::hideBuildBar() {
 }
 // 放置建筑
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
-    Vec2 tilePos1 = screenToIsoTile(tilePos);
-    auto building = BaseBuilding::create(type, tilePos1, 1.0f);
+    auto building = BaseBuilding::create(type, tilePos, 1.0f);
     if (building) {
         auto config = building->getConfig();
 
         // 记录该建筑占用的所有瓦片
         for (int x = 0; x < config.tileWidth; ++x) {
             for (int y = 0; y < config.tileHeight; ++y) {
-                _occupiedTiles.push_back(Vec2(tilePos1.x + x, tilePos1.y + y));
+                _occupiedTiles.push_back(Vec2(tilePos.x + x, tilePos.y + y));
             }
         }
-        Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(tilePos);
+        // 计算建筑占用瓦片范围的中心点（瓦片坐标）
+        // 对于2x2建筑：中心在 (tilePos.x + (2-1)/2, tilePos.y + (2-1)/2) = (x+0.5, y+0.5)
+        float centerTileX = tilePos.x + (config.tileWidth) / 2.0f;
+        float centerTileY = tilePos.y + (config.tileHeight - 1) / 2.0f;
+        Vec2 centerTilePos(centerTileX, centerTileY);
+
+        // 2. 将中心点转换为容器坐标（替代原左上角坐标）
+        Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
+
+        // 3. 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
+        building->setAnchorPoint(Vec2(0.5f, 0.5f));
         building->setPosition(containerLocalPos);
         _mapContainer->addChild(building);
 
         // Z-Order 排序建议：使用底部中心点的 Y 坐标
-        building->setLocalZOrder(1000 - (tilePos1.x + tilePos1.y));
-        // 记录占用
-        _occupiedTiles.push_back(tilePos1);
+        building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
     }
 }
 // 初始化建筑模式切换按钮
@@ -554,7 +614,68 @@ bool VillageScene::isTileOccupied(Vec2 tilePos) {
     }
     return false;
 }
+//获取建筑的配置
+const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
+{
+    static BuildingConfig Config;
+    switch (type) {
+    case(BuildingType::TOWN_HALL):
+        Config = {
+            1,                      // id
+            BuildingType::TOWN_HALL,// type
+            "大本营",               // name
+            "building/town_hall.png", // imgPath
+            2000,                   // hp
+            3,                      // tileWidth
+            3,                      // tileHeight
+            { {"gold", 1000}, {"wood", 500} }, // cost
+            30.0f                   // buildTime
+        };
+        break;
+    case(BuildingType::GOLD_MINE):
 
+        Config = {
+            2,                      // id
+            BuildingType::GOLD_MINE,// type
+            "金矿",                 // name
+            "building/gold_mine.png", // imgPath
+            500,                    // hp
+            3,                      // tileWidth
+            2,                      // tileHeight
+            { {"gold", 500}, {"wood", 200} }, // cost
+            10.0f                   // buildTime
+        };
+        break;
+
+    case(BuildingType::BARRACKS):
+        Config = {
+            3,                      // id
+            BuildingType::BARRACKS, // type
+            "兵营",                 // name
+            "building/barracks.png", // imgPath
+            800,                    // hp
+            2,                      // tileWidth
+            2,                      // tileHeight
+            { {"gold", 800}, {"wood", 300} }, // cost
+            20.0f                   // buildTime
+        };
+        break;
+    default:
+        static BuildingConfig Config = {
+            -1,
+            BuildingType::UNKNOWN,
+            "未知建筑",
+            "",
+            0,
+            0,
+            0,
+            {},
+            0.0f
+        };
+        break;
+    }
+        return  Config;
+}
 // 初始化兵种放置预览图
 void VillageScene::initTroopPreview() {
     if (!_mapContainer) return;
@@ -713,7 +834,8 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第二步：复用建筑的可放置检测（简化版，先确保能生成） =====
     // 临时跳过兵种专属检测，直接用建筑的checkCanPlace（建筑能放的地方兵种也能放）
-    if (!checkCanPlace(tilePos)) {
+	// TODO：不应和建筑的检测弄混，这里新加了一个BuildingType
+    if (!checkCanPlace(tilePos,_selectedBuildingType)) {
         showCannotPlaceTip(screenPos);
         CCLOG("失败：该瓦片不可放置");
         return;

@@ -47,8 +47,8 @@ private:
     bool _isDragging = false;    // 是否正在拖拽
     Vec2 _lastMousePos;          // 上一帧鼠标位置
     Vec2 _mapOriginPos;          // 地图初始位置（用于计算偏移）
-	// 瓦片高亮相关(测试用）
-    Vec2 _lastTilePos;           // 上一个选中的瓦片坐标
+	// 瓦片高亮相关
+    std::vector<Vec2> _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
 
@@ -67,7 +67,7 @@ private:
     void onMouseMove(Event* event);
     void onMouseUp(Event* event);
 	// 鼠标移动时高亮瓦片(测试坐标转换函数是否正确)
-	void VillageScene::setTileColor(Vec2 tilePos, Color3B color);//测试用
+	void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type);//测试用
     void restoreLastTileColor();
     // 限制地图拖动范围
     void clampMapPosition();
@@ -88,7 +88,7 @@ private:
 	// 初始化建筑放置按钮
     void VillageScene::initBuildModeBtn();
     // 检测瓦片是否可放置建筑
-    bool checkCanPlace(Vec2 tilePos);
+    bool checkCanPlace(Vec2 tilePos, BuildingType type);
     // 放置建筑
     void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type);
 	// 切换建筑栏显示/隐藏
@@ -99,7 +99,7 @@ private:
     void hideBuildBar();  
 	// 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
-
+    const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type);
     // -------------------------- 兵种相关方法声明 --------------------------
     // 初始化兵种放置预览
     void initTroopPreview();
@@ -117,6 +117,8 @@ private:
     bool checkCanSpawnTroop(Vec2 tilePos);
     // 兵种攻击回调（处理伤害结算）
     void onTroopAttack(BaseTroop* troop, BaseBuilding* target);
+    // -------------------------- 整体控制--------------------------
+	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
 };
 
 #endif // __VILLAGE_SCENE_H__
