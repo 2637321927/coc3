@@ -26,54 +26,115 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
 
 // 通用初始化
 bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float mapScale) {
-    if (!Sprite::initWithFile(config.imgPath)) {
-        return false;
-    }
+    // 只初始化Node，不再初始化Sprite
+    if (!Node::init()) return false;
 
-    // 通用数据初始化
+    // 保存核心配置
     _config = config;
     _tilePos = tilePos;
     _mapScale = mapScale;
+
+    // 加载建筑图片（仅创建一次Sprite子节点，避免重复）
+    if (!loadBuildingSprite()) {
+        return false;
+    }
+    // 设置节点缩放（基于地图缩放比例）
     this->setScale(mapScale);
 
-    // 通用UI初始化
+    // 初始化通用UI（进度条、等级标签）
     initCommonUI();
 
-    // 通用点击事件
-    auto listener = EventListenerTouchOneByOne::create();
-    listener->onTouchBegan = [this](Touch* touch, Event* event) {
-        if (this->getBoundingBox().containsPoint(this->convertTouchToNodeSpace(touch))) {
-            if (_clickCallback) _clickCallback(this);
-            return true;
-        }
-        return false;
-        };
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
+    // 初始化触摸监听器（统一调用封装的方法，避免重复绑定）
+    initTouchListener();
 
-    // 默认状态
+    // 默认状态初始化
     setState(BuildingState::IDLE);
+
+    return true;
+}
+bool BaseBuilding::loadBuildingSprite() {
+    // 检查路径是否为空
+    if (_config.imgPath.empty()) {
+        return false;
+    }
+
+    // 加载纹理（优先用缓存，避免重复加载）
+    Texture2D* texture = Director::getInstance()->getTextureCache()->addImage(_config.imgPath);
+    if (!texture) {
+        return false;
+    }
+
+    // 创建图片精灵（作为子节点）
+    _buildingSprite = Sprite::createWithTexture(texture);
+    if (!_buildingSprite) {
+        return false;
+    }
+
+    // 设置精灵锚点和位置（居中在BaseBuilding节点）
+    _buildingSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
+    _buildingSprite->setPosition(Vec2::ZERO); // Node默认锚点是(0,0)，精灵居中则设为(0,0)
+    this->addChild(_buildingSprite, -1); // Z=-1：保证在UI下方
+
+    // 同步精灵缩放（和建筑节点一致）
+    _buildingSprite->setScale(_mapScale);
+
     return true;
 }
 
 // 初始化通用UI（进度条、等级标签）
 void BaseBuilding::initCommonUI() {
-    // 建造/升级进度条（通用）
-    _progressBar = ProgressTimer::create(Sprite::create("ui/progress_bar.png"));
+    //建造/升级进度条
+    auto progressBg = Sprite::create("ui/progress_bar.png");
+    if (!progressBg) {
+        return;
+    }
+    _progressBar = ProgressTimer::create(progressBg);
     _progressBar->setType(ProgressTimer::Type::BAR);
     _progressBar->setMidpoint(Vec2(0, 0.5f));
     _progressBar->setBarChangeRate(Vec2(1, 0));
-    _progressBar->setPosition(this->getContentSize().width / 2, -20);
-    _progressBar->setScale(0.8f * _mapScale);
+    // 进度条位置：建筑下方20像素（基于精灵尺寸）
+    _progressBar->setPosition(0, -_buildingSprite->getContentSize().height / 2 - 20);
+    _progressBar->setScale(0.8f); // 基础缩放，syncScale会叠加地图缩放
     _progressBar->setVisible(false);
     this->addChild(_progressBar, 1);
 
-    // 等级标签（通用）
+    // 2. 等级标签
     auto levelLabel = Label::createWithTTF("Lv" + std::to_string(_config.level), "fonts/Marker Felt.ttf", 16);
-    levelLabel->setPosition(this->getContentSize().width - 15, this->getContentSize().height - 15);
-    levelLabel->setColor(Color3B::YELLOW);
-    this->addChild(levelLabel, 1);
+    if (levelLabel) {
+        // 标签位置：建筑右上角（基于精灵尺寸）
+        levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
+        levelLabel->setColor(Color3B::YELLOW);
+        this->addChild(levelLabel, 1);
+    }
 }
+// 初始化触摸监听器
+void BaseBuilding::initTouchListener() {
+    _touchListener = EventListenerTouchOneByOne::create();
+    _touchListener->setSwallowTouches(true);
 
+    // 触摸开始：判断是否点击到建筑范围内
+    _touchListener->onTouchBegan = [this](Touch* touch, Event* event) -> bool {
+        if (!_buildingSprite) return false; // 无图片则不响应
+        // 转换触摸坐标到建筑节点本地
+        Vec2 touchPos = this->convertTouchToNodeSpace(touch);
+        // 基于精灵的包围盒判断（更精准）
+        Rect spriteRect = _buildingSprite->getBoundingBox();
+        if (spriteRect.containsPoint(touchPos)) {
+            return true; // 接收后续触摸事件
+        }
+        return false;
+        };
+
+    // 触摸结束：触发点击回调
+    _touchListener->onTouchEnded = [this](Touch* touch, Event* event) {
+        if (_clickCallback) {
+            _clickCallback(this);
+        }
+        };
+
+    // 添加监听器到事件分发器
+    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(_touchListener, this);
+}
 // 通用：开始建造
 void BaseBuilding::startBuild() {
     setState(BuildingState::BUILDING);
@@ -164,12 +225,12 @@ bool GoldMine::init(const Vec2& tilePos, float mapScale) {
     BuildingConfig config;
     config.type = BuildingType::GOLD_MINE;
     config.name = "金矿";
-    config.imgPath = "building/gold_mine.png"; // 确保路径正确
+    config.imgPath = "building/55.png"; // 确保路径正确
     config.hp = 500;
     config.tileWidth = 2;  // 占地 2x2
     config.tileHeight = 2;
     config.buildTime = 10.0f; // 10秒建完
-
+    config.cost = { {"gold", 100}, {"elixir", 50} }; // 建造消耗
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     _state = BuildingState::IDLE;
@@ -178,7 +239,32 @@ bool GoldMine::init(const Vec2& tilePos, float mapScale) {
 
 void GoldMine::doSpecialAction() {
     // 逻辑：每隔一段时间增加玩家金币
-    CCLOG("金矿正在产出资源...");
+        // 非闲置/未摧毁状态才生产
+    if (getState() != BuildingState::IDLE || getState() == BuildingState::DESTROYED) {
+        return;
+    }
+
+    // 停止已有生产定时器，避免重复
+    this->unschedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold));
+    // 每2秒生产一次金币
+    this->schedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold), _produceInterval);
+}
+// 金币生产具体逻辑
+void GoldMine::produceGold(float dt) {
+    // 升级后提升产量（可根据config.level动态调整）
+    _goldPerInterval = 10 * getConfig().level;
+	_goldStored += _goldPerInterval;
+}
+// 收集金币逻辑
+int GoldMine::collectGold() {
+    int collect = _goldStored;
+    //金币超容量（大本营容量）未考虑，后续添加
+    _goldStored = 0;
+	return collect;
+}
+// 金矿专属描述
+std::string GoldMine::getSpecialDesc()  {
+    return "生产金币的建筑，等级越高产量越高";
 }
 // TownHall 子类实现
 TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {

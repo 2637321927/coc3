@@ -3,6 +3,7 @@
 #include "Building.h"
 #include "Troop.h"
 #include "cocos2d.h"
+#include "BuildingPopup.h"
 using namespace cocos2d;
 class VillageScene : public Scene
 {
@@ -107,7 +108,10 @@ private:
     void hideBuildBar();  
 	// 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
+	// 获取建筑配置
     const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type);
+	// 处理建筑弹窗按钮点击回调
+    void handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type);
     // -------------------------- 兵种相关方法声明 --------------------------
     // 初始化兵种放置预览
     void initTroopPreview();
