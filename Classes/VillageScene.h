@@ -4,7 +4,155 @@
 #include "Troop.h"
 #include "cocos2d.h"
 #include "BuildingPopup.h"
+#include "ui/CocosGUI.h" 
 using namespace cocos2d;
+
+std::vector<std::string> split(const std::string& s, const std::string& delim);
+enum class Mode {
+    NONE,       // 无建造模式
+    PLACE_BUILDING,  // 放置建筑模式
+    SPAWN_TROOP,    // 放置兵种模式
+};
+//存档相关
+namespace SaveData {
+    // 单栋建筑的存档数据
+    struct Building {
+        BuildingType type;          // 建筑类型（TOWN_HALL/GOLD_MINE等）
+        cocos2d::Vec2 tilePos;      // 建筑所在格子坐标
+        BuildingState state;        // 建筑状态（IDLE/BUILDING等）
+        int level = 1;              // 建筑等级（如果有升级逻辑）
+
+        // 序列化：将数据转为字符串（方便存储）
+        std::string toString() const {
+            std::stringstream ss;
+            ss << (int)type << ","
+                << tilePos.x << "," << tilePos.y << ","
+                << (int)state << ","
+                << level;
+            return ss.str();
+        }
+
+        // 反序列化：从字符串恢复数据
+        static Building fromString(const std::string& str) {
+            Building data;
+            std::vector<std::string> parts = split(str, ","); // 需实现split函数
+            if (parts.size() >= 5) {
+                data.type = (BuildingType)std::stoi(parts[0]);
+                data.tilePos.x = std::stof(parts[1]);
+                data.tilePos.y = std::stof(parts[2]);
+                data.state = (BuildingState)std::stoi(parts[3]);
+                data.level = std::stoi(parts[4]);
+            }
+            return data;
+        }
+    };
+
+    // 整个村庄的存档数据
+    struct Village {
+        std::vector<Building> buildings;       // 所有建筑数据
+        cocos2d::Vec2 mapSize;                 // 地图尺寸（可选）
+        std::vector<cocos2d::Vec2> occupiedTiles; // 已占用格子（可选，可通过建筑数据推导）
+        Mode currentMode = Mode::NONE;         // 当前模式（可选）
+		int gold=0; 						   // 金币
+		int elixir=0;					   // 圣水
+        // 序列化整个村庄数据
+        std::string toString() const {
+            std::stringstream ss;
+            // 1. 先存地图尺寸
+            ss << mapSize.x << "," << mapSize.y << "\n";
+            // 2. 存当前模式
+            ss << (int)currentMode << "\n";
+            // 3. 存已占用格子（可选）
+            for (const auto& tile : occupiedTiles) {
+                ss << tile.x << "," << tile.y << ";";
+            }
+            ss << "\n";
+            ss << gold << "," << elixir << "\n";
+            // 4. 存所有建筑（每行一个建筑）
+            for (const auto& b : buildings) {
+                ss << b.toString() << "\n";
+            }
+            return ss.str();
+        }
+
+        // 反序列化整个村庄数据
+        static Village fromString(const std::string& str) {
+            Village data;
+            std::vector<std::string> lines = split(str, "\n"); // 按行分割
+            if (lines.empty()) return data;
+
+            // 解析地图尺寸
+            std::vector<std::string> mapParts = split(lines[0], ",");
+            if (mapParts.size() >= 2) {
+                data.mapSize.x = std::stof(mapParts[0]);
+                data.mapSize.y = std::stof(mapParts[1]);
+            }
+
+            // 解析当前模式
+            if (lines.size() >= 2) {
+                data.currentMode = (Mode)std::stoi(lines[1]);
+            }
+
+            // 解析已占用格子
+            if (lines.size() >= 3 && !lines[2].empty()) {
+                std::vector<std::string> tileParts = split(lines[2], ";");
+                for (const auto& tileStr : tileParts) {
+                    if (tileStr.empty()) continue;
+                    std::vector<std::string> pos = split(tileStr, ",");
+                    if (pos.size() >= 2) {
+                        data.occupiedTiles.emplace_back(std::stof(pos[0]), std::stof(pos[1]));
+                    }
+                }
+            }
+
+            // 解析金币+圣水（第3行）
+            if (lines.size() >= 4 && !lines[3].empty()) {
+                std::vector<std::string> resParts = split(lines[3], ",");
+                if (resParts.size() >= 2) {
+                    // 异常捕获：避免存档数据错误导致崩溃
+                    try {
+                        data.gold = std::stoi(resParts[0]);
+                        data.elixir = std::stoi(resParts[1]);
+                    }
+                    catch (const std::invalid_argument& e) {
+                        CCLOG("解析金币/圣水失败：%s", e.what());
+                        data.gold = 0;
+                        data.elixir = 0;
+                    }
+                    catch (const std::out_of_range& e) {
+                        CCLOG("金币/圣水数值超出范围：%s", e.what());
+                        data.gold = 0;
+                        data.elixir = 0;
+                    }
+                }
+            }
+
+            // 建筑从第4行开始解析
+            for (int i = 4; i < lines.size(); i++) {
+                if (lines[i].empty()) continue;
+                data.buildings.push_back(Building::fromString(lines[i]));
+            }
+
+            return data;
+        }
+
+    private:
+        // 辅助分割字符串
+        static std::vector<std::string> split(const std::string& s, const std::string& delim) {
+            std::vector<std::string> res;
+            size_t pos = 0;
+            std::string token;
+            std::string str = s;
+            while ((pos = str.find(delim)) != std::string::npos) {
+                token = str.substr(0, pos);
+                if (!token.empty()) res.push_back(token);
+                str.erase(0, pos + delim.length());
+            }
+            if (!str.empty()) res.push_back(str);
+            return res;
+        }
+    };
+}
 class VillageScene : public Scene
 {
 public:
@@ -16,12 +164,14 @@ public:
 
     // CREATE_FUNC 宏：自动生成 create() 方法
     CREATE_FUNC(VillageScene);
+    // 存档（保存到本地文件）
+    bool saveGame(const std::string& savePath = "village_save.txt");
+    // 读档（从本地文件恢复）
+    bool loadGame(const std::string& savePath = "village_save.txt");
+    // 按钮点击回调
+    void onSaveBtnClicked(cocos2d::Ref* sender);
+    void onLoadBtnClicked(cocos2d::Ref* sender);
 private:
-    enum class Mode {
-        NONE,       // 无建造模式
-        PLACE_BUILDING,  // 放置建筑模式
-        SPAWN_TROOP,    // 放置兵种模式
-    };
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
     TMXTiledMap* _tileMap;       // 等轴测地图对象
@@ -41,6 +191,8 @@ private:
     bool _isBuildBarShow = false; // 建筑栏是否显示
     Layer* _buildBarLayer = nullptr; // 建筑栏容器层
     // 存储所有建筑（基类指针，兼容所有建筑类型）
+    ui::Button* _saveBtn;
+    ui::Button* _loadBtn;
     std::vector<BaseBuilding*> _buildings;
     // 按类型拆分存储（便于快速查找）
     std::vector<GoldMine*> _goldMines;
@@ -150,6 +302,12 @@ private:
     void VillageScene::showResourceShortageTip(const std::string& message);
     // -------------------------- 整体控制--------------------------
 	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
+    //存档相关
+    // 辅助：将当前场景数据转为存档结构
+    SaveData::Village packSaveData();
+    // 辅助：从存档结构恢复场景数据
+    void unpackSaveData(const SaveData::Village& saveData);
+    void initSaveLoadButtons(); // 辅助：创建UI按钮（新增）
+  
 };
-
 #endif // __VILLAGE_SCENE_H__
