@@ -3,6 +3,7 @@
 #include "Building.h"
 #include "Troop.h"
 #include "cocos2d.h"
+
 using namespace cocos2d;
 class VillageScene : public Scene
 {
@@ -21,6 +22,7 @@ private:
         NONE,       // 无建造模式
         PLACE_BUILDING,  // 放置建筑模式
         SPAWN_TROOP          // 放置兵种模式
+ 
     };
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
@@ -133,6 +135,22 @@ private:
     bool VillageScene::addElixir(int amount);
     bool VillageScene::spendElixir(int amount);
     void VillageScene::showResourceShortageTip(const std::string& message);
+
+    // 关卡选择相关
+    cocos2d::Layer* _levelSelectLayer;
+    bool _isLevelSelectShow;
+    void createLevelSelectMenu();
+    void showLevelSelectMenu();
+    void hideLevelSelectMenu();
+    void toggleLevelSelectMenu();
+
+    // 初始化关卡选择按钮
+    void initLevelSelectBtn();
+
+    // 跳转到关卡的函数
+    void gotoLevel1();
+    void gotoLevel2();
+    void gotoLevel3();
     // -------------------------- 整体控制--------------------------
 	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
 };
