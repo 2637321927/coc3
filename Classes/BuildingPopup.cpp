@@ -1,5 +1,5 @@
 #include "BuildingPopup.h"
-
+#include "VillageScene.h"
 BuildingPopup* BuildingPopup::create(BaseBuilding* building,
     const std::function<void(ButtonType)>& btnCallback) {
     auto popup = new (std::nothrow) BuildingPopup();
@@ -40,7 +40,6 @@ bool BuildingPopup::init(BaseBuilding* building,
 //要新加一个模式，以便在进行建筑操作的时候鼠标不会影响其他地方
 void BuildingPopup::createButtons() {
     if (!_targetBuilding) return; // 空指针防护
-
     // ========== 步骤1：获取建筑的屏幕坐标（核心修改） ==========
     // 1.1 获取建筑在世界坐标系中的位置（相对于屏幕）
     Vec2 buildingWorldPos = _targetBuilding->convertToWorldSpaceAR(Vec2::ZERO);
@@ -80,7 +79,7 @@ void BuildingPopup::createButtons() {
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
     }
     else if (_targetBuilding->getType() == BuildingType::TOWN_HALL) {
-        // 城镇大厅按钮（3个，居中）
+        //  大本营按钮（3个，居中）
         createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
         createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));

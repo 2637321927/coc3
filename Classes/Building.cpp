@@ -47,9 +47,11 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     // 初始化触摸监听器（统一调用封装的方法，避免重复绑定）
     initTouchListener();
 
+    //if普通模式
+    //startBuild()
     // 默认状态初始化
     setState(BuildingState::IDLE);
-
+	doSpecialAction(); // 金矿开始生产金币
     return true;
 }
 bool BaseBuilding::loadBuildingSprite() {
@@ -163,8 +165,15 @@ void BaseBuilding::startUpgrade() {
 // 通用：摧毁建筑
 void BaseBuilding::destroy() {
     setState(BuildingState::DESTROYED);
+    //设置为半透明
     this->setOpacity(100);
+	//停止所有进度（如建造，升级）
     this->unscheduleUpdate();
+	// 移除触摸监听器，禁止交互
+    if (_touchListener) {
+        Director::getInstance()->getEventDispatcher()->removeEventListener(_touchListener);
+    }
+    this->removeFromParentAndCleanup(true);
 }
 
 // 通用：设置状态（视觉表现）
@@ -210,6 +219,7 @@ void BaseBuilding::updateProgress() {
     float progress = _progressTimer / _config.buildTime;
     _progressBar->setPercentage(clampf(progress, 0.0f, 1.0f) * 100);
 }
+
 // GoldMine 子类实现
 GoldMine* GoldMine::create(const Vec2& tilePos, float mapScale) {
     GoldMine* sprite = new (std::nothrow) GoldMine();
@@ -240,7 +250,7 @@ bool GoldMine::init(const Vec2& tilePos, float mapScale) {
 void GoldMine::doSpecialAction() {
     // 逻辑：每隔一段时间增加玩家金币
         // 非闲置/未摧毁状态才生产
-    if (getState() != BuildingState::IDLE || getState() == BuildingState::DESTROYED) {
+    if (getState() != BuildingState::IDLE ) {
         return;
     }
 
@@ -265,6 +275,11 @@ int GoldMine::collectGold() {
 // 金矿专属描述
 std::string GoldMine::getSpecialDesc()  {
     return "生产金币的建筑，等级越高产量越高";
+}
+// 覆盖摧毁方法
+void GoldMine::destroy() {
+    BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
+    this->unschedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold)); // 停止生产
 }
 // TownHall 子类实现
 TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {

@@ -91,7 +91,7 @@ protected:
     BuildingConfig _config;             // 通用配置
 	//需要在public加一些接口供外部访问
 	BuildingState _state = BuildingState::UNKNOWN;  // 当前状态
-    Vec2 _tilePos;             // 瓦片坐标
+    Vec2 _tilePos;             // 瓦片坐标(左上角)
     float _mapScale = 1.0f;             // 地图缩放比例
     float _progressTimer = 0.0f;        // 进度计时器
     ProgressTimer* _progressBar = nullptr; // 通用进度条
@@ -100,16 +100,17 @@ protected:
 class GoldMine : public BaseBuilding {
 public:
     static GoldMine* create(const cocos2d::Vec2& tilePos, float mapScale);
-    virtual bool init(const cocos2d::Vec2& tilePos, float mapScale) ;
+    bool init(const cocos2d::Vec2& tilePos, float mapScale) ;
 
     // 重写专属行为：生产金币
     void doSpecialAction() override;
     // 重写专属描述
     std::string getSpecialDesc() override;
     // 收集金币
-	int collectGold(); 
-private:
+	int collectGold();
     void produceGold(float dt);
+	void destroy() override;
+private:
     float _goldTimer = 0.0f;    // 金币生产计时器
     int _goldPerInterval = 10;  // 每次生产金币数量
     float _produceInterval = 2.0f; // 生产间隔（秒）

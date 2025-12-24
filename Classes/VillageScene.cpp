@@ -569,15 +569,13 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
             if (goldMine) {
                 // 调用金矿收集资源的方法（需在GoldMine中实现）
                 addGold(goldMine->collectGold());
-                
             }
         }
         break;
 
     case BuildingPopup::ButtonType::DESTROY:
         // 摧毁建筑
-        building->destroy();
-        log("建筑已被摧毁！");
+        destroyBuilding(building);
         break;
 
     default:
@@ -588,8 +586,16 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
     if (building) {
-        _Mode = Mode::NONE;
-		_buildPreview->setVisible(false);
+		_buildPreview->setVisible(false);      
+        // 加入建筑总列表（核心：保存实例引用，避免内存泄漏/无法管理）
+        _buildings.push_back(building);
+        // 按类型加入细分列表
+        if (type == BuildingType::GOLD_MINE) {
+            _goldMines.push_back(dynamic_cast<GoldMine*>(building));
+        }
+        else if (type == BuildingType::TOWN_HALL) {
+            _townHalls.push_back(dynamic_cast<TownHall*>(building));
+        }
         auto config = building->getConfig();
 
         // 记录该建筑占用的所有瓦片
@@ -619,12 +625,106 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
 
             // 统一绑定点击回调（弹窗逻辑）
             building->bindClickCallback([this](BaseBuilding* building) {
-                // 弹出功能窗口（复用原有弹窗逻辑）
+               if (_Mode!= Mode::NONE) {
+                    // 非 NONE 模式，直接返回（不触发任何交互）
+                    return;
+                }
+                // 弹出功能窗口
                 auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
                     handleBuildingBtnClick(building, type);
                     });
                 this->addChild(popup, 100); // 高层级显示弹窗
                 });
+        }
+		// 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
+        this->scheduleOnce([this](float delay) {
+            _Mode = Mode::NONE;
+            }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
+    
+    }
+}
+// 摧毁建筑
+void VillageScene::destroyBuilding(BaseBuilding* building) {
+    if (!building) return; // 空指针防护
+    // 返还建造资源
+    /*
+        auto& cost = building->getConfig().cost;
+        // 示例：返还80%建造资源（可自定义比例）
+        for (auto& [resType, resValue] : cost) {
+            int returnValue = resValue * 0.8f;
+            if (resType == "gold") {
+                _playerGold += returnValue;
+            }
+            else if (resType == "elixir") {
+                _playerElixir += returnValue;
+            }
+        
+        // 刷新资源UI（需自行实现，如更新金币标签）
+        // updateResourceUI();
+    }
+    */
+    // 释放建筑占用的瓦片（地图位置）
+    releaseBuildingTiles(building);
+	// 从渲染层移除建筑节点(basebuilding中已经调用过一次了，可以不调用)
+    //building->removeFromParentAndCleanup(true);
+    // removeFromParentAndCleanup(true)：
+    // 从_mapContainer的节点树中移除建筑
+    // 清理建筑的所有子节点（图片、进度条、UI）
+    // 调用建筑的onExit()，自动停止所有定时器/监听器
+
+    // 从管理列表中移除建筑引用（逻辑层清理）
+    // 从总列表移除
+    auto it = std::find(_buildings.begin(), _buildings.end(), building);
+    if (it != _buildings.end()) {
+        _buildings.erase(it);
+    }
+	// 酚类型列表移除
+	if (building->getType() == BuildingType::TOWN_HALL) {
+		auto it1 = std::find(_townHalls.begin(), _townHalls.end(), dynamic_cast<TownHall*>(building));
+		if (it1 != _townHalls.end()) {
+			_townHalls.erase(it1);
+		}
+	}    else if (building->getType() == BuildingType::GOLD_MINE) {
+        auto it1 = std::find(_goldMines.begin(), _goldMines.end(), dynamic_cast<GoldMine*>(building));
+        if (it1 != _goldMines.end()) {
+            _goldMines.erase(it1);
+        }
+    }
+    building->destroy();
+    // 内存释放（Cocos2d-x 自动管理)
+    // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
+    // 建筑实例会在下次主循环被自动销毁，无需手动delete
+}
+// 辅助：释放建筑占用的瓦片（摧毁后该位置可重新建造）
+void VillageScene::releaseBuildingTiles(BaseBuilding* building) {
+    if (!building) return;
+    auto& config = building->getConfig();
+    Vec2 tileStart = building->getTilePos();
+    // 遍历建筑占用的所有瓦片
+    for (int x = 0; x < config.tileWidth; ++x) {
+        for (int y = 0; y < config.tileHeight; ++y) {
+            Vec2 tile = Vec2(tileStart.x + x, tileStart.y + y);
+            // 从_occupiedTiles中移除该瓦片
+            auto tileIt = std::find(_occupiedTiles.begin(), _occupiedTiles.end(), tile);
+            if (tileIt != _occupiedTiles.end()) {
+                _occupiedTiles.erase(tileIt);
+            }
+        }
+    }
+}
+// 批量停止所有金矿生产
+void VillageScene::pauseAllGoldMines() {
+    for (auto goldMine : _goldMines) {
+        if (goldMine) {
+            goldMine->unschedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold));
+        }
+    }
+}
+// 批量重启所有金矿生产
+void VillageScene::resumeAllGoldMines() {
+    for (auto goldMine : _goldMines) {
+        if (goldMine && goldMine->getState() == BuildingState::IDLE) {
+            goldMine->doSpecialAction();
         }
     }
 }
