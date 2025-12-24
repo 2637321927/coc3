@@ -4,6 +4,8 @@
 #include "Troop.h"
 #include "cocos2d.h"
 
+#include "BuildingPopup.h"
+
 using namespace cocos2d;
 class VillageScene : public Scene
 {
@@ -16,13 +18,12 @@ public:
 
     // CREATE_FUNC 宏：自动生成 create() 方法
     CREATE_FUNC(VillageScene);
-
 private:
     enum class Mode {
         NONE,       // 无建造模式
         PLACE_BUILDING,  // 放置建筑模式
-        SPAWN_TROOP          // 放置兵种模式
- 
+
+        SPAWN_TROOP          // 放置兵种
     };
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
@@ -31,9 +32,10 @@ private:
     Size _mapSize;               // 地图总瓦片数（宽×高）
     TMXLayer* _placeLayer;       // 可放置建筑的图层（对应Tiled的place_layer）
      TMXLayer* _pathLayer;      // 后续可启用：可通行图层（暂注释）
-     TMXLayer* _bgLayer;
+	 TMXLayer* _bgLayer;      // 背景图层（对应Tiled的bg_layer）
 	 Node* _mapContainer;	  // 地图容器节点（用于整体缩放/拖拽）
      Mode _Mode = Mode::NONE;  // 当前模式
+	 Mode _lastMode = Mode::NONE; // 上一次模式（用于切换回原模式）
      Sprite* _mousePosSprite;//测试用，显示鼠标位置
     // 建筑放置相关
     Sprite* _buildPreview;       // 建筑放置预览图
@@ -41,6 +43,11 @@ private:
     std::vector<Vec2> _occupiedTiles;        // 已占用的瓦片
     bool _isBuildBarShow = false; // 建筑栏是否显示
     Layer* _buildBarLayer = nullptr; // 建筑栏容器层
+    // 存储所有建筑（基类指针，兼容所有建筑类型）
+    std::vector<BaseBuilding*> _buildings;
+    // 按类型拆分存储（便于快速查找）
+    std::vector<GoldMine*> _goldMines;
+    std::vector<TownHall*> _townHalls;
     // 缩放相关
     float _minScale = 0.5f;      // 最小缩放比例（避免缩太小）
     float _maxScale = 2.0f;      // 最大缩放比例（避免缩太大）
@@ -53,7 +60,9 @@ private:
     std::vector<Vec2> _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
-
+	// 金矿生产控制(如切换到其他场景，战争模式时暂停生产)
+	void pauseAllGoldMines();// 暂停所有金矿生产
+	void resumeAllGoldMines();// 恢复所有金矿生产
     // -------------------------- 兵种相关成员变量 --------------------------
     bool _isTroopBarShow = false;// 兵种栏是否显示
     Sprite* _troopPreview;               // 兵种放置预览图
@@ -109,7 +118,14 @@ private:
     void hideBuildBar();  
 	// 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
+	// 获取建筑配置
     const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type);
+	// 处理建筑弹窗按钮点击回调
+    void handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type);
+    // 摧毁建筑核心函数
+    void destroyBuilding(BaseBuilding* building);
+    // 辅助：释放建筑占用的瓦片
+    void releaseBuildingTiles(BaseBuilding* building);
     // -------------------------- 兵种相关方法声明 --------------------------
     // 初始化兵种放置预览
     void initTroopPreview();
@@ -143,9 +159,7 @@ private:
     void showLevelSelectMenu();
     void hideLevelSelectMenu();
     void toggleLevelSelectMenu();
-
-    // 初始化关卡选择按钮
-    void initLevelSelectBtn();
+    void VillageScene::initLevelSelectBtn();
 
     // 跳转到关卡的函数
     void gotoLevel1();

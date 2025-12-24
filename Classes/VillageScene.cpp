@@ -1,7 +1,6 @@
 #include "VillageScene.h"
 #include "cocos2d.h"
 #include "Building.h"
-#include "Giant.h"
 
 bool VillageScene::init()
 {
@@ -13,12 +12,11 @@ bool VillageScene::init()
     this->addChild(_mapContainer);
     initMap();
     initBuildPreview();
-    initBuildModeBtn(); 
+    initBuildModeBtn();
     initTroopModeBtn();
     initTroopPreview();
     //TODO：建筑和触摸暂时屏蔽
  
-    initLevelSelectBtn();
     //initTouchEvent();
     //  监听鼠标滚轮事件
     auto  mouseListener = EventListenerMouse::create();
@@ -34,18 +32,18 @@ bool VillageScene::init()
 
 }
 //设置瓦片颜色（放置预览）
-void VillageScene::setTileColor(Vec2 tilePos, Color3B color,BuildingType type) {
+void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type) {
     auto config = getBuildingConfigByType(_selectedBuildingType);
     // 1校验瓦片坐标是否有效
    // 校验瓦片坐标是否越界
     if (tilePos.x < 0 || tilePos.x + config.tileHeight - 1 >= _mapSize.width
         || tilePos.y < 0 || tilePos.y + config.tileWidth - 1 >= _mapSize.height) {
-        return ;
+        return;
     }
     // 获取瓦片对应的精灵（TMXLayer本质是SpriteBatchNode，每个瓦片是Sprite）
     for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
         for (int j = tilePos.y;j < tilePos.y + config.tileWidth - 1;j++) {
-            Sprite* tileSprite = _bgLayer->getTileAt(Vec2(i,j));
+            Sprite* tileSprite = _bgLayer->getTileAt(Vec2(i, j));
             if (!tileSprite) { // 空瓦片（无精灵）
                 return;
             }
@@ -112,7 +110,7 @@ void VillageScene::onMouseDown(Event* event)
             Vec2 tilePos = screenToIsoTile(currentPos);
             tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
             if (checkCanPlace(tilePos, _selectedBuildingType)) {
-				placeBuilding(tilePos, _selectedBuildingType);//应该传瓦片坐标更合适，不过瓦片转容器有误，先传入屏幕坐标，屏幕转容器和屏幕转瓦片坐标是正确的
+                placeBuilding(tilePos, _selectedBuildingType);//应该传瓦片坐标更合适，不过瓦片转容器有误，先传入屏幕坐标，屏幕转容器和屏幕转瓦片坐标是正确的
                 // 可选：放置后不清空建造模式，继续放置同类型建筑
                 // _buildMode = BuildMode::NONE;
                 // _buildPreview->setVisible(false);
@@ -133,11 +131,12 @@ void VillageScene::onMouseDown(Event* event)
     }
 }
 // 鼠标移动：处理拖拽偏移/建筑预览跟随
-void VillageScene::onMouseMove(Event* event)    
+void VillageScene::onMouseMove(Event* event)
 {
+    restoreLastTileColor();
     EventMouse* e = (EventMouse*)event;
     Vec2 currentMousePos = Vec2(e->getCursorX(), e->getCursorY());
-    if (_isDragging&& _Mode != Mode::PLACE_BUILDING) {
+    if (_isDragging && _Mode != Mode::PLACE_BUILDING) {
         Vec2 offset = currentMousePos - _lastMousePos;
         _mapContainer->setPosition(_mapOriginPos + offset);
         // 注意：不要在 Move 里累加 _mapOriginPos，除非你每一帧都重新赋值
@@ -146,21 +145,21 @@ void VillageScene::onMouseMove(Event* event)
         // 建造预览跟随（磁吸效果）
         if (_Mode == Mode::PLACE_BUILDING && _buildPreview->isVisible()) {
             Vec2 tilePos = screenToIsoTile(currentMousePos);
-			currentMousePos.y += 50; // 微调Y轴位置，以便显示真实放置格子
+            currentMousePos.y += 50; // 微调Y轴位置，以便显示真实放置格子
             // 将预览图位置设为容器本地坐标
             Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
             _buildPreview->setPosition(containerLocalPos);
-            float mouseX = e->getCursorX(); 
-            float mouseY = e->getCursorY(); 
+            float mouseX = e->getCursorX();
+            float mouseY = e->getCursorY();
             // 转为整数（瓦片坐标是索引，必须是整数）
             //currentTilePos = Vec2(floor(currentTilePos.x), floor(currentTilePos.y));
             // 先恢复上一个瓦片的颜色
             restoreLastTileColor();
             //  给当前瓦片设置高亮色（比如半透明红色/绿色）
             setTileColor(tilePos, checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED, _selectedBuildingType); // 黄色高亮，可改为Color3B(255,0,0,180)（半透红）
-			//TODO：越界会报错，需要修复
+            //TODO：越界会报错，需要修复
 
-            
+
             _hasLastTile = true;
             _buildPreview->setColor(checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED);
         }
@@ -175,7 +174,7 @@ void VillageScene::onMouseMove(Event* event)
         // 临时：和建筑用同一个检测函数，确保预览颜色正确
         _troopPreview->setColor(checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED);
     }
- 
+
 }
 // 显示无法放置提示
 void VillageScene::showCannotPlaceTip(Vec2 pos) {
@@ -195,10 +194,10 @@ void VillageScene::showCannotPlaceTip(Vec2 pos) {
 //鼠标松开：结束拖拽
 void VillageScene::onMouseUp(Event* event)
 {
-        EventMouse* e = (EventMouse*)event;
-        if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
-            _isDragging = false;
-         }
+    EventMouse* e = (EventMouse*)event;
+    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
+        _isDragging = false;
+    }
     /*
     if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
         // 计算鼠标移动距离，小于5像素则视为“点击”，否则是“拖拽”
@@ -300,18 +299,19 @@ void VillageScene::initMap()
 }
 // 初始化建筑放置预览图
 void VillageScene::initBuildPreview() {
-// 确保 _mapContainer 已经创建
+    // 确保 _mapContainer 已经创建
     if (!_mapContainer) return;
 
-    _buildPreview = Sprite::create(); 
+    _buildPreview = Sprite::create();
     if (_buildPreview) {
         _buildPreview->setVisible(false);
         _buildPreview->setOpacity(150);
         _buildPreview->setAnchorPoint(Vec2(0.5f, 0.5f)); // 建议设置底部锚点
         // 添加到地图容器，层级设高一点（比如 99），确保在建筑上方
         _buildPreview->setScale(_mapContainer->getScale());
-        _mapContainer->addChild(_buildPreview, 99); 
-    } else {
+        _mapContainer->addChild(_buildPreview, 99);
+    }
+    else {
         CCLOG("Error: Could not create _buildPreview sprite!");
     }
 }
@@ -361,7 +361,7 @@ void VillageScene::initBuildPreview() {
 */
 // 屏幕坐标 → 等轴测瓦片坐标
 Vec2 VillageScene::screenToIsoTile(Vec2 screenPos)
-{    
+{
     // 首先：将屏幕坐标转换为地图层（_tileMap）的本地坐标
        // 这一步会自动处理地图的拖拽位置和缩放（Scale）
     Vec2 localPos = _tileMap->convertToNodeSpace(screenPos);
@@ -445,8 +445,8 @@ bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
 {
     auto config = getBuildingConfigByType(_selectedBuildingType);
     // 校验瓦片坐标是否越界
-    if (tilePos.x < 0 || tilePos.x+ config.tileHeight-1 >= _mapSize.width
-        || tilePos.y < 0 || tilePos.y+ config.tileWidth-1 >= _mapSize.height) {
+    if (tilePos.x < 0 || tilePos.x + config.tileHeight - 1 >= _mapSize.width
+        || tilePos.y < 0 || tilePos.y + config.tileWidth - 1 >= _mapSize.height) {
         return false;
     }
 
@@ -464,15 +464,15 @@ bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
     ValueMap tileProps = _tileMap->getPropertiesForGID(tileGID).asValueMap();
     //多格建筑判断
     bool isOccupied = 0;
-    for (int i = tilePos.x;i <= tilePos.x + config.tileHeight-1;i++) {
-        for (int j = tilePos.y;j < tilePos.y + config.tileWidth-1;j++) {
+    for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
+        for (int j = tilePos.y;j < tilePos.y + config.tileWidth - 1;j++) {
             if (isTileOccupied(Vec2(i, j))) {
-				isOccupied = 1;
+                isOccupied = 1;
             }
         }
     }
     // 读取canPlace属性（容错：无该属性则返回false）
-    if (tileProps.count("canPlace") == 0|| isOccupied) {
+    if (tileProps.count("canPlace") == 0 || isOccupied) {
         return false;
     }
 
@@ -538,10 +538,64 @@ void VillageScene::hideBuildBar() {
         _buildBarLayer->setVisible(false);
     }
 }
+// 处理按钮点击的核心逻辑
+void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type) {
+    switch (type) {
+    case BuildingPopup::ButtonType::INFO:
+        // 显示建筑信息（示例：打印日志/弹出信息框）
+        log("建筑信息：类型=%d，等级=%d，血量=%d，位置=(%f,%f)",
+            (int)building->getType(),
+            building->getConfig().level,
+            building->getConfig().hp,
+            building->getTilePos().x,
+            building->getTilePos().y);
+        break;
+
+    case BuildingPopup::ButtonType::UPGRADE:
+        // 建筑升级逻辑（调用BaseBuilding的升级方法）
+        if (building->getState() == BuildingState::IDLE) { // 仅闲置状态可升级
+            building->startUpgrade();
+            log("建筑开始升级！");
+        }
+        else {
+            log("建筑非闲置状态，无法升级！");
+        }
+        break;
+
+    case BuildingPopup::ButtonType::COLLECT:
+        // 收集金矿资源（仅金矿有效）
+        if (building->getType() == BuildingType::GOLD_MINE) {
+            auto goldMine = dynamic_cast<GoldMine*>(building);
+            if (goldMine) {
+                // 调用金矿收集资源的方法（需在GoldMine中实现）
+                addGold(goldMine->collectGold());
+            }
+        }
+        break;
+
+    case BuildingPopup::ButtonType::DESTROY:
+        // 摧毁建筑
+        destroyBuilding(building);
+        break;
+
+    default:
+        break;
+    }
+}
 // 放置建筑
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
     if (building) {
+		_buildPreview->setVisible(false);      
+        // 加入建筑总列表（核心：保存实例引用，避免内存泄漏/无法管理）
+        _buildings.push_back(building);
+        // 按类型加入细分列表
+        if (type == BuildingType::GOLD_MINE) {
+            _goldMines.push_back(dynamic_cast<GoldMine*>(building));
+        }
+        else if (type == BuildingType::TOWN_HALL) {
+            _townHalls.push_back(dynamic_cast<TownHall*>(building));
+        }
         auto config = building->getConfig();
 
         // 记录该建筑占用的所有瓦片
@@ -556,16 +610,122 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         float centerTileY = tilePos.y + (config.tileHeight - 1) / 2.0f;
         Vec2 centerTilePos(centerTileX, centerTileY);
 
-        // 2. 将中心点转换为容器坐标（替代原左上角坐标）
+        // 将中心点转换为容器坐标（替代原左上角坐标）
         Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
 
-        // 3. 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
+        // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
         building->setAnchorPoint(Vec2(0.5f, 0.5f));
         building->setPosition(containerLocalPos);
         _mapContainer->addChild(building);
 
         // Z-Order 排序建议：使用底部中心点的 Y 坐标
         building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
+        // 通用逻辑：添加到场景 + 绑定点击回调
+        if (building) {
+
+            // 统一绑定点击回调（弹窗逻辑）
+            building->bindClickCallback([this](BaseBuilding* building) {
+               if (_Mode!= Mode::NONE) {
+                    // 非 NONE 模式，直接返回（不触发任何交互）
+                    return;
+                }
+                // 弹出功能窗口
+                auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
+                    handleBuildingBtnClick(building, type);
+                    });
+                this->addChild(popup, 100); // 高层级显示弹窗
+                });
+        }
+		// 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
+        this->scheduleOnce([this](float delay) {
+            _Mode = Mode::NONE;
+            }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
+    
+    }
+}
+// 摧毁建筑
+void VillageScene::destroyBuilding(BaseBuilding* building) {
+    if (!building) return; // 空指针防护
+    // 返还建造资源
+    /*
+        auto& cost = building->getConfig().cost;
+        // 示例：返还80%建造资源（可自定义比例）
+        for (auto& [resType, resValue] : cost) {
+            int returnValue = resValue * 0.8f;
+            if (resType == "gold") {
+                _playerGold += returnValue;
+            }
+            else if (resType == "elixir") {
+                _playerElixir += returnValue;
+            }
+        
+        // 刷新资源UI（需自行实现，如更新金币标签）
+        // updateResourceUI();
+    }
+    */
+    // 释放建筑占用的瓦片（地图位置）
+    releaseBuildingTiles(building);
+	// 从渲染层移除建筑节点(basebuilding中已经调用过一次了，可以不调用)
+    //building->removeFromParentAndCleanup(true);
+    // removeFromParentAndCleanup(true)：
+    // 从_mapContainer的节点树中移除建筑
+    // 清理建筑的所有子节点（图片、进度条、UI）
+    // 调用建筑的onExit()，自动停止所有定时器/监听器
+
+    // 从管理列表中移除建筑引用（逻辑层清理）
+    // 从总列表移除
+    auto it = std::find(_buildings.begin(), _buildings.end(), building);
+    if (it != _buildings.end()) {
+        _buildings.erase(it);
+    }
+	// 酚类型列表移除
+	if (building->getType() == BuildingType::TOWN_HALL) {
+		auto it1 = std::find(_townHalls.begin(), _townHalls.end(), dynamic_cast<TownHall*>(building));
+		if (it1 != _townHalls.end()) {
+			_townHalls.erase(it1);
+		}
+	}    else if (building->getType() == BuildingType::GOLD_MINE) {
+        auto it1 = std::find(_goldMines.begin(), _goldMines.end(), dynamic_cast<GoldMine*>(building));
+        if (it1 != _goldMines.end()) {
+            _goldMines.erase(it1);
+        }
+    }
+    building->destroy();
+    // 内存释放（Cocos2d-x 自动管理)
+    // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
+    // 建筑实例会在下次主循环被自动销毁，无需手动delete
+}
+// 辅助：释放建筑占用的瓦片（摧毁后该位置可重新建造）
+void VillageScene::releaseBuildingTiles(BaseBuilding* building) {
+    if (!building) return;
+    auto& config = building->getConfig();
+    Vec2 tileStart = building->getTilePos();
+    // 遍历建筑占用的所有瓦片
+    for (int x = 0; x < config.tileWidth; ++x) {
+        for (int y = 0; y < config.tileHeight; ++y) {
+            Vec2 tile = Vec2(tileStart.x + x, tileStart.y + y);
+            // 从_occupiedTiles中移除该瓦片
+            auto tileIt = std::find(_occupiedTiles.begin(), _occupiedTiles.end(), tile);
+            if (tileIt != _occupiedTiles.end()) {
+                _occupiedTiles.erase(tileIt);
+            }
+        }
+    }
+}
+// 批量停止所有金矿生产
+void VillageScene::pauseAllGoldMines() {
+    for (auto goldMine : _goldMines) {
+        if (goldMine) {
+            goldMine->unschedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold));
+        }
+    }
+}
+// 批量重启所有金矿生产
+void VillageScene::resumeAllGoldMines() {
+    for (auto goldMine : _goldMines) {
+        if (goldMine && goldMine->getState() == BuildingState::IDLE) {
+            goldMine->doSpecialAction();
+        }
     }
 }
 // 初始化建筑模式切换按钮
@@ -679,8 +839,9 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
         };
         break;
     }
-        return  Config;
+    return  Config;
 }
+// -------------------------- 兵种相关方法 --------------------------
 // 初始化兵种放置预览图
 void VillageScene::initTroopPreview() {
     if (!_mapContainer) return;
@@ -798,7 +959,7 @@ void VillageScene::createTroopBar() {
     );
 
     // 排列按钮
-    auto menu = Menu::create(barbarianBtn, archerBtn,bomberBtn,giantBtn, cancelTroopBtn, nullptr);
+    auto menu = Menu::create(barbarianBtn, archerBtn, bomberBtn, giantBtn, cancelTroopBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     troopBarLayer->addChild(menu);
@@ -890,8 +1051,8 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第三步：计算兵种位置（复用建筑的坐标转换逻辑） =====
     // 对于单格兵种，中心点就是瓦片中心
-    float centerTileX = tilePos.x-0.5f;  // 单格兵种，中心在瓦片中心
-    float centerTileY = tilePos.y-2.0f;
+    float centerTileX = tilePos.x - 0.5f;  // 单格兵种，中心在瓦片中心
+    float centerTileY = tilePos.y - 2.0f;
     Vec2 centerTilePos(centerTileX, centerTileY);
 
     // 使用与建筑相同的坐标转换方法
