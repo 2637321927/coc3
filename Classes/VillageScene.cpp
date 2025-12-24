@@ -518,7 +518,17 @@ void VillageScene::createBuildBar() {
             _buildPreview->setTexture("building/gold_mine_preview.png");
         }
     );
-
+	// 建筑按钮 - 圣水收集器
+	auto elixirCollectorBtn = MenuItemImage::create(
+		"building/elixir_collector_icon.png",
+		"building/elixir_collector_icon_selected.png",
+		[this](Ref* sender) {
+			_Mode = Mode::PLACE_BUILDING;
+			_selectedBuildingType = BuildingType::ELIXIR_COLLECTOR;
+			_buildPreview->setVisible(true);
+			_buildPreview->setTexture("building/elixir_collector_preview.png");
+		}
+	);
     // 取消放置按钮（仅退出当前建造模式，不隐藏建筑栏）
     auto cancelPlaceBtn = MenuItemImage::create(
         "ui/cancel_place_btn.png",
@@ -530,7 +540,7 @@ void VillageScene::createBuildBar() {
     );
 
     // 排列按钮
-    auto menu = Menu::create(townHallBtn, goldMineBtn, cancelPlaceBtn, nullptr);
+    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     _buildBarLayer->addChild(menu);
@@ -570,9 +580,18 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
         if (building->getType() == BuildingType::GOLD_MINE) {
             auto goldMine = dynamic_cast<GoldMine*>(building);
             if (goldMine) {
-                // 调用金矿收集资源的方法（需在GoldMine中实现）
+                // 调用金矿收集资源的方法
                 addGold(goldMine->collectGold());
             }
+        }
+		else if(building->getType() == BuildingType::ELIXIR_COLLECTOR){
+			auto elixirCollector = dynamic_cast<ElixirCollector*>(building);
+			if (elixirCollector) {
+				// 调用收集资源的方法
+				addElixir(elixirCollector->collectElixir());
+			}
+		}
+        else {
         }
         break;
 
@@ -596,8 +615,8 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         if (type == BuildingType::GOLD_MINE) {
             _goldMines.push_back(dynamic_cast<GoldMine*>(building));
         }
-        else if (type == BuildingType::TOWN_HALL) {
-            _townHalls.push_back(dynamic_cast<TownHall*>(building));
+        else if (type == BuildingType::ELIXIR_COLLECTOR) {
+            _elixirCollectors.push_back(dynamic_cast<ElixirCollector*>(building));
         }
         auto config = building->getConfig();
 
@@ -682,12 +701,13 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         _buildings.erase(it);
     }
 	// 酚类型列表移除
-	if (building->getType() == BuildingType::TOWN_HALL) {
-		auto it1 = std::find(_townHalls.begin(), _townHalls.end(), dynamic_cast<TownHall*>(building));
-		if (it1 != _townHalls.end()) {
-			_townHalls.erase(it1);
+	if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
+		auto it1= std::find(_elixirCollectors.begin(), _elixirCollectors.end(), dynamic_cast<ElixirCollector*>(building));
+		if (it1 != _elixirCollectors.end()) {
+			_elixirCollectors.erase(it1);
 		}
-	}    else if (building->getType() == BuildingType::GOLD_MINE) {
+	}
+    else if (building->getType() == BuildingType::GOLD_MINE) {
         auto it1 = std::find(_goldMines.begin(), _goldMines.end(), dynamic_cast<GoldMine*>(building));
         if (it1 != _goldMines.end()) {
             _goldMines.erase(it1);
@@ -796,12 +816,11 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             2000,                   // hp
             3,                      // tileWidth
             3,                      // tileHeight
-            { {"gold", 1000}, {"wood", 500} }, // cost
+            { {"gold", 1000}, {"elixir", 500} }, // cost
             30.0f                   // buildTime
         };
         break;
     case(BuildingType::GOLD_MINE):
-
         Config = {
             2,                      // id
             BuildingType::GOLD_MINE,// type
@@ -810,11 +829,24 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             500,                    // hp
             3,                      // tileWidth
             2,                      // tileHeight
-            { {"gold", 500}, {"wood", 200} }, // cost
+            { {"gold", 500}, {"elixir", 200} }, // cost
             10.0f                   // buildTime
         };
         break;
 
+    case(BuildingType::ELIXIR_COLLECTOR):
+        Config = {
+            4,                      // id
+            BuildingType::ELIXIR_COLLECTOR, // type
+            "圣水收集器",           // name
+            "building/elixir_collector.png", // imgPath
+            500,                    // hp
+            3,                      // tileWidth
+            2,                      // tileHeight
+            { {"gold", 600}, {"elixir", 250} }, // cost
+            12.0f                   // buildTime
+        };
+        break;
     case(BuildingType::BARRACKS):
         Config = {
             3,                      // id
@@ -824,7 +856,7 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             800,                    // hp
             2,                      // tileWidth
             2,                      // tileHeight
-            { {"gold", 800}, {"wood", 300} }, // cost
+            { {"gold", 800}, {"elixir", 300} }, // cost
             20.0f                   // buildTime
         };
         break;
@@ -1352,7 +1384,7 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
 	}
     _buildings.clear();
     _goldMines.clear();
-    _townHalls.clear();
+    _elixirCollectors.clear();
     _occupiedTiles.clear();
     // 恢复地图尺寸（可选，根据需求）
     _mapSize = saveData.mapSize;
@@ -1397,9 +1429,9 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
             if (bData.type == BuildingType::GOLD_MINE) {
                 _goldMines.push_back(dynamic_cast<GoldMine*>(building));
             }
-            else if (bData.type == BuildingType::TOWN_HALL) {
-                _townHalls.push_back(dynamic_cast<TownHall*>(building));
-            }
+			else if (bData.type == BuildingType::ELIXIR_COLLECTOR) {
+				_elixirCollectors.push_back(dynamic_cast<ElixirCollector*>(building));
+			}
         }
     }
 }

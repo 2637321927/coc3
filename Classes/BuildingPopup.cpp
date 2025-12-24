@@ -78,6 +78,16 @@ void BuildingPopup::createButtons() {
         // 4. 摧毁按钮
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
     }
+    else if (_targetBuilding->getType() == BuildingType::ELIXIR_COLLECTOR) {
+        // 1. 信息按钮
+        createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+        // 2. 升级按钮
+        createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
+        // 3. 收集资源按钮
+        createButton("ui/btn_collect.png", ButtonType::COLLECT, Vec2(startX + 2 * (btnWidth + spacing), startY));
+        // 4. 摧毁按钮
+        createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
+    }
     else if (_targetBuilding->getType() == BuildingType::TOWN_HALL) {
         //  大本营按钮（3个，居中）
         createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
