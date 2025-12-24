@@ -35,7 +35,7 @@ namespace SaveData {
         // 反序列化：从字符串恢复数据
         static Building fromString(const std::string& str) {
             Building data;
-            std::vector<std::string> parts = split(str, ","); // 需实现split函数
+			std::vector<std::string> parts = split(str, ","); // 按逗号分割
             if (parts.size() >= 5) {
                 data.type = (BuildingType)std::stoi(parts[0]);
                 data.tilePos.x = std::stof(parts[1]);
@@ -300,6 +300,19 @@ private:
     bool VillageScene::addElixir(int amount);
     bool VillageScene::spendElixir(int amount);
     void VillageScene::showResourceShortageTip(const std::string& message);
+    // 关卡选择相关
+    cocos2d::Layer* _levelSelectLayer;
+    bool _isLevelSelectShow;
+    void createLevelSelectMenu();
+    void showLevelSelectMenu();
+    void hideLevelSelectMenu();
+    void toggleLevelSelectMenu();
+    void VillageScene::initLevelSelectBtn();
+
+    // 跳转到关卡的函数
+    void gotoLevel1();
+    void gotoLevel2();
+    void gotoLevel3();
     // -------------------------- 整体控制--------------------------
 	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
     //存档相关

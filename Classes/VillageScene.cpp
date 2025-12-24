@@ -3,6 +3,7 @@
 #include "Building.h"
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
+
 bool VillageScene::init()
 {
     if (!Scene::init()) return false;
@@ -18,7 +19,7 @@ bool VillageScene::init()
     initTroopPreview();
     initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
-
+ 
     //initTouchEvent();
     //  监听鼠标滚轮事件
     auto  mouseListener = EventListenerMouse::create();
@@ -744,7 +745,7 @@ void VillageScene::initBuildModeBtn() {
     );
     // 设置按钮大小和位置（可根据需求调整）
     buildModeBtn->setScale(0.8f);
-    buildModeBtn->setPosition(Vec2(visibleSize.width - 50, visibleSize.height - 50));
+    buildModeBtn->setPosition(Vec2(visibleSize.width - 100, visibleSize.height - 100));
 
     auto menu = Menu::create(buildModeBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
@@ -866,14 +867,14 @@ void VillageScene::initTroopModeBtn() {
 
     // 兵种模式开关按钮（在建筑按钮左侧）
     auto troopModeBtn = MenuItemImage::create(
-        "ui/build_mode_btn_normal.png",  // 正常状态图片
-        "ui/build_mode_btn_selected.png",// 按下状态图片
+        "ui/troop_mode_btn_normal.png",  // 正常状态图片
+        "ui/troop_mode_btn_selected.png",// 按下状态图片
         [this](Ref* sender) {
             this->toggleTroopBar(); // 点击切换兵种栏
         }
     );
     troopModeBtn->setScale(0.8f);
-    troopModeBtn->setPosition(Vec2(visibleSize.width - 120, visibleSize.height - 50)); // 建筑按钮左侧
+    troopModeBtn->setPosition(Vec2(visibleSize.width - 220, visibleSize.height - 100)); // 建筑按钮左侧
 
     auto menu = Menu::create(troopModeBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
@@ -1483,8 +1484,8 @@ void VillageScene::initSaveLoadButtons() {
 void VillageScene::onSaveBtnClicked(Ref* sender) {
     // 调用已实现的存档方法
     bool success = saveGame();
-    // 提示玩家存档结果（可选：弹出文字提示）
-    std::string tip = success ? "存档成功！" : "存档失败！";
+    // 提示玩家存档结果
+    std::string tip = success ? "save success" : "save failed";
     CCLOG("%s", tip.c_str());
 
     // 添加弹窗提示
@@ -1505,7 +1506,7 @@ void VillageScene::onSaveBtnClicked(Ref* sender) {
 void VillageScene::onLoadBtnClicked(Ref* sender) {
     // 调用已实现的读档方法
     bool success = loadGame();
-    std::string tip = success ? "读档成功！" : "读档失败（无存档）！";
+    std::string tip = success ? "load success" : "load failed";
     CCLOG("%s", tip.c_str());
 
     // 弹窗提示
@@ -1520,3 +1521,207 @@ void VillageScene::onLoadBtnClicked(Ref* sender) {
         nullptr
     ));
 }
+
+
+// 初始化关卡选择按钮
+void VillageScene::initLevelSelectBtn() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 创建关卡选择按钮（左下角）
+    auto levelSelectBtn = MenuItemImage::create(
+        "ui/level_select_btn_normal.png",  // 正常状态图片
+        "ui/level_select_btn_selected.png",// 按下状态图片
+        [this](Ref* sender) {
+            this->toggleLevelSelectMenu(); // 点击切换关卡选择菜单
+        }
+    );
+
+    // 设置按钮大小和位置（左下角）
+    levelSelectBtn->setScale(0.8f);
+    levelSelectBtn->setPosition(Vec2(100, 100)); // 左下角，距离左边缘和下边缘各50像素
+
+    auto menu = Menu::create(levelSelectBtn, nullptr);
+    menu->setPosition(Vec2::ZERO);
+    this->addChild(menu, 100); // 最高层级
+
+    // 初始化关卡选择层状态
+    _isLevelSelectShow = false;
+    _levelSelectLayer = nullptr;
+}
+
+// 切换关卡选择菜单显示/隐藏
+void VillageScene::toggleLevelSelectMenu() {
+    if (!_isLevelSelectShow) {
+        // 显示关卡选择菜单
+        showLevelSelectMenu();
+        _isLevelSelectShow = true;
+    }
+    else {
+        // 隐藏关卡选择菜单
+        hideLevelSelectMenu();
+        _isLevelSelectShow = false;
+    }
+}
+
+// 显示关卡选择菜单
+void VillageScene::showLevelSelectMenu() {
+    // 如果关卡选择层不存在，则创建
+    if (!_levelSelectLayer) {
+        createLevelSelectMenu();
+    }
+
+    if (_levelSelectLayer) {
+        _levelSelectLayer->setVisible(true);
+
+        // 添加淡入动画
+        _levelSelectLayer->setOpacity(0);
+        _levelSelectLayer->runAction(FadeIn::create(0.3f));
+    }
+}
+
+// 隐藏关卡选择菜单
+void VillageScene::hideLevelSelectMenu() {
+    if (_levelSelectLayer) {
+        // 添加淡出动画
+        auto fadeOut = FadeOut::create(0.2f);
+        auto hide = CallFunc::create([this]() {
+            if (_levelSelectLayer) {
+                _levelSelectLayer->setVisible(false);
+            }
+            });
+        _levelSelectLayer->runAction(Sequence::create(fadeOut, hide, nullptr));
+    }
+}
+
+// 创建关卡选择菜单
+void VillageScene::createLevelSelectMenu() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 创建半透明背景层
+    _levelSelectLayer = Layer::create();
+    _levelSelectLayer->setVisible(false);
+    this->addChild(_levelSelectLayer, 99); // 层级高于其他UI
+
+    // 添加半透明黑色背景（覆盖整个屏幕）
+    auto bg = LayerColor::create(Color4B(0, 0, 0, 180));
+    bg->setContentSize(visibleSize);
+    _levelSelectLayer->addChild(bg);
+
+    // 添加背景框
+    auto frame = Sprite::create("ui/menu_bg.png");
+    if (!frame) {
+        // 如果没有背景图片，创建一个纯色背景
+        frame = Sprite::create();
+        auto colorBg = LayerColor::create(Color4B(50, 50, 100, 230), 400, 400);
+        colorBg->setPosition(Vec2::ZERO);
+        frame->addChild(colorBg);
+    }
+    frame->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    frame->setScale(0.8f);
+    _levelSelectLayer->addChild(frame);
+
+    // 标题
+    auto title = Label::createWithTTF("选择关卡", "fonts/Marker Felt.ttf", 36);
+    title->setColor(Color3B::YELLOW);
+    title->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2 + 150));
+    _levelSelectLayer->addChild(title);
+
+    // 关卡1按钮
+    auto level1Btn = MenuItemImage::create(
+        "ui/level1_btn_normal.png",
+        "ui/level1_btn_selected.png",
+        [this](Ref* sender) {
+            this->gotoLevel1();
+        }
+    );
+    level1Btn->setPosition(Vec2(-200, -110));
+    level1Btn->setScale(0.9f);
+
+    // 关卡2按钮
+    auto level2Btn = MenuItemImage::create(
+        "ui/level2_btn_normal.png",
+        "ui/level2_btn_selected.png",
+        [this](Ref* sender) {
+            this->gotoLevel2();
+        }
+    );
+    level2Btn->setPosition(Vec2(0, -110));
+    level2Btn->setScale(0.9f);
+
+    // 关卡3按钮
+    auto level3Btn = MenuItemImage::create(
+        "ui/level3_btn_normal.png",
+        "ui/level3_btn_selected.png",
+        [this](Ref* sender) {
+            this->gotoLevel3();
+        }
+    );
+    level3Btn->setPosition(Vec2(200, -110));
+    level3Btn->setScale(0.9f);
+
+    // 关闭按钮
+    auto closeBtn = MenuItemImage::create(
+        "ui/close_btn_normal.png",
+        "ui/close_btn_selected.png",
+        [this](Ref* sender) {
+            this->hideLevelSelectMenu();
+        }
+    );
+    closeBtn->setPosition(Vec2(200,0));
+    closeBtn->setScale(0.8f);
+
+    // 创建菜单
+    auto menu = Menu::create(level1Btn, level2Btn, level3Btn, closeBtn, nullptr);
+    menu->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    _levelSelectLayer->addChild(menu);
+
+    // 如果图片不存在，创建文字标签作为备选
+    if (!level1Btn->getNormalImage()) {
+        auto label1 = Label::createWithTTF("关卡 1: 新手训练", "fonts/Marker Felt.ttf", 28);
+        label1->setColor(Color3B::WHITE);
+        label1->setPosition(Vec2(visibleSize.width / 2-200, visibleSize.height / 2 ));
+        _levelSelectLayer->addChild(label1);
+
+        auto label2 = Label::createWithTTF("关卡 2: 丛林之战", "fonts/Marker Felt.ttf", 28);
+        label2->setColor(Color3B::WHITE);
+        label2->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2 ));
+        _levelSelectLayer->addChild(label2);
+
+        auto label3 = Label::createWithTTF("关卡 3: 最终决战", "fonts/Marker Felt.ttf", 28);
+        label3->setColor(Color3B::WHITE);
+        label3->setPosition(Vec2(visibleSize.width / 2+200, visibleSize.height / 2 ));
+        _levelSelectLayer->addChild(label3);
+    }
+}
+
+auto myScene = Scene::create();
+
+
+
+// 跳转到关卡1
+void VillageScene::gotoLevel1() {
+    hideLevelSelectMenu();
+
+    // 创建场景切换过渡效果
+    auto transition = TransitionFade::create(1.0f, myScene);
+    Director::getInstance()->replaceScene(transition);
+}
+
+// 跳转到关卡2
+void VillageScene::gotoLevel2() {
+    hideLevelSelectMenu();
+
+    // 创建场景切换过渡效果
+    auto transition = TransitionFade::create(1.0f, myScene);
+    Director::getInstance()->replaceScene(transition);
+}
+
+// 跳转到关卡3
+void VillageScene::gotoLevel3() {
+    hideLevelSelectMenu();
+
+    // 创建场景切换过渡效果
+    auto transition = TransitionFade::create(1.0f, myScene);
+    Director::getInstance()->replaceScene(transition);
+}
+
