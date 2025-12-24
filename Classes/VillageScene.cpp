@@ -15,6 +15,7 @@ bool VillageScene::init()
     initBuildModeBtn();
     initTroopModeBtn();
     initTroopPreview();
+    initLevelSelectBtn();
     //TODO£º½¨ÖþºÍ´¥ÃþÔÝÊ±ÆÁ±Î
  
     //initTouchEvent();
