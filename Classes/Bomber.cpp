@@ -16,7 +16,7 @@ BomberTroop* BomberTroop::create(const Vec2& spawnPos, float mapScale) {
         config.attackRange = 80.0f;        // 攻击范围（自爆范围）
         config.attackSpeed = 0.0f;         // 无攻速（自爆一次就消失）
         config.moveSpeed = 90.0f;          // 移动速度中等（向城墙冲锋）
-        config.trainingCost = { {"Elixir", 100} }; // 训练成本（圣水100）
+        config.elixirCost = 100; // 训练成本（圣水100）
         config.trainingTime = 5.0f;        // 训练时长（5秒）
         config.level = 1;                  // 初始等级
         config.spaceCost = 2;              // 占用人口（2人口）

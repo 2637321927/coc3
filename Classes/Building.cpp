@@ -21,7 +21,10 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
 		building = ElixirCollector::create(tilePos, mapScale);
 		break;
     case BuildingType::BARRACKS:
-        // building = BarracksBuilding::create(tilePos, mapScale);
+        building = Barracks::create(tilePos, mapScale);
+        break;
+    case BuildingType::TRAINING_CAMP:
+        building = TrainingCamp::create(tilePos, mapScale);
         break;
     default:
         break;
@@ -366,9 +369,9 @@ Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
 bool Barracks::init(const cocos2d::Vec2& tilePos, float mapScale) {
     // 初始化兵营配置
     BuildingConfig config;
-    config.type = BuildingType::TRAINING_CAMP;
+    config.type = BuildingType::BARRACKS;
     config.name = "兵营";
-    config.imgPath = "building/camp.png";
+    config.imgPath = "building/barracks.png";
     config.hp = 800;
     config.tileWidth = 2;
     config.tileHeight = 2;
@@ -419,4 +422,161 @@ bool TownHall::init(const Vec2& tilePos, float mapScale) {
 void TownHall::doSpecialAction() {
     CCLOG("大本营管理中心已就绪");
 }
+//TrainingCamp 子类实现
+TrainingCamp* TrainingCamp::create(const Vec2& tilePos, float mapScale) {
+	TrainingCamp* sprite = new (std::nothrow) TrainingCamp();
+	if (sprite && sprite->init(tilePos, mapScale)) {
+		sprite->autorelease();
+		return sprite;
+	}
+	CC_SAFE_DELETE(sprite);
+	return nullptr;
+}
 
+// 初始化兵种训练时间配置
+void TrainingCamp::initTroopTrainTimeConfig() {
+    // 配置不同兵种的基础训练时间
+    _troopTrainTimeMap = {
+        {TroopType::BARBARIAN, 5.0f},     // 野蛮人：5秒
+        {TroopType::ARCHER, 8.0f},     // 弓箭手：8秒
+        {TroopType::GIANT, 15.0f},     // 巨人：15秒
+        // 可扩展更多兵种
+    };
+}
+
+
+// 初始化训练营
+bool TrainingCamp::init(const Vec2& tilePos, float mapScale) {
+    BuildingConfig config;
+    config.type = BuildingType::TRAINING_CAMP;
+    config.name = "训练营";
+    config.imgPath = "building/training_camp.png";
+    config.hp = 600;
+    config.tileWidth = 1;
+    config.tileHeight = 1;
+    config.buildTime = 15.0f;
+    config.cost = { {"gold", 400}, {"elixir", 200} };
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+
+    // 初始化兵种训练时间配置
+    initTroopTrainTimeConfig();
+
+    _state = BuildingState::IDLE;
+    // 启动训练逻辑更新
+    this->scheduleUpdate();
+
+    return true;
+}
+
+// 添加训练任务到队列
+void TrainingCamp::addTrainTask(TroopType type) {
+    // 仅在空闲/训练中状态下可添加任务
+    if (_state == BuildingState::DESTROYED || _state == BuildingState::BUILDING || _state == BuildingState::UPGRADING) {
+        return;
+    }
+    // 获取该兵种的基础训练时间（根据训练营等级缩放）
+    float baseTime = _troopTrainTimeMap[type];
+    float scaledTime = baseTime * (1.0f - 0.1f * (_level - 1)); // 等级越高，训练越快（每级减少10%）
+    scaledTime = std::max(scaledTime, baseTime * 0.5f); // 最低不低于基础时间的50%
+    // 添加到队列
+    _trainQueue.push_back(type);
+    _queueTimers.push_back(scaledTime);
+
+    // 更新状态为训练中
+    if (_state != BuildingState::TRINING) {
+        setState(BuildingState::TRINING);
+    }
+}
+
+// 移除指定位置的训练任务
+void TrainingCamp::removeTrainTask(int index) {
+    if (index < 0 || index >= _trainQueue.size()) {
+        return;
+    }
+
+    // 从队列中移除
+    _trainQueue.erase(_trainQueue.begin() + index);
+    _queueTimers.erase(_queueTimers.begin() + index);
+
+    // 如果队列为空，恢复空闲状态
+    if (_trainQueue.empty()) {
+        setState(BuildingState::IDLE);
+        _trainTimer = 0.0f;
+    }
+
+    CCLOG("移除训练队列第%d个任务，剩余任务数：%zu", index, _trainQueue.size());
+}
+
+// 训练完成逻辑
+void TrainingCamp::finishTrainTroop(TroopType type) {
+    // 训练完成回调（可扩展：通知兵营添加士兵）
+    CCLOG("兵种%d训练完成！", (int)type);
+    _troopsInTraining--;
+
+    // 移除队列第一个任务
+    if (!_trainQueue.empty()) {
+        _trainQueue.erase(_trainQueue.begin());
+        _queueTimers.erase(_queueTimers.begin());
+    }
+
+    // 如果队列还有任务，继续训练下一个；否则恢复空闲
+    if (_trainQueue.empty()) {
+        setState(BuildingState::IDLE);
+        _trainTimer = 0.0f;
+    }
+    else {
+        _trainTimer = 0.0f; // 重置计时器，开始下一个训练
+    }
+}
+
+// 重写更新逻辑（每帧处理训练计时）
+void TrainingCamp::update(float dt) {
+    BaseBuilding::update(dt); // 调用父类更新逻辑（进度条等）
+
+    // 仅在训练中状态处理计时
+    if (_state != BuildingState::TRINING || _trainQueue.empty()) {
+        return;
+    }
+
+    // 处理第一个队列任务的计时
+    _trainTimer += dt;
+    float& currentTaskTime = _queueTimers[0];
+
+    // 检查是否训练完成
+    if (_trainTimer >= currentTaskTime) {
+        finishTrainTroop(_trainQueue[0]);
+    }
+
+    // 可选：更新训练进度UI（可扩展）
+    float progress = _trainTimer / currentTaskTime;
+    CCLOG("当前训练进度：%.1f%%", progress * 100);
+}
+
+// 训练营特殊行为（核心训练逻辑）
+void TrainingCamp::doSpecialAction() {
+    // 仅在空闲/训练中状态生效
+    if (_state == BuildingState::DESTROYED || _state == BuildingState::BUILDING || _state == BuildingState::UPGRADING) {
+        return;
+    }
+
+    // 如果有训练队列，自动进入训练状态
+    if (!_trainQueue.empty() && _state != BuildingState::TRINING) {
+        setState(BuildingState::TRINING);
+    }
+}
+
+// 训练营特殊描述
+std::string TrainingCamp::getSpecialDesc() {
+    return StringUtils::format("训练士兵的建筑，等级%d，训练速度提升%d%%",
+        _level, (int)((_level - 1) * 10));
+}
+
+// 重写销毁逻辑
+void TrainingCamp::destroy() {
+    BaseBuilding::destroy(); // 调用父类销毁逻辑
+    // 清空训练队列
+    _trainQueue.clear();
+    _queueTimers.clear();
+    _trainTimer = 0.0f;
+    _troopsInTraining = 0;
+}

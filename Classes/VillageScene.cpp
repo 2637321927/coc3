@@ -3,6 +3,7 @@
 #include "Building.h"
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
+#include "Troop.h"
 
 bool VillageScene::init()
 {
@@ -18,6 +19,7 @@ bool VillageScene::init()
     initTroopModeBtn();
     initTroopPreview();
     initLevelSelectBtn();
+    //initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
  
     //initTouchEvent();
@@ -45,7 +47,7 @@ void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type) 
     }
     // 获取瓦片对应的精灵（TMXLayer本质是SpriteBatchNode，每个瓦片是Sprite）
     for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
-        for (int j = tilePos.y;j < tilePos.y + config.tileWidth - 1;j++) {
+        for (int j = tilePos.y;j <= tilePos.y + config.tileWidth - 1;j++) {
             Sprite* tileSprite = _bgLayer->getTileAt(Vec2(i, j));
             if (!tileSprite) { // 空瓦片（无精灵）
                 return;
@@ -435,7 +437,7 @@ Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
 
     // 2. 计算中心点偏移：向上移动半个瓦片高度
     // Cocos2d-x 坐标系 Y 轴向上，所以是 + height/2
-    Vec2 localCenter = basePos + Vec2(0, _tileSize.height / 2.0f);
+    Vec2 localCenter = basePos + Vec2(_tileSize.height, _tileSize.width/2.0f);
 
     // 3. 将 Layer 内部坐标转换为容器 (_mapContainer) 的坐标
     // 考虑到你可能有多个 Layer 或者 Layer 做了偏移，用转换函数最安全
@@ -468,7 +470,7 @@ bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
     //多格建筑判断
     bool isOccupied = 0;
     for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
-        for (int j = tilePos.y;j < tilePos.y + config.tileWidth - 1;j++) {
+        for (int j = tilePos.y;j <= tilePos.y + config.tileWidth - 1;j++) {
             if (isTileOccupied(Vec2(i, j))) {
                 isOccupied = 1;
             }
@@ -540,6 +542,16 @@ void VillageScene::createBuildBar() {
 			_buildPreview->setTexture("building/barracks_preview.png");
 		}
 	);
+	auto trainingCampBtn = MenuItemImage::create(
+		"building/training_camp_icon.png",
+		"building/training_camp_icon_selected.png",
+		[this](Ref* sender) {
+			_Mode = Mode::PLACE_BUILDING;
+			_selectedBuildingType = BuildingType::TRAINING_CAMP;
+			_buildPreview->setVisible(true);
+			_buildPreview->setTexture("building/training_camp_preview.png");
+		}
+	);
     // 取消放置按钮（仅退出当前建造模式，不隐藏建筑栏）
     auto cancelPlaceBtn = MenuItemImage::create(
         "ui/cancel_place_btn.png",
@@ -551,7 +563,7 @@ void VillageScene::createBuildBar() {
     );
 
     // 排列按钮
-    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,cancelPlaceBtn, nullptr);
+    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,barracksBtn,trainingCampBtn,cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     _buildBarLayer->addChild(menu);
@@ -610,12 +622,21 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
         // 摧毁建筑
         destroyBuilding(building);
         break;
-
+    case BuildingPopup::ButtonType::TRAINING:
+        if (building->getType() == BuildingType::TRAINING_CAMP) {
+            auto trainingCamp = dynamic_cast<TrainingCamp*>(building);
+            if (trainingCamp) {
+                // 弹出训练窗口
+                 showTrainingCampPopup(trainingCamp);
+            }
+            
+        }
+        else{}
     default:
         break;
     }
 }
-// 放置建筑（新增建筑类型需要扩展此函数）
+// 放置建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
     if (building) {
@@ -644,7 +665,7 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                     }
                     });
             }
-
+        }
             auto config = building->getConfig();
 
             // 记录该建筑占用的所有瓦片
@@ -655,12 +676,22 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
             }
             // 计算建筑占用瓦片范围的中心点（瓦片坐标）
             // 对于2x2建筑：中心在 (tilePos.x + (2-1)/2, tilePos.y + (2-1)/2) = (x+0.5, y+0.5)
-            float centerTileX = tilePos.x + (config.tileWidth) / 2.0f;
-            float centerTileY = tilePos.y + (config.tileHeight - 1) / 2.0f;
-            Vec2 centerTilePos(centerTileX, centerTileY);
+            int n = config.tileWidth;
+            Vec2 topLeftTile = tilePos; // 左上角瓦片（基准瓦片）
+            Vec2 bottomRightTile = Vec2(
+                tilePos.x + n - 1,
+                tilePos.y + n - 1
+            ); // 右下角瓦片
 
-            // 将中心点转换为容器坐标（替代原左上角坐标）
-            Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
+            // 2. 计算两个瓦片的中心点容器坐标
+            Vec2 posTopLeft = isoTileToContainerPos(topLeftTile);
+            Vec2 posBottomRight = isoTileToContainerPos(bottomRightTile);
+
+            // 3. 求中点（区域中心点）
+            Vec2 containerLocalPos = Vec2(
+                (posTopLeft.x + posBottomRight.x) / 2.0f,
+                (posTopLeft.y + posBottomRight.y) / 2.0f
+            );
 
             // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
             building->setAnchorPoint(Vec2(0.5f, 0.5f));
@@ -691,9 +722,9 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
 
         }
-    }
+    
 }
-// 摧毁建筑（新增建筑类型需要扩展此函数）
+// 摧毁建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::destroyBuilding(BaseBuilding* building) {
     if (!building) return; // 空指针防护
     // 返还建造资源
@@ -745,6 +776,8 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         auto barrack = dynamic_cast<Barracks*>(building);
 		this->removeTroopCapacity(barrack->getTroopSpace());
 	}   
+	else if (building->getType() == BuildingType::TRAINING_CAMP) {
+	}
     building->destroy();
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
@@ -783,6 +816,265 @@ void VillageScene::resumeAllGoldMines() {
         }
     }
 }
+// 显示训练营弹窗
+void VillageScene::showTrainingCampPopup(TrainingCamp* camp) {
+    if (!camp || _trainingPopup) return;
+
+    _currentCamp = camp;
+    _trainingPopup = ui::Layout::create();
+    _trainingPopup->setContentSize(Size(600, 400));
+    _trainingPopup->setBackGroundColor(Color3B::WHITE);
+    _trainingPopup->setAnchorPoint(Vec2(0.5f, 0.5f));
+    _trainingPopup->setPosition(Vec2(Director::getInstance()->getWinSize() / 2));
+    _trainingPopup->setOpacity(250);
+    addChild(_trainingPopup, 100); // 置顶显示
+
+    // 弹窗遮罩（点击遮罩不关闭，避免误触）
+    auto mask = LayerColor::create(Color4B(0, 0, 0, 180));
+    mask->setContentSize(Director::getInstance()->getWinSize());
+    mask->setPosition(Vec2::ZERO);
+    addChild(mask, 99);
+    _trainingPopup->setTag(1001); // 标记弹窗
+    mask->setTag(1002); // 标记遮罩
+
+    // 初始化弹窗UI
+    initTrainingPopupUI();
+    // 启动倒计时更新
+    schedule([this](float dt) {
+        this->updateTrainQueueTimer(dt);
+        }, 0.1f, "updateTrainQueueTimerKey");
+}
+// 隐藏训练弹窗
+void VillageScene::hideTrainingCampPopup() {
+    if (_trainingPopup) {
+        _trainingPopup->removeFromParent();
+        _trainingPopup = nullptr;
+    }
+    auto mask = getChildByTag(1002);
+    if (mask) mask->removeFromParent();
+    _currentCamp = nullptr;
+    unschedule("updateTrainQueueTimerKey");//隐藏不代表训练停止
+}
+// 初始化弹窗UI
+void VillageScene::initTrainingPopupUI() {
+    if (!_trainingPopup || !_currentCamp) return;
+
+    // 弹窗标题
+    auto title = Label::createWithTTF(StringUtils::format("训练营 Lv.%d", _currentCamp->getLevel()),
+        "fonts/Marker Felt.ttf", 30);
+    title->setPosition(Vec2(_trainingPopup->getContentSize().width / 2, _trainingPopup->getContentSize().height - 30));
+    title->setColor(Color3B::BLACK);
+    _trainingPopup->addChild(title);
+
+    // 关闭按钮
+    auto closeBtn = ui::Button::create("ui/btn_close.png");
+    closeBtn->setScale(0.8f);
+    closeBtn->setPosition(Vec2(_trainingPopup->getContentSize().width - 20, _trainingPopup->getContentSize().height - 20));
+    closeBtn->addClickEventListener([this](Ref*) {
+        this->hideTrainingCampPopup();
+        });
+    _trainingPopup->addChild(closeBtn);
+    // 初始化兵种按钮和队列面板
+    initTroopButtonsInPopup();
+    initTrainQueuePanelInPopup();
+}
+// 初始化训练队列面板
+void VillageScene::initTrainQueuePanelInPopup() {
+    if (!_trainingPopup || !_currentCamp) return;
+
+    // 队列面板（弹窗上半部分）
+    auto queuePanel = ui::Layout::create();
+    queuePanel->setContentSize(Size(750, 200));
+    queuePanel->setPosition(Vec2(25, 120));
+    queuePanel->setBackGroundColor(Color3B(240, 240, 240));
+    queuePanel->setBackGroundColorType(ui::Layout::BackGroundColorType::SOLID);
+    queuePanel->setTag(1003); // 标记队列面板
+    _trainingPopup->addChild(queuePanel);
+
+    // 队列标题
+    auto queueTitle = Label::createWithTTF("训练队列", "fonts/Marker Felt.ttf", 20);
+    queueTitle->setPosition(Vec2(queuePanel->getContentSize().width / 2, queuePanel->getContentSize().height - 15));
+    queueTitle->setColor(Color3B::BLACK);
+    queuePanel->addChild(queueTitle);
+
+    // 初始刷新队列UI
+    refreshTrainQueueUI();
+}
+// 初始化可训练兵种按钮
+void VillageScene::initTroopButtonsInPopup() {
+    if (!_trainingPopup || !_currentCamp) return;
+
+    // 兵种按钮容器（底部横向排列）
+    auto btnPanel = ui::Layout::create();
+    btnPanel->setContentSize(Size(550, 80));
+    btnPanel->setPosition(Vec2(25, 20));
+    _trainingPopup->addChild(btnPanel);
+
+    // 遍历兵种配置，按训练营等级筛选可训练兵种
+    int campLevel = _currentCamp->getLevel();
+    float btnX = 30;
+    const float btnSize = 70;
+    for (const auto& pair : g_troopTrainConfig) {
+        TroopType type = pair.first;
+        const TroopConfig& config = pair.second;
+
+        // 等级不足则跳过
+        if (config.unlockCampLevel > campLevel) continue;
+
+        // 创建兵种按钮
+        auto troopBtn = ui::Button::create(config.imgPath);
+        troopBtn->setContentSize(Size(btnSize, btnSize));
+        troopBtn->setPosition(Vec2(btnX, btnPanel->getContentSize().height / 2));
+        btnPanel->addChild(troopBtn);
+        btnX += btnSize + 20;
+
+        // 按钮点击事件
+        troopBtn->addClickEventListener([this, type](Ref*) {
+            // 检查队列是否已满
+            if (_currentCamp->getTrainQueue().size() >= MAX_QUEUE_SIZE) {
+                showResourceShortageTip("训练队列已满!");
+                return;
+            }
+            // 检查资源
+            if (!checkTroopResourceEnough(type)) return;
+            // 扣除资源 + 添加到队列
+            deductTroopResource(type);
+            addTroopToQueue(type);
+            // 刷新队列UI
+            refreshTrainQueueUI();
+            });
+
+        // 添加资源提示（按钮下方）
+        auto costTip = Label::createWithTTF(
+            StringUtils::format("elixir:%d", pair.second.elixirCost),
+            "fonts/Marker Felt.ttf", 14);
+        costTip->setPosition(Vec2(troopBtn->getPositionX(), troopBtn->getPositionY() - btnSize / 2 - 10));
+        costTip->setColor(Color3B::BLACK);
+        btnPanel->addChild(costTip);
+    }
+}
+// 更新队列倒计时
+void VillageScene::updateTrainQueueTimer(float dt) {
+    if (!_currentCamp) return;
+
+    auto& trainQueue = _currentCamp->getTrainQueue();
+    auto& queueTimers = _currentCamp->getQueueTimers();
+    if (trainQueue.empty()) return;
+
+    // 遍历更新倒计时
+    for (int i = 0; i < trainQueue.size(); ++i) {
+        queueTimers[i] -= dt;
+        // 训练完成：移除队列项，创建兵种（此处简化，仅移除）
+        if (queueTimers[i] <= 0) {
+            removeTroopFromQueue(i);
+            refreshTrainQueueUI();
+            break; // 避免索引错乱，一次只处理一个完成项
+        }
+    }
+}
+// 检查兵种训练资源是否足够
+bool VillageScene::checkTroopResourceEnough(TroopType type) {
+    const auto& config = g_troopTrainConfig.at(type);
+    bool elixirOk = (config.elixirCost <= 0) || (_elixir >= config.elixirCost);
+    if (!elixirOk) showResourceShortageTip("圣水不足!");
+    return  elixirOk;
+}
+// 扣除兵种训练资源
+void VillageScene::deductTroopResource(TroopType type) {
+    const auto& config = g_troopTrainConfig.at(type);
+    if (config.elixirCost > 0) spendElixir(config.elixirCost);
+}
+// 返还兵种训练资源
+void VillageScene::refundTroopResource(TroopType type) {
+    const auto& config = g_troopTrainConfig.at(type);
+    if (config.elixirCost > 0) addElixir(config.elixirCost);
+}
+
+// 添加兵种到训练队列
+void VillageScene::addTroopToQueue(TroopType type) {
+    if (!_currentCamp) return;
+
+    auto& trainQueue = _currentCamp->getTrainQueue();
+    auto& queueTimers = _currentCamp->getQueueTimers();
+    trainQueue.push_back(type);
+    queueTimers.push_back(g_troopTrainConfig.at(type).trainingTime);
+}
+
+// 移除队列指定位置的兵种
+void VillageScene::removeTroopFromQueue(int index) {
+    if (!_currentCamp) return;
+
+    auto& trainQueue = _currentCamp->getTrainQueue();
+    auto& queueTimers = _currentCamp->getQueueTimers();
+    if (index < 0 || index >= trainQueue.size()) return;
+
+    trainQueue.erase(trainQueue.begin() + index);
+    queueTimers.erase(queueTimers.begin() + index);
+}
+// 刷新训练队列UI
+void VillageScene::refreshTrainQueueUI() {
+    if (!_currentCamp) return;
+
+    auto queuePanel = _trainingPopup->getChildByTag(1003);
+    if (!queuePanel) return;
+
+    // 清空原有队列项
+    queuePanel->removeAllChildrenWithCleanup(true);
+    // 重新添加队列标题
+    auto queueTitle = Label::createWithTTF("训练队列", "fonts/Marker Felt.ttf", 20);
+    queueTitle->setPosition(Vec2(queuePanel->getContentSize().width / 2, queuePanel->getContentSize().height - 15));
+    queueTitle->setColor(Color3B::BLACK);
+    queuePanel->addChild(queueTitle);
+
+    // 获取训练营队列数据
+    auto& trainQueue = _currentCamp->getTrainQueue();
+    auto& queueTimers = _currentCamp->getQueueTimers();
+
+    // 遍历队列创建UI项
+    const float itemWidth = 500;
+    const float itemHeight = 40;
+    const float startY = queuePanel->getContentSize().height - 40;
+    for (int i = 0; i < trainQueue.size(); ++i) {
+        TroopType type = trainQueue[i];
+        float remainTime = queueTimers[i];
+        const auto& config = g_troopTrainConfig.at(type);
+
+        // 队列项容器
+        auto queueItem = ui::Layout::create();
+        queueItem->setContentSize(Size(itemWidth, itemHeight));
+        queueItem->setPosition(Vec2(queuePanel->getContentSize().width / 2 - itemWidth / 2, startY - i * (itemHeight + 5)));
+        queueItem->setBackGroundColor(Color3B::WHITE);
+        queueItem->setBackGroundColorType(ui::Layout::BackGroundColorType::SOLID);
+        queueItem->setBackGroundColorOpacity(200);
+        queuePanel->addChild(queueItem);
+
+        // 兵种图标
+        auto troopIcon = Sprite::create(config.imgPath);
+        troopIcon->setScale(0.6f);
+        troopIcon->setPosition(Vec2(30, itemHeight / 2));
+        queueItem->addChild(troopIcon);
+
+        // 倒计时文本
+        auto timerLabel = Label::createWithTTF(StringUtils::format("剩余: %.1fs", remainTime),
+            "fonts/Marker Felt.ttf", 18);
+        timerLabel->setPosition(Vec2(itemWidth / 2, itemHeight / 2));
+        timerLabel->setColor(Color3B::BLACK);
+        queueItem->addChild(timerLabel);
+
+        // 取消按钮（减号）
+        auto cancelBtn = ui::Button::create("ui/btn_minus.png");
+        cancelBtn->setScale(0.5f);
+        cancelBtn->setPosition(Vec2(itemWidth - 30, itemHeight / 2));
+        cancelBtn->addClickEventListener([this, i](Ref*) {
+            // 返还资源 + 移除队列项
+            this->refundTroopResource(_currentCamp->getTrainQueue()[i]);
+            this->removeTroopFromQueue(i);
+            this->refreshTrainQueueUI();
+            });
+        queueItem->addChild(cancelBtn);
+    }
+}
+
 // 初始化建筑模式切换按钮
 void VillageScene::initBuildModeBtn() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
@@ -859,7 +1151,7 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             "金矿",                 // name
             "building/gold_mine.png", // imgPath
             500,                    // hp
-            3,                      // tileWidth
+            2,                      // tileWidth
             2,                      // tileHeight
             { {"gold", 500}, {"elixir", 200} }, // cost
             10.0f                   // buildTime
@@ -873,7 +1165,7 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             "圣水收集器",           // name
             "building/elixir_collector.png", // imgPath
             500,                    // hp
-            3,                      // tileWidth
+            2,                      // tileWidth
             2,                      // tileHeight
             { {"gold", 600}, {"elixir", 250} }, // cost
             12.0f                   // buildTime
@@ -886,12 +1178,24 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             "兵营",                 // name
             "building/barracks.png", // imgPath
             800,                    // hp
-            3,                      // tileWidth
+            2,                      // tileWidth
             2,                      // tileHeight
             { {"gold", 800}, {"elixir", 300} }, // cost
             20.0f                   // buildTime
         };
         break;
+	case(BuildingType::TRAINING_CAMP):
+		Config = {
+			5,                      // id
+			BuildingType::TRAINING_CAMP, // type
+			"训练营",                 // name
+			"building/training_camp.png", // imgPath
+			800,                    // hp
+			1,                      // tileWidth
+			1,                      // tileHeight
+			{ {"gold", 900}, {"elixir", 400} }, // cost
+			15.0f                   // buildTime
+		};
     default:
         static BuildingConfig Config = {
             -1,
@@ -1361,7 +1665,8 @@ void VillageScene::showResourceShortageTip(const std::string& message) {
     tip->runAction(Sequence::create(blink, remove, nullptr));
 }
 //存档相关
-// 1. 打包当前场景数据为存档结构
+
+// 打包当前场景数据为存档结构(添加建筑时可能需要实现）
 SaveData::Village VillageScene::packSaveData() {
     SaveData::Village saveData;
     // 填充地图尺寸
@@ -1411,7 +1716,7 @@ std::vector<std::string> split(const std::string& s, const std::string& delim) {
 
     return result;
 }
-// 从存档结构恢复场景数据
+// 从存档结构恢复场景数据（添加建筑时需要实现）
 void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     // 清空当前场景的旧数据
 	for (auto building : _buildings) {

@@ -14,7 +14,8 @@ public:
         INFO,       // 信息
         UPGRADE,    // 升级
         COLLECT,    // 收集资源（仅金矿）
-        DESTROY     // 摧毁
+        DESTROY,  // 摧毁
+        TRAINING    //训练
     };
 
     // 创建弹窗（传入目标建筑、按钮点击回调）

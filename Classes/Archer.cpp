@@ -16,7 +16,7 @@ ArcherTroop* ArcherTroop::create(const Vec2& spawnPos, float mapScale) {
         config.attackRange = 200.0f;       // 攻击范围（远程核心，远大于野蛮人）
         config.attackSpeed = 1.5f;         // 攻击速度（比野蛮人慢，远程平衡）
         config.moveSpeed = 100.0f;         // 移动速度（比野蛮人稍慢）
-        config.trainingCost = { {"Elixir", 50} }; // 训练消耗（圣水50，比野蛮人高）
+        config.elixirCost=50; // 训练消耗（圣水50，比野蛮人高）
         config.trainingTime = 3.0f;        // 训练时长（3秒）
         config.level = 1;                  // 初始等级
         config.spaceCost = 1;              // 占用人口（和野蛮人一致）

@@ -12,6 +12,7 @@ enum class Mode {
     NONE,       // 无建造模式
     PLACE_BUILDING,  // 放置建筑模式
     SPAWN_TROOP,    // 放置兵种模式
+	FIGHT       // 战斗模式（预留）
 };
 //存档相关
 namespace SaveData {
@@ -175,6 +176,9 @@ public:
     int getTotalTroopCapacity() const { return _maxPopulation; }
     void addTroopCapacity(int bonus); // 增加容量
     void removeTroopCapacity(int bonus); // 移除容量（比如兵营被摧毁）
+    // 训练营弹窗相关
+    void showTrainingCampPopup(TrainingCamp* camp); // 显示训练弹窗
+    void hideTrainingCampPopup(); // 隐藏训练弹窗
 private:
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
@@ -213,14 +217,67 @@ private:
     std::vector<Vec2> _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
-	// 金矿生产控制(如切换到其他场景，战争模式时暂停生产)
+    // 训练营相关
+    ui::Layout* _trainingPopup = nullptr; // 训练弹窗根节点
+    TrainingCamp* _currentCamp = nullptr; // 当前关联的训练营
+    const int MAX_QUEUE_SIZE = 5; // 最大训练队列数
+    
     // -------------------------- 兵种相关成员变量 --------------------------
     bool _isTroopBarShow = false;// 兵种栏是否显示
     Sprite* _troopPreview;               // 兵种放置预览图
     TroopType _selectedTroopType = TroopType::UNKNOWN; // 选中的兵种类型
     std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期）
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
-
+    std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
+    {TroopType::BARBARIAN, {
+        1001,
+        TroopType::BARBARIAN,
+        "Barbarian",
+        "troops/barbarian.png",
+        400,
+        80,
+        50.0f,
+        1.0f,
+        120.0f,
+        25,
+        2.0f,
+        1,
+        1,
+        1
+    }},
+    {TroopType::ARCHER, {
+        1002,                  // 弓箭手唯一ID（区别于野蛮人1001）
+        TroopType::ARCHER,   // 兵种类型为弓箭手
+        "Archer",       // 兵种名称
+        "troops/archer.png", // 弓箭手纹理路径（需替换为你的实际资源）
+         200,                // 生命值（比野蛮人低，远程脆皮）
+        60,         // 攻击力（远程攻击，略低于野蛮人）
+        200.0f,      // 攻击范围（远程核心，远大于野蛮人）
+        1.5f,         // 攻击速度（比野蛮人慢，远程平衡）
+        100.0f,         // 移动速度（比野蛮人稍慢）
+        50, // 训练消耗（圣水50，比野蛮人高）
+        3.0f,       // 训练时长（3秒）
+         1,                 // 初始等级
+        1,             // 占用人口（和野蛮人一致）
+        1     
+    }},
+    {TroopType::GIANT, { 
+			1003,
+		TroopType::GIANT,
+		"Giant",
+		"troops/giant.png",
+		1000,
+		50,
+		30.0f,
+		1.5f,
+		60.0f,
+		150,
+		8.0f,
+		1,
+		5,
+		1
+    }}
+    };
     //资源相关
     int _gold ;
     int _elixir ;
@@ -282,10 +339,33 @@ private:
     void destroyBuilding(BaseBuilding* building);
     // 辅助：释放建筑占用的瓦片
     void releaseBuildingTiles(BaseBuilding* building);
+    // 金矿生产控制(如切换到其他场景，战争模式时暂停生产)
     // 暂停所有金矿生产
     void pauseAllGoldMines();
     // 恢复所有金矿生产
     void resumeAllGoldMines();
+    //训练营相关
+    
+    // 弹窗UI初始化
+    void initTrainingPopupUI();
+    // 初始化可训练兵种按钮
+    void initTroopButtonsInPopup();
+    // 初始化训练队列面板
+    void initTrainQueuePanelInPopup();
+    // 刷新队列UI
+    void refreshTrainQueueUI();
+    // 更新队列倒计时
+    void updateTrainQueueTimer(float dt);
+    // 检查资源是否足够
+    bool checkTroopResourceEnough(TroopType type);
+    // 扣除训练资源
+    void deductTroopResource(TroopType type);
+    // 返还训练资源（取消训练）
+    void refundTroopResource(TroopType type);
+    // 添加兵种到训练队列
+    void addTroopToQueue(TroopType type);
+    // 移除队列指定位置的兵种
+    void removeTroopFromQueue(int index);
     // -------------------------- 兵种相关方法声明 --------------------------
     // 初始化兵种放置预览
     void initTroopPreview();
@@ -303,14 +383,15 @@ private:
     bool checkCanSpawnTroop(Vec2 tilePos);
     // 兵种攻击回调（处理伤害结算）
     void onTroopAttack(BaseTroop* troop, BaseBuilding* target);
-    void VillageScene::initResourceBar();
-    void VillageScene::setGold(int gold);
-    void VillageScene::setElixir(int elixir);
-    bool VillageScene::addGold(int amount);
-    bool VillageScene::spendGold(int amount);
-    bool VillageScene::addElixir(int amount);
-    bool VillageScene::spendElixir(int amount);
-    void VillageScene::showResourceShortageTip(const std::string& message);
+    //资源管控
+    void initResourceBar();
+    void setGold(int gold);
+    void setElixir(int elixir);
+    bool addGold(int amount);
+    bool spendGold(int amount);
+    bool addElixir(int amount);
+    bool spendElixir(int amount);
+    void showResourceShortageTip(const std::string& message);
     // 关卡选择相关
     cocos2d::Layer* _levelSelectLayer;
     bool _isLevelSelectShow;

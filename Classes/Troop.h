@@ -41,10 +41,11 @@ struct TroopConfig {
     float attackRange;          // 攻击范围（像素）
     float attackSpeed;          // 攻击速度（攻击间隔，秒/次）
     float moveSpeed;            // 移动速度（像素/秒）
-    std::unordered_map<std::string, int> trainingCost; // 训练消耗（金币/圣水）
+    int elixirCost; // 训练消耗（圣水）
     float trainingTime;         // 训练时长（秒）
     int level = 1;              // 初始等级
     int spaceCost;              // 占用人口空间
+	int unlockCampLevel=1;        // 解锁所需兵营等级
 };
 
 // 抽象基类（不可实例化，只能继承）

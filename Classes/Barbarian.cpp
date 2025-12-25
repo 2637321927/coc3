@@ -16,7 +16,7 @@ BarbarianTroop* BarbarianTroop::create(const Vec2& spawnPos, float mapScale) {
         config.attackRange = 50.0f;
         config.attackSpeed = 1.0f;
         config.moveSpeed = 120.0f;
-        config.trainingCost = { {"Elixir", 25} };
+        config.elixirCost = 25;
         config.trainingTime = 2.0f;
         config.level = 1;
         config.spaceCost = 1;

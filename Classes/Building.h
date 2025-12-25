@@ -5,12 +5,11 @@
 #include <string>
 #include <unordered_map>
 #include <functional>
-#include "Troop.h"
 #include "ui/CocosGUI.h" 
 using namespace cocos2d;
 // 前置声明
 class VillageScene;
-
+enum class TroopType;
 // 建筑类型枚举
 enum class BuildingType {
     TOWN_HALL,   // 大本营
@@ -145,15 +144,33 @@ class TrainingCamp : public BaseBuilding {
 public:
 	static TrainingCamp* create(const cocos2d::Vec2& tilePos, float mapScale);
 	 bool init(const cocos2d::Vec2& tilePos, float mapScale);
+         // 获取训练营等级
+    int getLevel() const { return _level; }
+    // 获取当前训练队列
+    std::vector<TroopType>& getTrainQueue() { return _trainQueue; }
+    // 新增训练任务
+    void addTrainTask(TroopType type);
+    // 移除指定位置的训练任务
+    void removeTrainTask(int index);
+    // 获取队列倒计时（和队列一一对应）
+    std::vector<float>& getQueueTimers() { return _queueTimers; }
 	// 实现基类虚函数
 	 void doSpecialAction() override; // 训练士兵逻辑
-	 std::string getSpecialDesc() override { return "训练士兵的建筑"; }
+     std::string getSpecialDesc() override;
+	 void destroy();
+     void TrainingCamp::update(float dt);
 private:
-   // std::queue<TroopType> _trainQueue; // 训练队列
-  //  std::unordered_map<TroopType, float> _troopTrainTimeMap; // 各兵种训练时长（预配置）
+    int _level = 1;
+    std::unordered_map<TroopType, float> _troopTrainTimeMap; // 各兵种训练时长（预配置）
 	float _trainTimer = 0.0f;    // 训练计时器
 	float _trainInterval = 5.0f; // 训练间隔（秒）
 	int _troopsInTraining = 0;   // 正在训练的士兵数量
+    std::vector<TroopType> _trainQueue; // 训练队列
+    std::vector<float> _queueTimers; // 队列倒计时
+    // 内部私有方法：处理训练完成逻辑
+    void finishTrainTroop(TroopType type);
+    // 初始化兵种训练时间配置
+    void initTroopTrainTimeConfig();
 };
 //========== 兵营类 ==========
 class Barracks : public BaseBuilding {

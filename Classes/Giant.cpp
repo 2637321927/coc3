@@ -16,7 +16,7 @@ GiantTroop* GiantTroop::create(const Vec2& spawnPos, float mapScale) {
         config.attackRange = 60.0f;        // 攻击范围略大于野蛮人（体型大）
         config.attackSpeed = 2.5f;         // 低攻速（2.5秒/次，体现笨重）
         config.moveSpeed = 80.0f;          // 移动速度慢（体现体型大）
-        config.trainingCost = { {"Elixir", 200} }; // 高训练成本（圣水200）
+        config.elixirCost = 200; // 高训练成本（圣水200）
         config.trainingTime = 8.0f;        // 训练时长更长（8秒）
         config.level = 1;                  // 初始等级
         config.spaceCost = 5;              // 占用更多人口（5人口，体现体型）

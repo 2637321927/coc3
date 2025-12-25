@@ -6,7 +6,11 @@
 using namespace cocos2d;
 //using namespace CocosDenshion;
 auto myLabel = Label::createWithTTF("myFont.ttf", "My Label Text", 16);
-
+enum class AllModes {
+	NORMAL,   //普通
+	CREATING, //创造
+	LEVEL     //关卡
+};
 
 bool TitleScene::init()
 {
