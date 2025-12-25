@@ -5,8 +5,9 @@
 #include "cocos2d.h"
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
+#include "EnumType.h" 
 using namespace cocos2d;
-
+extern std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig;
 std::vector<std::string> split(const std::string& s, const std::string& delim);
 enum class Mode {
     NONE,       // 无建造模式
@@ -157,6 +158,12 @@ namespace SaveData {
 class VillageScene : public Scene
 {
 public:
+    static VillageScene* getInstance() { // 提供外部访问接口
+        if (_instance == nullptr) {
+            _instance = VillageScene::create();
+        }
+        return _instance;
+    }
     // Cocos2d-x 标准创建方法（必须）
     static cocos2d::Scene* createScene();
 
@@ -179,7 +186,23 @@ public:
     // 训练营弹窗相关
     void showTrainingCampPopup(TrainingCamp* camp); // 显示训练弹窗
     void hideTrainingCampPopup(); // 隐藏训练弹窗
+	//获取敌军接口（用于给攻击建筑）
+    std::vector<BaseTroop*>& getAllEnemyTroops() {
+        return _enemyTroops;
+    }
+    // 添加/移除敌方兵种
+    void addEnemyTroop(BaseTroop* troop) {
+        _enemyTroops.push_back(troop);
+    }
+    void removeEnemyTroop(BaseTroop* troop) {
+        auto it = std::find(_enemyTroops.begin(), _enemyTroops.end(), troop);
+        if (it != _enemyTroops.end()) {
+            _enemyTroops.erase(it);
+        }
+    }
+
 private:
+	static VillageScene* _instance;// 单例实例指针
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
     TMXTiledMap* _tileMap;       // 等轴测地图对象
@@ -226,58 +249,9 @@ private:
     bool _isTroopBarShow = false;// 兵种栏是否显示
     Sprite* _troopPreview;               // 兵种放置预览图
     TroopType _selectedTroopType = TroopType::UNKNOWN; // 选中的兵种类型
-    std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期）
+    std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期，不一定是敌军）
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
-    std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
-    {TroopType::BARBARIAN, {
-        1001,
-        TroopType::BARBARIAN,
-        "Barbarian",
-        "troops/barbarian.png",
-        400,
-        80,
-        50.0f,
-        1.0f,
-        120.0f,
-        25,
-        2.0f,
-        1,
-        1,
-        1
-    }},
-    {TroopType::ARCHER, {
-        1002,                  // 弓箭手唯一ID（区别于野蛮人1001）
-        TroopType::ARCHER,   // 兵种类型为弓箭手
-        "Archer",       // 兵种名称
-        "troops/archer.png", // 弓箭手纹理路径（需替换为你的实际资源）
-         200,                // 生命值（比野蛮人低，远程脆皮）
-        60,         // 攻击力（远程攻击，略低于野蛮人）
-        200.0f,      // 攻击范围（远程核心，远大于野蛮人）
-        1.5f,         // 攻击速度（比野蛮人慢，远程平衡）
-        100.0f,         // 移动速度（比野蛮人稍慢）
-        50, // 训练消耗（圣水50，比野蛮人高）
-        3.0f,       // 训练时长（3秒）
-         1,                 // 初始等级
-        1,             // 占用人口（和野蛮人一致）
-        1     
-    }},
-    {TroopType::GIANT, { 
-			1003,
-		TroopType::GIANT,
-		"Giant",
-		"troops/giant.png",
-		1000,
-		50,
-		30.0f,
-		1.5f,
-		60.0f,
-		150,
-		8.0f,
-		1,
-		5,
-		1
-    }}
-    };
+	std::vector<BaseTroop*> _enemyTroops; // 敌方兵种列表(预留，用于战斗模式)
     //资源相关
     int _gold ;
     int _elixir ;
@@ -352,6 +326,10 @@ private:
     void initTroopButtonsInPopup();
     // 初始化训练队列面板
     void initTrainQueuePanelInPopup();
+    // 刷新弹窗内的队列和倒计时显示
+    void refreshPopupTrainInfo();
+    // 弹窗内的倒计时刷新调度（仅在弹窗打开时运行）
+    void updatePopupTimer(float dt);
     // 刷新队列UI
     void refreshTrainQueueUI();
     // 更新队列倒计时

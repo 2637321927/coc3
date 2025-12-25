@@ -4,7 +4,7 @@
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
 #include "Troop.h"
-
+VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
     if (!Scene::init()) return false;
@@ -542,6 +542,7 @@ void VillageScene::createBuildBar() {
 			_buildPreview->setTexture("building/barracks_preview.png");
 		}
 	);
+	// 建筑按钮 - 训练营
 	auto trainingCampBtn = MenuItemImage::create(
 		"building/training_camp_icon.png",
 		"building/training_camp_icon_selected.png",
@@ -550,6 +551,26 @@ void VillageScene::createBuildBar() {
 			_selectedBuildingType = BuildingType::TRAINING_CAMP;
 			_buildPreview->setVisible(true);
 			_buildPreview->setTexture("building/training_camp_preview.png");
+		}
+	);
+    auto cannonBtn = MenuItemImage::create(
+		"building/cannon_icon.png",
+		"building/cannon_icon_selected.png",
+		[this](Ref* sender) {
+			_Mode = Mode::PLACE_BUILDING;
+			_selectedBuildingType = BuildingType::CANNON;
+			_buildPreview->setVisible(true);
+			_buildPreview->setTexture("building/cannon_preview.png");
+		}
+	);
+	auto arrowTowerBtn = MenuItemImage::create(
+		"building/arrow_tower_icon.png",
+		"building/arrow_tower_icon_selected.png",
+		[this](Ref* sender) {
+			_Mode = Mode::PLACE_BUILDING;
+			_selectedBuildingType = BuildingType::ARROW_TOWER;
+			_buildPreview->setVisible(true);
+			_buildPreview->setTexture("building/arrow_tower_preview.png");
 		}
 	);
     // 取消放置按钮（仅退出当前建造模式，不隐藏建筑栏）
@@ -563,7 +584,7 @@ void VillageScene::createBuildBar() {
     );
 
     // 排列按钮
-    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,barracksBtn,trainingCampBtn,cancelPlaceBtn, nullptr);
+    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,barracksBtn,trainingCampBtn,cannonBtn,arrowTowerBtn,cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     _buildBarLayer->addChild(menu);
@@ -644,6 +665,7 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         // 加入建筑总列表（核心：保存实例引用，避免内存泄漏/无法管理）
         _buildings.push_back(building);
         // 按类型加入细分列表
+		//TODO: 哥布林攻击金矿，炸弹人攻击城墙等逻辑需要用到这些列表
         if (type == BuildingType::GOLD_MINE) {
             _goldMines.push_back(dynamic_cast<GoldMine*>(building));
         }
@@ -857,14 +879,20 @@ void VillageScene::hideTrainingCampPopup() {
 }
 // 初始化弹窗UI
 void VillageScene::initTrainingPopupUI() {
-    if (!_trainingPopup || !_currentCamp) return;
 
+    /*
+    tipLabel->runAction(Sequence::create(
+        DelayTime::create(2.0f),
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr
+    ))*/
     // 弹窗标题
-    auto title = Label::createWithTTF(StringUtils::format("训练营 Lv.%d", _currentCamp->getLevel()),
-        "fonts/Marker Felt.ttf", 30);
+    auto title = Label::createWithTTF(StringUtils::format("Training Camp Lv.%d", _currentCamp->getLevel()),
+        "fonts/arial.ttf", 30);
     title->setPosition(Vec2(_trainingPopup->getContentSize().width / 2, _trainingPopup->getContentSize().height - 30));
     title->setColor(Color3B::BLACK);
-    _trainingPopup->addChild(title);
+    _trainingPopup->addChild(title,10000);
 
     // 关闭按钮
     auto closeBtn = ui::Button::create("ui/btn_close.png");
@@ -873,7 +901,7 @@ void VillageScene::initTrainingPopupUI() {
     closeBtn->addClickEventListener([this](Ref*) {
         this->hideTrainingCampPopup();
         });
-    _trainingPopup->addChild(closeBtn);
+    _trainingPopup->addChild(closeBtn,10000);
     // 初始化兵种按钮和队列面板
     initTroopButtonsInPopup();
     initTrainQueuePanelInPopup();
@@ -884,7 +912,7 @@ void VillageScene::initTrainQueuePanelInPopup() {
 
     // 队列面板（弹窗上半部分）
     auto queuePanel = ui::Layout::create();
-    queuePanel->setContentSize(Size(750, 200));
+    queuePanel->setContentSize(Size(1000, 200));
     queuePanel->setPosition(Vec2(25, 120));
     queuePanel->setBackGroundColor(Color3B(240, 240, 240));
     queuePanel->setBackGroundColorType(ui::Layout::BackGroundColorType::SOLID);
@@ -892,7 +920,7 @@ void VillageScene::initTrainQueuePanelInPopup() {
     _trainingPopup->addChild(queuePanel);
 
     // 队列标题
-    auto queueTitle = Label::createWithTTF("训练队列", "fonts/Marker Felt.ttf", 20);
+    auto queueTitle = Label::createWithTTF("train queue", "fonts/arial.ttf", 20);
     queueTitle->setPosition(Vec2(queuePanel->getContentSize().width / 2, queuePanel->getContentSize().height - 15));
     queueTitle->setColor(Color3B::BLACK);
     queuePanel->addChild(queueTitle);
@@ -976,7 +1004,7 @@ void VillageScene::updateTrainQueueTimer(float dt) {
 bool VillageScene::checkTroopResourceEnough(TroopType type) {
     const auto& config = g_troopTrainConfig.at(type);
     bool elixirOk = (config.elixirCost <= 0) || (_elixir >= config.elixirCost);
-    if (!elixirOk) showResourceShortageTip("圣水不足!");
+    if (!elixirOk) showResourceShortageTip("elixir not enough!");
     return  elixirOk;
 }
 // 扣除兵种训练资源
@@ -989,7 +1017,6 @@ void VillageScene::refundTroopResource(TroopType type) {
     const auto& config = g_troopTrainConfig.at(type);
     if (config.elixirCost > 0) addElixir(config.elixirCost);
 }
-
 // 添加兵种到训练队列
 void VillageScene::addTroopToQueue(TroopType type) {
     if (!_currentCamp) return;
@@ -999,7 +1026,6 @@ void VillageScene::addTroopToQueue(TroopType type) {
     trainQueue.push_back(type);
     queueTimers.push_back(g_troopTrainConfig.at(type).trainingTime);
 }
-
 // 移除队列指定位置的兵种
 void VillageScene::removeTroopFromQueue(int index) {
     if (!_currentCamp) return;
@@ -1074,7 +1100,6 @@ void VillageScene::refreshTrainQueueUI() {
         queueItem->addChild(cancelBtn);
     }
 }
-
 // 初始化建筑模式切换按钮
 void VillageScene::initBuildModeBtn() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
@@ -1196,6 +1221,32 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
 			{ {"gold", 900}, {"elixir", 400} }, // cost
 			15.0f                   // buildTime
 		};
+    case(BuildingType::CANNON):
+		Config = {
+			6,                      // id
+			BuildingType::CANNON, // type
+			"加农炮",                 // name
+			"building/cannon.png", // imgPath
+			1000,                    // hp
+			2,                      // tileWidth
+			2,                      // tileHeight
+			{ {"gold", 1200}, {"elixir", 0} }, // cost
+			25.0f                   // buildTime
+		};
+		break;
+    case(BuildingType::ARROW_TOWER):
+		Config = {
+			7,                      // id
+			BuildingType::ARROW_TOWER, // type
+			"箭塔",                 // name
+			"building/arrow_tower.png", // imgPath
+			900,                    // hp
+			2,                      // tileWidth
+			2,                      // tileHeight
+			{ {"gold", 1100}, {"elixir", 0} }, // cost
+			22.0f                   // buildTime
+		};
+		break;
     default:
         static BuildingConfig Config = {
             -1,
@@ -1657,7 +1708,7 @@ void VillageScene::showResourceShortageTip(const std::string& message) {
     auto tip = Label::createWithTTF(message, "fonts/Marker Felt.ttf", 20);
     tip->setColor(Color3B::RED);
     tip->setPosition(Vec2(visibleSize.width / 2, visibleSize.height - 100));
-    this->addChild(tip, 100);
+    this->addChild(tip, 10000);
 
     // 添加闪烁效果
     auto blink = Blink::create(1.0f, 3);

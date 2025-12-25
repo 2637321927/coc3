@@ -2,47 +2,17 @@
 #define __BUILDING_H__
 
 #include "cocos2d.h"
-#include <string>
 #include <unordered_map>
 #include <functional>
 #include "ui/CocosGUI.h" 
+#include "EnumType.h" 
 using namespace cocos2d;
 // 前置声明
 class VillageScene;
-enum class TroopType;
-// 建筑类型枚举
-enum class BuildingType {
-    TOWN_HALL,   // 大本营
-	GOLD_MINE,   // 金矿
-    BARRACKS,    // 兵营
-	ELIXIR_COLLECTOR, // 圣水收集器
-	TRAINING_CAMP, // 训练营
-    UNKNOWN
-};
-
-// 建筑状态枚举
-enum class BuildingState {
-    IDLE,        // 正常
-    BUILDING,    // 建造中
-    UPGRADING,   // 升级中
-    DESTROYED,   // 摧毁
-	TRINING,     // 训练中（仅训练营）
-    UNKNOWN
-};
+extern std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig;
+class BaseTroop;
 // 通用建筑配置（所有建筑都有的属性）
 //特有属性在子类内部praivate
-struct BuildingConfig {
-    int id;                     // 唯一ID
-    BuildingType type;          // 建筑类型
-    std::string name;           // 名称
-    std::string imgPath;        // 纹理路径
-	int hp;                     // 生命值
-    int tileWidth;              // 占用瓦片宽
-    int tileHeight;             // 占用瓦片高
-    std::unordered_map<std::string, int> cost; // 建造消耗（金币/圣水）
-    float buildTime;            // 建造时长（秒）
-    int level = 1;              // 初始等级
-};
 
 // 抽象基类（不可实例化，只能继承）
 class BaseBuilding : public cocos2d::Node
@@ -53,7 +23,7 @@ public:
 
     // ========== 通用初始化（子类可重写） ==========
     bool init(const BuildingConfig& config, const cocos2d::Vec2& tilePos, float mapScale);
-	bool BaseBuilding::loadBuildingSprite(); // 加载建筑图片精灵（通用）
+	bool loadBuildingSprite(); // 加载建筑图片精灵（通用）
     // ========== 通用状态管理（所有建筑都有） ==========
     virtual void startBuild();          // 开始建造（通用逻辑）
     virtual void finishBuild();         // 完成建造（通用逻辑）
@@ -86,7 +56,7 @@ protected:
 
     // 通用辅助方法（子类可调用）
     void initCommonUI();                // 初始化通用UI（进度条、等级标签）
-	void BaseBuilding::initTouchListener(); // 初始化触摸监听器
+	void initTouchListener(); // 初始化触摸监听器
     void updateProgress();              // 更新建造/升级进度
     // 点击回调函数（参数为当前建筑指针）
     std::function<void(BaseBuilding*)> _clickCallback;
@@ -144,8 +114,7 @@ class TrainingCamp : public BaseBuilding {
 public:
 	static TrainingCamp* create(const cocos2d::Vec2& tilePos, float mapScale);
 	 bool init(const cocos2d::Vec2& tilePos, float mapScale);
-         // 获取训练营等级
-    int getLevel() const { return _level; }
+     
     // 获取当前训练队列
     std::vector<TroopType>& getTrainQueue() { return _trainQueue; }
     // 新增训练任务
@@ -158,15 +127,24 @@ public:
 	 void doSpecialAction() override; // 训练士兵逻辑
      std::string getSpecialDesc() override;
 	 void destroy();
-     void TrainingCamp::update(float dt);
+     void update(float dt);
+     // 核心：获取当前训练状态（供弹窗显示）
+     bool isTraining() const { return _state == BuildingState::TRAINING && !_trainQueue.empty(); }
+     TroopType getCurrentTrainingTroop() const { return isTraining() ? _trainQueue.front() : TroopType::UNKNOWN; }
+     float getCurrentTrainRemainingTime() const { return _currentRemainingTime; } // 当前队列头剩余时间
+
 private:
-    int _level = 1;
     std::unordered_map<TroopType, float> _troopTrainTimeMap; // 各兵种训练时长（预配置）
 	float _trainTimer = 0.0f;    // 训练计时器
 	float _trainInterval = 5.0f; // 训练间隔（秒）
 	int _troopsInTraining = 0;   // 正在训练的士兵数量
+    float _currentRemainingTime = 0.0f;      // 当前队列头兵种的剩余训练时间
     std::vector<TroopType> _trainQueue; // 训练队列
     std::vector<float> _queueTimers; // 队列倒计时
+    // 内部逻辑：当前任务训练完成
+    void finishCurrentTrainTask();
+    // 内部逻辑：启动下一个队列任务
+    void startNextTrainTask();
     // 内部私有方法：处理训练完成逻辑
     void finishTrainTroop(TroopType type);
     // 初始化兵种训练时间配置
@@ -200,4 +178,63 @@ public:
     virtual void doSpecialAction() override; // 升级解锁逻辑
     virtual std::string getSpecialDesc() override { return "村庄的核心建筑"; }
 };
+class BaseAttackBuilding : public BaseBuilding {
+protected:
+    // 核心攻击属性
+    float _attackRange;          // 攻击范围（像素）
+    float _attackDamage;         // 单次伤害
+    float _attackCooldown;       // 攻击冷却（秒/次）
+    float _currentCooldown;      // 当前冷却计时
+    BaseTroop* _targetTroop=nullptr;     // 当前攻击目标
+    std::string _attackEffectPath; // 攻击特效路径
+    float _attackEffectDuration;  // 特效时长
+	DrawNode* _rangeDraw = nullptr;//范围显示节点
+    // 纯虚函数：子类实现具体攻击逻辑
+    virtual void attackTarget() = 0;
+    // 目标检测：找攻击范围内的敌方兵种
+    BaseTroop* findTargetInRange();
+
+public:
+
+    // 初始化攻击属性（子类 init 中调用）
+    void initAttackProps(float range, float damage, float cooldown, const std::string& effectPath = "");
+
+    // 重写 update 逻辑（攻击核心）
+    virtual void update(float dt) override;
+
+    // 攻击范围可视化（调试用）
+    void showAttackRange(bool isShow);
+
+    // 重写销毁逻辑
+    virtual void destroy() override;
+
+	// 攻击属性接口
+    float getAttackRange() const { return _attackRange; }
+    float getAttackDamage() const { return _attackDamage; }
+    float getAttackCooldown() const { return _attackCooldown; }
+};
+
+class Cannon : public BaseAttackBuilding {
+public:
+    static Cannon* create(const Vec2& tilePos, float mapScale);
+    bool init(const Vec2& tilePos, float mapScale) ;
+
+    // 实现攻击逻辑
+    void attackTarget() ;
+    void doSpecialAction();
+    // 特殊描述（重写）
+    std::string getSpecialDesc() ;
+};
+class ArrowTower : public BaseAttackBuilding {
+public:
+    static ArrowTower* create(const Vec2& tilePos, float mapScale);
+    bool init(const Vec2& tilePos, float mapScale) ;
+    void doSpecialAction() ;
+    void attackTarget() ;
+    std::string getSpecialDesc() ;
+};
 #endif // __BUILDING_H__
+
+
+
+

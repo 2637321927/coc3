@@ -67,7 +67,13 @@ void BuildingPopup::createButtons() {
         btnCount = 3; // 兵营3个按钮
     }
 	else if (_targetBuilding->getType() == BuildingType::TRAINING_CAMP) {
-		btnCount = 3; // 训练营5个按钮
+		btnCount = 4; // 训练营5个按钮
+	}
+	else if (_targetBuilding->getType() == BuildingType::CANNON) {  
+		btnCount = 3; // 加农炮3个按钮
+	}
+	else if (_targetBuilding->getType() == BuildingType::ARROW_TOWER) {
+		btnCount = 3; // 箭塔3个按钮
 	}
     else {
         return; // 其他建筑类型暂不支持弹窗
@@ -113,13 +119,25 @@ void BuildingPopup::createButtons() {
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
     }
     else if (_targetBuilding->getType() == BuildingType::TRAINING_CAMP) {
-        //  兵营按钮（5个，居中）
+        //  训练营按钮（5个，居中）
+		//TODO: 加入预览当前部队按钮
         createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
         createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
         createButton("ui/btn_train.png", ButtonType::TRAINING, Vec2(startX + 2 * (btnWidth + spacing), startY));
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
     }
-    
+	else if (_targetBuilding->getType() == BuildingType::CANNON) {
+        //  加农炮按钮（3个，居中）
+        createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+        createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
+        createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
+	}
+    else if (_targetBuilding->getType() == BuildingType::ARROW_TOWER) {
+        //  箭塔按钮（3个，居中）
+        createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+        createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
+        createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
+    }
 }
 
 

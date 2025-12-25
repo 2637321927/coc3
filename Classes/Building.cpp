@@ -1,7 +1,8 @@
 #include "Building.h"
 #include "cocos2d.h"
-#include "Troop.h"
 #include "ui/CocosGUI.h" 
+#include "VillageScene.h"
+#include "EffectManager.h"
 USING_NS_CC;
 
 // 根据类型创建子类实例
@@ -26,6 +27,12 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
     case BuildingType::TRAINING_CAMP:
         building = TrainingCamp::create(tilePos, mapScale);
         break;
+	case BuildingType::CANNON:
+		building = Cannon::create(tilePos, mapScale);
+		break;
+	case BuildingType::ARROW_TOWER:
+		building = ArrowTower::create(tilePos, mapScale);
+		break;
     default:
         break;
     }
@@ -217,7 +224,7 @@ void BaseBuilding::bindClickCallback(const std::function<void(BaseBuilding*)>& c
     _clickCallback = callback;
 }
 
-// 通用：帧更新（进度处理）
+// 通用：帧更新（进度处理,主建造和升级）子类如果有额外的帧更新逻辑（如加农炮的攻击逻辑），只需重写 update，并在开头调用 BaseBuilding::update(dt) 即可复用父类进度逻辑
 void BaseBuilding::update(float dt) {
     if (_state != BuildingState::BUILDING && _state != BuildingState::UPGRADING) return;
 
@@ -242,6 +249,7 @@ GoldMine* GoldMine::create(const Vec2& tilePos, float mapScale) {
     GoldMine* sprite = new (std::nothrow) GoldMine();
     if (sprite && sprite->init(tilePos, mapScale)) {
         sprite->autorelease();
+   
         return sprite;
     }
     CC_SAFE_DELETE(sprite);
@@ -424,13 +432,13 @@ void TownHall::doSpecialAction() {
 }
 //TrainingCamp 子类实现
 TrainingCamp* TrainingCamp::create(const Vec2& tilePos, float mapScale) {
-	TrainingCamp* sprite = new (std::nothrow) TrainingCamp();
-	if (sprite && sprite->init(tilePos, mapScale)) {
-		sprite->autorelease();
-		return sprite;
-	}
-	CC_SAFE_DELETE(sprite);
-	return nullptr;
+    TrainingCamp* sprite = new (std::nothrow) TrainingCamp();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
 }
 
 // 初始化兵种训练时间配置
@@ -476,15 +484,15 @@ void TrainingCamp::addTrainTask(TroopType type) {
     }
     // 获取该兵种的基础训练时间（根据训练营等级缩放）
     float baseTime = _troopTrainTimeMap[type];
-    float scaledTime = baseTime * (1.0f - 0.1f * (_level - 1)); // 等级越高，训练越快（每级减少10%）
-    scaledTime = std::max(scaledTime, baseTime * 0.5f); // 最低不低于基础时间的50%
+    //float scaledTime = baseTime * (1.0f - 0.1f * (_config.level - 1)); // 等级越高，训练越快（每级减少10%）
+   // scaledTime = std::max(scaledTime, baseTime * 0.5f); // 最低不低于基础时间的50%
     // 添加到队列
     _trainQueue.push_back(type);
-    _queueTimers.push_back(scaledTime);
+    _queueTimers.push_back(baseTime);
 
     // 更新状态为训练中
-    if (_state != BuildingState::TRINING) {
-        setState(BuildingState::TRINING);
+    if (_state != BuildingState::TRAINING) {
+        setState(BuildingState::TRAINING);
     }
 }
 
@@ -534,7 +542,7 @@ void TrainingCamp::update(float dt) {
     BaseBuilding::update(dt); // 调用父类更新逻辑（进度条等）
 
     // 仅在训练中状态处理计时
-    if (_state != BuildingState::TRINING || _trainQueue.empty()) {
+    if (_state != BuildingState::TRAINING || _trainQueue.empty()) {
         return;
     }
 
@@ -560,15 +568,15 @@ void TrainingCamp::doSpecialAction() {
     }
 
     // 如果有训练队列，自动进入训练状态
-    if (!_trainQueue.empty() && _state != BuildingState::TRINING) {
-        setState(BuildingState::TRINING);
+    if (!_trainQueue.empty() && _state != BuildingState::TRAINING) {
+        setState(BuildingState::TRAINING);
     }
 }
 
 // 训练营特殊描述
 std::string TrainingCamp::getSpecialDesc() {
     return StringUtils::format("训练士兵的建筑，等级%d，训练速度提升%d%%",
-        _level, (int)((_level - 1) * 10));
+        _config.level, (int)((_config.level - 1) * 10));
 }
 
 // 重写销毁逻辑
@@ -580,3 +588,253 @@ void TrainingCamp::destroy() {
     _trainTimer = 0.0f;
     _troopsInTraining = 0;
 }
+
+//攻击型建筑基类
+// 初始化攻击属性
+void BaseAttackBuilding::initAttackProps(float range, float damage, float cooldown, const std::string& effectPath) {
+    _attackRange = range;
+    _attackDamage = damage;
+    _attackCooldown = cooldown;
+    _attackEffectPath = effectPath;
+    _attackEffectDuration = 0.5f; // 特效时长默认0.5秒
+    _currentCooldown = 0.0f;      // 冷却初始化为0
+    _targetTroop = nullptr;       // 目标初始化为空
+}
+
+// 每帧更新（核心攻击逻辑）
+void BaseAttackBuilding::update(float dt) {
+    BaseBuilding::update(dt); // 调用父类更新（血量、建造进度等）
+
+    // 销毁/建造/升级中，停止攻击
+    if (_state == BuildingState::DESTROYED || _state == BuildingState::BUILDING || _state == BuildingState::UPGRADING) {
+        _targetTroop = nullptr;
+        return;
+    }
+
+    // 冷却计时更新
+    if (_currentCooldown > 0) {
+        _currentCooldown -= dt;
+        _currentCooldown = std::max(_currentCooldown, 0.0f);
+    }
+
+    // 无目标时检测范围内敌方兵种
+    if (!_targetTroop || _targetTroop && _targetTroop->getState() == TroopState::DEAD) {
+        _targetTroop = findTargetInRange();
+        // 有目标=ATTACKING，无目标=IDLE
+        _state = _targetTroop ? BuildingState::ATTACKING : BuildingState::IDLE;
+        if (!_targetTroop) return;
+    }
+
+    // 冷却完成且有目标，执行攻击
+    if (_currentCooldown <= 0 && _targetTroop) {
+        attackTarget();
+        _currentCooldown = _attackCooldown; // 重置冷却
+    }
+}
+
+// 目标检测逻辑
+BaseTroop* BaseAttackBuilding::findTargetInRange() {
+    std::vector<BaseTroop*> allEnemies = VillageScene::getInstance()->getAllEnemyTroops();
+    if (allEnemies.empty()) return nullptr;
+
+    BaseTroop* closestTroop = nullptr;
+    float minDistance = FLT_MAX;
+    Vec2 buildingPos = this->getPosition();
+
+    for (auto troop : allEnemies) {
+        if (!troop || troop->getState() == TroopState::DEAD) continue;
+
+        float distance = buildingPos.distance(troop->getPosition());
+        if (distance <= _attackRange && distance < minDistance) {
+            minDistance = distance;
+            closestTroop = troop;
+        }
+    }
+    return closestTroop;
+}
+
+// 攻击范围可视化（点击攻击类建筑显示）
+void BaseAttackBuilding::showAttackRange(bool isShow) {
+    // 防护：如果攻击范围非法，直接返回（避免drawCircle崩溃）
+    if (_attackRange <= 0) {
+        CCLOG("警告：攻击范围非法（%.2f），无法显示攻击范围", _attackRange);
+        return;
+    }
+
+    if (isShow) {
+        if (!_rangeDraw) {
+            _rangeDraw = DrawNode::create();
+            if (!_rangeDraw) { // 防护：创建失败直接返回
+                CCLOG("创建 DrawNode 失败！");
+                return;
+            }
+            // 挂载到当前建筑节点，层级设为-1（在建筑图片下方）
+            this->addChild(_rangeDraw, -1);
+            // 关键：设置DrawNode的锚点和位置，确保圆圈中心和建筑重合
+            _rangeDraw->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+            _rangeDraw->setPosition(this->getContentSize() / 2); // 对齐建筑中心
+        }
+
+        // 清空原有绘制内容，重新绘制攻击范围圆圈
+        _rangeDraw->clear();
+        // 参数说明：圆心、半径、角度、分段数、是否闭合、颜色（红半透）
+        _rangeDraw->drawCircle(
+            Vec2::ZERO,          // 相对于_rangeDraw自身的圆心（已对齐建筑中心）
+            _attackRange,        // 攻击范围半径
+            CC_DEGREES_TO_RADIANS(360), // 完整圆圈（弧度）
+            60,                  // 分段数（越多越平滑）
+            false,               // 不绘制扇形
+            Color4F(1, 0, 0, 0.3f) // 红色半透明
+        );
+    }
+    else {
+        // 隐藏/销毁攻击范围
+        if (_rangeDraw) {
+            _rangeDraw->clear();          // 清空绘制内容
+            _rangeDraw->removeFromParentAndCleanup(true); // 移除并释放内存
+            _rangeDraw = nullptr;        // 置空，避免野指针
+        }
+    }
+}
+
+// 重写销毁逻辑（清空目标）
+void BaseAttackBuilding::destroy() {
+    BaseBuilding::destroy();
+    _targetTroop = nullptr;
+    _currentCooldown = 0.0f;
+    if (_rangeDraw) {
+        _rangeDraw->clear();
+        _rangeDraw->removeFromParentAndCleanup(true);
+        _rangeDraw = nullptr;
+    }
+}
+
+//加农炮类
+Cannon* Cannon::create(const Vec2& tilePos, float mapScale) {
+    Cannon* sprite = new (std::nothrow) Cannon();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
+}
+
+// 初始化
+bool Cannon::init(const Vec2& tilePos, float mapScale) {
+    // 1. 初始化建筑基础属性（和训练营一致）
+    BuildingConfig config;
+    config.type = BuildingType::CANNON;
+    config.name = "加农炮";
+    config.imgPath = "building/cannon.png";
+    config.hp = 800 ;
+    config.tileWidth = 1;
+    config.tileHeight = 1;
+    config.buildTime = 20.0f;
+    config.cost = { {"gold", 500 } };
+    config.level = 1; // 设置等级
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    // 2. 初始化攻击属性（复用 BaseAttackBuilding 的接口）
+    float range = 100 ;
+    float damage = 100;
+    float cooldown = 2.0f ;
+    cooldown = std::max(cooldown, 1.0f); // 最低冷却1秒
+    initAttackProps(range, damage, cooldown, "effect/cannon_ball.png");
+
+    // 3. 启动帧更新（攻击逻辑依赖）
+    this->scheduleUpdate();
+
+    // 调试：显示攻击范围
+    showAttackRange(true);
+
+    return true;
+}
+
+// 加农炮攻击逻辑（炮弹）
+void Cannon::attackTarget() {
+    if (!_targetTroop) return;
+
+    // 扣减目标血量
+    _targetTroop->takeDamage(_attackDamage);
+    
+
+    // 播放炮弹特效
+    Vec2 startPos = this->getPosition();
+    Vec2 endPos = _targetTroop->getPosition();
+    EffectManager::getInstance()->playProjectileEffect(
+        _attackEffectPath,
+        startPos,
+        endPos,
+        _attackEffectDuration
+    );
+}
+
+// 特殊描述（和训练营格式一致）
+std::string Cannon::getSpecialDesc() {
+    return StringUtils::format("近战攻击建筑，等级%d，攻击范围%.0f像素，伤害%.0f，攻速%.1f秒/次",
+        _config.level, _attackRange, _attackDamage, _attackCooldown);
+}
+void Cannon::doSpecialAction() {};
+
+ArrowTower* ArrowTower::create(const Vec2& tilePos, float mapScale) {
+    ArrowTower* tower = new (std::nothrow) ArrowTower();
+    if (tower && tower->init(tilePos, mapScale)) {
+        tower->autorelease();
+        return tower;
+    }
+    CC_SAFE_DELETE(tower);
+    return nullptr;
+}
+
+bool ArrowTower::init(const Vec2& tilePos, float mapScale) {
+    // 1. 基础建筑属性初始化
+    BuildingConfig config;
+    config.type = BuildingType::ARROW_TOWER;
+    config.name = "箭塔";
+    config.imgPath = "building/arrow_tower.png";
+    config.hp = 600 ;
+    config.tileWidth = 1;
+    config.tileHeight = 1;
+    config.buildTime = 15.0f;
+    config.cost = { {"gold", 400} };
+    config.level = 1;
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+
+    // 2. 攻击属性初始化
+    float range = 150;
+    float damage = 30;
+    float cooldown = 0.8f;
+    cooldown = std::max(cooldown, 0.4f);
+    initAttackProps(range, damage, cooldown, "effect/arrow.png");
+
+    // 3. 启动更新
+    this->scheduleUpdate();
+
+    // 调试：显示攻击范围
+    showAttackRange(true);
+
+    return true;
+}
+
+void ArrowTower::attackTarget() {
+    if (!_targetTroop) return;
+
+    // 扣血
+    _targetTroop->takeDamage(_attackDamage);
+
+    // 箭矢特效（发射口稍高）
+    Vec2 startPos = this->getPosition() + Vec2(0, 50);
+    Vec2 endPos = _targetTroop->getPosition();
+    EffectManager::getInstance()->playProjectileEffect(
+        _attackEffectPath,
+        startPos,
+        endPos,
+        _attackEffectDuration
+    );
+}
+
+std::string ArrowTower::getSpecialDesc() {
+    return StringUtils::format("远程攻击建筑，等级%d，攻击范围%.0f像素，伤害%.0f，攻速%.1f秒/次",
+        _config.level, _attackRange, _attackDamage, _attackCooldown);
+}
+void ArrowTower::doSpecialAction() {};

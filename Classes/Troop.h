@@ -2,51 +2,14 @@
 #define __TROOP_H__
 
 #include "cocos2d.h"
-#include <string>
-#include "Building.h"
-#include <unordered_map>
 #include <functional>
-
+#include "EnumType.h" 
+#include "Building.h"
 // 前置声明
 class VillageScene;
-
-// 兵种类型枚举
-enum class TroopType {
-    BARBARIAN,    // 野蛮人
-    ARCHER,       // 弓箭手
-    GIANT,        // 巨人
-    BOMBER,       // 炸弹人
-    UNKNOWN
-};
-
-// 兵种状态枚举
-enum class TroopState {
-    IDLE,         // 闲置
-    MOVING,       // 移动中
-    ATTACKING,    // 攻击中
-    DEAD,         // 死亡
-    TRAINING,     // 训练中
-    UNKNOWN
-};
-
+class BaseBuilding;
 // 通用兵种配置（所有兵种都有的属性）
 // 特有属性在子类内部private
-struct TroopConfig {
-    int id;                     // 唯一ID
-    TroopType type;             // 兵种类型
-    std::string name;           // 名称
-    std::string imgPath;        // 纹理路径
-    int hp;                     // 生命值
-    int attackPower;            // 攻击力
-    float attackRange;          // 攻击范围（像素）
-    float attackSpeed;          // 攻击速度（攻击间隔，秒/次）
-    float moveSpeed;            // 移动速度（像素/秒）
-    int elixirCost; // 训练消耗（圣水）
-    float trainingTime;         // 训练时长（秒）
-    int level = 1;              // 初始等级
-    int spaceCost;              // 占用人口空间
-	int unlockCampLevel=1;        // 解锁所需兵营等级
-};
 
 // 抽象基类（不可实例化，只能继承）
 class BaseTroop : public cocos2d::Sprite {
