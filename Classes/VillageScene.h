@@ -194,9 +194,9 @@ private:
     ui::Button* _saveBtn;
     ui::Button* _loadBtn;
     std::vector<BaseBuilding*> _buildings;
-    // 按类型拆分存储（便于快速查找）
+    // 按类型拆分存储（便于快速查找,资源类一键停止/开启）
     std::vector<GoldMine*> _goldMines;
-    std::vector<TownHall*> _townHalls;
+    std::vector<ElixirCollector*> _elixirCollectors;
     // 缩放相关
     float _minScale = 0.5f;      // 最小缩放比例（避免缩太小）
     float _maxScale = 2.0f;      // 最大缩放比例（避免缩太大）

@@ -14,6 +14,7 @@ enum class BuildingType {
     TOWN_HALL,   // 大本营
 	GOLD_MINE,   // 金矿
     BARRACKS,    // 兵营
+	ELIXIR_COLLECTOR, // 圣水收集器
     UNKNOWN
 };
 
@@ -115,6 +116,24 @@ private:
     int _goldPerInterval = 10;  // 每次生产金币数量
     float _produceInterval = 2.0f; // 生产间隔（秒）
 	int _goldStored = 0;      // 已生产但未收集的金币数量
+};
+class ElixirCollector : public BaseBuilding {
+public:
+	static ElixirCollector* create(const cocos2d::Vec2& tilePos, float mapScale);
+	bool init(const cocos2d::Vec2& tilePos, float mapScale);
+	// 重写专属行为：生产圣水
+	void doSpecialAction() override;
+	// 重写专属描述
+	std::string getSpecialDesc() override;
+	// 收集圣水
+	int collectElixir();
+	void produceElixir(float dt);
+	void destroy() override;
+private:
+	float _elixirTimer = 0.0f;    // 圣水生产计时器
+	int _elixirPerInterval = 10;  // 每次生产圣水数量
+	float _produceInterval = 2.0f; // 生产间隔（秒）
+	int _elixirStored = 0;      // 已生产但未收集的圣水数量
 };
 // ========== 大本营类 ==========
 class TownHall : public BaseBuilding {

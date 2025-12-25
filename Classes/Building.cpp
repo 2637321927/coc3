@@ -15,6 +15,9 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
     case BuildingType::TOWN_HALL:
         building = TownHall::create(tilePos, mapScale);
         break;
+	case BuildingType::ELIXIR_COLLECTOR:
+		building = ElixirCollector::create(tilePos, mapScale);
+		break;
     case BuildingType::BARRACKS:
         // building = BarracksBuilding::create(tilePos, mapScale);
         break;
@@ -280,6 +283,63 @@ std::string GoldMine::getSpecialDesc()  {
 void GoldMine::destroy() {
     BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
     this->unschedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold)); // 停止生产
+}
+//ElixirCollector 子类实现
+ElixirCollector* ElixirCollector::create(const Vec2& tilePos, float mapScale) {
+	ElixirCollector* sprite = new (std::nothrow) ElixirCollector();
+	if (sprite && sprite->init(tilePos, mapScale)) {
+		sprite->autorelease();
+		return sprite;
+	}
+	CC_SAFE_DELETE(sprite);
+	return nullptr;
+}
+bool ElixirCollector::init(const Vec2& tilePos, float mapScale) {
+	BuildingConfig config;
+	config.type = BuildingType::ELIXIR_COLLECTOR;
+	config.name = "圣水收集器";
+	config.imgPath = "building/elixir_collector.png"; // 确保路径正确
+	config.hp = 500;
+	config.tileWidth = 2;  // 占地 2x2
+	config.tileHeight = 2;
+	config.buildTime = 10.0f; // 10秒建完
+	config.cost = { {"gold", 100}, {"elixir", 50} }; // 建造消耗
+	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+	_state = BuildingState::IDLE;
+	return true;
+}
+void ElixirCollector::doSpecialAction() {
+	// 逻辑：每隔一段时间增加玩家圣水
+		// 非闲置/未摧毁状态才生产
+	if (getState() != BuildingState::IDLE) {
+		return;
+	}
+	// 停止已有生产定时器，避免重复
+	this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir));
+	// 每2秒生产一次圣水
+	this->schedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir), _produceInterval);
+}
+// 圣水生产具体逻辑
+void ElixirCollector::produceElixir(float dt) {
+	// 升级后提升产量（可根据config.level动态调整）
+	_elixirPerInterval = 10 * getConfig().level;
+	_elixirStored += _elixirPerInterval;
+}
+// 收集圣水逻辑
+int ElixirCollector::collectElixir() {
+	int collect = _elixirStored;
+	//圣水超容量（大本营容量）未考虑，后续添加
+	_elixirStored = 0;
+	return collect;
+}
+// 圣水收集器专属描述
+std::string ElixirCollector::getSpecialDesc() {
+	return "生产圣水的建筑，等级越高产量越高";
+}
+// 覆盖摧毁方法
+void ElixirCollector::destroy() {
+	BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
+	this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir)); // 停止生产
 }
 // TownHall 子类实现
 TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {
