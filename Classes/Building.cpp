@@ -1,5 +1,7 @@
 #include "Building.h"
 #include "cocos2d.h"
+#include "Troop.h"
+#include "ui/CocosGUI.h" 
 USING_NS_CC;
 
 // 根据类型创建子类实例
@@ -154,8 +156,14 @@ void BaseBuilding::finishBuild() {
     setState(BuildingState::IDLE);
     _progressBar->setVisible(false);
     this->unscheduleUpdate();
+    if (_buildFinishCallback) {
+        _buildFinishCallback(this);
+    }
 }
-
+// 通用：绑定回调
+void BaseBuilding::bindBuildFinishCallback(const std::function<void(BaseBuilding*)>& callback) {
+    _buildFinishCallback = callback;
+}
 // 通用：开始升级
 void BaseBuilding::startUpgrade() {
     setState(BuildingState::UPGRADING);
@@ -163,6 +171,9 @@ void BaseBuilding::startUpgrade() {
     _progressBar->setVisible(true);
     _progressBar->setPercentage(0);
     this->scheduleUpdate();
+    if (_buildFinishCallback) {
+        _buildFinishCallback(this);
+    }
 }
 
 // 通用：摧毁建筑
@@ -341,6 +352,43 @@ void ElixirCollector::destroy() {
 	BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
 	this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir)); // 停止生产
 }
+//Training
+Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
+    auto camp = new (std::nothrow) Barracks();
+    if (camp && camp->init(tilePos, mapScale)) {
+        camp->autorelease();
+        return camp;
+    }
+    CC_SAFE_DELETE(camp);
+    return nullptr;
+}
+
+bool Barracks::init(const cocos2d::Vec2& tilePos, float mapScale) {
+    // 初始化兵营配置
+    BuildingConfig config;
+    config.type = BuildingType::TRAINING_CAMP;
+    config.name = "兵营";
+    config.imgPath = "building/camp.png";
+    config.hp = 800;
+    config.tileWidth = 2;
+    config.tileHeight = 2;
+    config.cost = { {"gold", 800}, {"elixir", 300} };
+    config.buildTime = 20.0f;
+    config.level = 1;
+    _maxTroopSpace = 20; // 基础容量20
+    if (!BaseBuilding::init(config, tilePos, mapScale)) {
+        return false;
+    }
+    return true;
+}
+
+void Barracks::doSpecialAction() {
+    // 兵营特殊行为：无持续行为，空实现
+}
+
+std::string Barracks::getSpecialDesc() {
+    return StringUtils::format("驻军容量：%d，等级越高容量越大", _maxTroopSpace);
+}
 // TownHall 子类实现
 TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {
     TownHall* sprite = new (std::nothrow) TownHall();
@@ -371,3 +419,4 @@ bool TownHall::init(const Vec2& tilePos, float mapScale) {
 void TownHall::doSpecialAction() {
     CCLOG("大本营管理中心已就绪");
 }
+

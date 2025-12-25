@@ -481,7 +481,7 @@ bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
 
     return tileProps["canPlace"].asBool();
 }
-// 初始化建筑栏
+// 初始化建筑栏（新增建筑类型需要扩展此函数）
 void VillageScene::createBuildBar() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
 
@@ -529,6 +529,17 @@ void VillageScene::createBuildBar() {
 			_buildPreview->setTexture("building/elixir_collector_preview.png");
 		}
 	);
+	// 建筑按钮 - 军营
+	auto barracksBtn = MenuItemImage::create(
+		"building/barracks_icon.png",
+		"building/barracks_icon_selected.png",
+		[this](Ref* sender) {
+			_Mode = Mode::PLACE_BUILDING;
+			_selectedBuildingType = BuildingType::BARRACKS;
+			_buildPreview->setVisible(true);
+			_buildPreview->setTexture("building/barracks_preview.png");
+		}
+	);
     // 取消放置按钮（仅退出当前建造模式，不隐藏建筑栏）
     auto cancelPlaceBtn = MenuItemImage::create(
         "ui/cancel_place_btn.png",
@@ -551,7 +562,7 @@ void VillageScene::hideBuildBar() {
         _buildBarLayer->setVisible(false);
     }
 }
-// 处理按钮点击的核心逻辑
+// 处理按钮点击的核心逻辑（新增建筑类型可能需要扩展此函数）
 void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type) {
     switch (type) {
     case BuildingPopup::ButtonType::INFO:
@@ -604,11 +615,11 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
         break;
     }
 }
-// 放置建筑
+// 放置建筑（新增建筑类型需要扩展此函数）
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
     if (building) {
-		_buildPreview->setVisible(false);      
+        _buildPreview->setVisible(false);
         // 加入建筑总列表（核心：保存实例引用，避免内存泄漏/无法管理）
         _buildings.push_back(building);
         // 按类型加入细分列表
@@ -618,54 +629,71 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         else if (type == BuildingType::ELIXIR_COLLECTOR) {
             _elixirCollectors.push_back(dynamic_cast<ElixirCollector*>(building));
         }
-        auto config = building->getConfig();
-
-        // 记录该建筑占用的所有瓦片
-        for (int x = 0; x < config.tileWidth; ++x) {
-            for (int y = 0; y < config.tileHeight; ++y) {
-                _occupiedTiles.push_back(Vec2(tilePos.x + x, tilePos.y + y));
-            }
-        }
-        // 计算建筑占用瓦片范围的中心点（瓦片坐标）
-        // 对于2x2建筑：中心在 (tilePos.x + (2-1)/2, tilePos.y + (2-1)/2) = (x+0.5, y+0.5)
-        float centerTileX = tilePos.x + (config.tileWidth) / 2.0f;
-        float centerTileY = tilePos.y + (config.tileHeight - 1) / 2.0f;
-        Vec2 centerTilePos(centerTileX, centerTileY);
-
-        // 将中心点转换为容器坐标（替代原左上角坐标）
-        Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
-
-        // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
-        building->setAnchorPoint(Vec2(0.5f, 0.5f));
-        building->setPosition(containerLocalPos);
-        _mapContainer->addChild(building);
-
-        // Z-Order 排序建议：使用底部中心点的 Y 坐标
-        building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
-        // 通用逻辑：添加到场景 + 绑定点击回调
-        if (building) {
-
-            // 统一绑定点击回调（弹窗逻辑）
-            building->bindClickCallback([this](BaseBuilding* building) {
-               if (_Mode!= Mode::NONE) {
-                    // 非 NONE 模式，直接返回（不触发任何交互）
-                    return;
-                }
-                // 弹出功能窗口
-                auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
-                    handleBuildingBtnClick(building, type);
+        else if (type == BuildingType::BARRACKS) {
+            auto barracks = dynamic_cast<Barracks*>(building);
+            if (barracks) {
+                // 绑定建造/升级完成回调
+                barracks->bindBuildFinishCallback([this, barracks](BaseBuilding* b) {
+                    // 升级时增加容量
+                    if (barracks->getLevel() > 1) {
+                        this->addTroopCapacity(barracks->getPulseSpace());
+                    }
+                    // 增加新的容量加成
+                    else {
+                        this->addTroopCapacity(barracks->getTroopSpace());
+                    }
                     });
-                this->addChild(popup, 100); // 高层级显示弹窗
-                });
+            }
+
+            auto config = building->getConfig();
+
+            // 记录该建筑占用的所有瓦片
+            for (int x = 0; x < config.tileWidth; ++x) {
+                for (int y = 0; y < config.tileHeight; ++y) {
+                    _occupiedTiles.push_back(Vec2(tilePos.x + x, tilePos.y + y));
+                }
+            }
+            // 计算建筑占用瓦片范围的中心点（瓦片坐标）
+            // 对于2x2建筑：中心在 (tilePos.x + (2-1)/2, tilePos.y + (2-1)/2) = (x+0.5, y+0.5)
+            float centerTileX = tilePos.x + (config.tileWidth) / 2.0f;
+            float centerTileY = tilePos.y + (config.tileHeight - 1) / 2.0f;
+            Vec2 centerTilePos(centerTileX, centerTileY);
+
+            // 将中心点转换为容器坐标（替代原左上角坐标）
+            Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
+
+            // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
+            building->setAnchorPoint(Vec2(0.5f, 0.5f));
+            building->setPosition(containerLocalPos);
+            _mapContainer->addChild(building);
+
+            // Z-Order 排序建议：使用底部中心点的 Y 坐标
+            building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
+            // 通用逻辑：添加到场景 + 绑定点击回调
+            if (building) {
+
+                // 统一绑定点击回调（弹窗逻辑）
+                building->bindClickCallback([this](BaseBuilding* building) {
+                    if (_Mode != Mode::NONE) {
+                        // 非 NONE 模式，直接返回（不触发任何交互）
+                        return;
+                    }
+                    // 弹出功能窗口
+                    auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
+                        handleBuildingBtnClick(building, type);
+                        });
+                    this->addChild(popup, 100); // 高层级显示弹窗
+                    });
+            }
+            // 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
+            this->scheduleOnce([this](float delay) {
+                _Mode = Mode::NONE;
+                }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
+
         }
-		// 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
-        this->scheduleOnce([this](float delay) {
-            _Mode = Mode::NONE;
-            }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
-    
     }
 }
-// 摧毁建筑
+// 摧毁建筑（新增建筑类型需要扩展此函数）
 void VillageScene::destroyBuilding(BaseBuilding* building) {
     if (!building) return; // 空指针防护
     // 返还建造资源
@@ -713,6 +741,10 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
             _goldMines.erase(it1);
         }
     }
+	else if (building->getType() == BuildingType::BARRACKS) {
+        auto barrack = dynamic_cast<Barracks*>(building);
+		this->removeTroopCapacity(barrack->getTroopSpace());
+	}   
     building->destroy();
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
@@ -802,7 +834,7 @@ bool VillageScene::isTileOccupied(Vec2 tilePos) {
     }
     return false;
 }
-//获取建筑的配置
+//获取建筑的配置(新增建筑类型时需要在此添加对应配置)
 const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
 {
     static BuildingConfig Config;
@@ -854,7 +886,7 @@ const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
             "兵营",                 // name
             "building/barracks.png", // imgPath
             800,                    // hp
-            2,                      // tileWidth
+            3,                      // tileWidth
             2,                      // tileHeight
             { {"gold", 800}, {"elixir", 300} }, // cost
             20.0f                   // buildTime
@@ -1142,9 +1174,6 @@ void VillageScene::onTroopAttack(BaseTroop* troop, BaseBuilding* target) {
         target->getConfig().name.c_str(),
         troop->getConfig().attackPower);
 }
-
-
-
 //金币/圣水条
 // 初始化资源显示条
 void VillageScene::initResourceBar() {
@@ -1308,7 +1337,15 @@ bool VillageScene::spendElixir(int amount) {
     setElixir(_elixir - amount);
     return true;
 }
+// 部队容量相关方法
+void VillageScene::addTroopCapacity(int bonus) {
+    _maxPopulation += bonus;
+}
 
+// 移除部队容量
+void VillageScene::removeTroopCapacity(int bonus) {
+    _maxPopulation = _maxPopulation - bonus;
+}
 // 显示资源不足提示
 void VillageScene::showResourceShortageTip(const std::string& message) {
     Size visibleSize = Director::getInstance()->getVisibleSize();

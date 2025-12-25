@@ -57,8 +57,17 @@ void BuildingPopup::createButtons() {
     if (_targetBuilding->getType() == BuildingType::GOLD_MINE) {
         btnCount = 4; // 金矿4个按钮
     }
+    else if (_targetBuilding->getType() == BuildingType::ELIXIR_COLLECTOR) {
+        btnCount = 4; // 圣水收集器4个按钮
+    }
     else if (_targetBuilding->getType() == BuildingType::TOWN_HALL) {
         btnCount = 3; // 大本营3个按钮
+    }
+    else if (_targetBuilding->getType() == BuildingType::BARRACKS) {
+        btnCount = 3; // 兵营3个按钮
+    }
+    else {
+        return; // 其他建筑类型暂不支持弹窗
     }
     // 按钮总宽度 = 按钮数*宽度 + (按钮数-1)*间距
     float totalWidth = btnCount * btnWidth + (btnCount - 1) * spacing;
@@ -74,7 +83,7 @@ void BuildingPopup::createButtons() {
         // 2. 升级按钮
         createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
         // 3. 收集资源按钮
-        createButton("ui/btn_collect.png", ButtonType::COLLECT, Vec2(startX + 2 * (btnWidth + spacing), startY));
+        createButton("ui/btn_collect_gold.png", ButtonType::COLLECT, Vec2(startX + 2 * (btnWidth + spacing), startY));
         // 4. 摧毁按钮
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
     }
@@ -84,7 +93,7 @@ void BuildingPopup::createButtons() {
         // 2. 升级按钮
         createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
         // 3. 收集资源按钮
-        createButton("ui/btn_collect.png", ButtonType::COLLECT, Vec2(startX + 2 * (btnWidth + spacing), startY));
+        createButton("ui/btn_collect_elixir.png", ButtonType::COLLECT, Vec2(startX + 2 * (btnWidth + spacing), startY));
         // 4. 摧毁按钮
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
     }
@@ -94,6 +103,13 @@ void BuildingPopup::createButtons() {
         createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
     }
+    else if (_targetBuilding->getType() == BuildingType::BARRACKS) {
+        //  兵营按钮（3个，居中）
+        createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+        createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
+        createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
+    }
+    
 }
 
 

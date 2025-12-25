@@ -2,8 +2,8 @@
 #define __TROOP_H__
 
 #include "cocos2d.h"
-#include "Building.h"
 #include <string>
+#include "Building.h"
 #include <unordered_map>
 #include <functional>
 

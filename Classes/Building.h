@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 #include <functional>
+#include "Troop.h"
+#include "ui/CocosGUI.h" 
 using namespace cocos2d;
 // 前置声明
 class VillageScene;
@@ -15,6 +17,7 @@ enum class BuildingType {
 	GOLD_MINE,   // 金矿
     BARRACKS,    // 兵营
 	ELIXIR_COLLECTOR, // 圣水收集器
+	TRAINING_CAMP, // 训练营
     UNKNOWN
 };
 
@@ -24,6 +27,7 @@ enum class BuildingState {
     BUILDING,    // 建造中
     UPGRADING,   // 升级中
     DESTROYED,   // 摧毁
+	TRINING,     // 训练中（仅训练营）
     UNKNOWN
 };
 // 通用建筑配置（所有建筑都有的属性）
@@ -68,7 +72,8 @@ public:
     void setLevel(int level) { _config.level = level; }
     // ========== 交互接口（通用） ==========
     void bindClickCallback(const std::function<void(BaseBuilding*)>& callback);
-
+    std::function<void(BaseBuilding*)> _buildFinishCallback;
+    void bindBuildFinishCallback(const std::function<void(BaseBuilding*)>& callback);
     // ========== 纯虚接口（子类必须实现：差异化逻辑） ==========
     virtual void doSpecialAction() = 0; // 建筑特有行为（如农场产粮、城镇中心造兵）
     virtual std::string getSpecialDesc() = 0; // 特有描述（如“每10秒产10粮食”）
@@ -135,6 +140,39 @@ private:
 	float _produceInterval = 2.0f; // 生产间隔（秒）
 	int _elixirStored = 0;      // 已生产但未收集的圣水数量
 };
+// ========== 训练营类 ==========
+class TrainingCamp : public BaseBuilding {
+public:
+	static TrainingCamp* create(const cocos2d::Vec2& tilePos, float mapScale);
+	 bool init(const cocos2d::Vec2& tilePos, float mapScale);
+	// 实现基类虚函数
+	 void doSpecialAction() override; // 训练士兵逻辑
+	 std::string getSpecialDesc() override { return "训练士兵的建筑"; }
+private:
+   // std::queue<TroopType> _trainQueue; // 训练队列
+  //  std::unordered_map<TroopType, float> _troopTrainTimeMap; // 各兵种训练时长（预配置）
+	float _trainTimer = 0.0f;    // 训练计时器
+	float _trainInterval = 5.0f; // 训练间隔（秒）
+	int _troopsInTraining = 0;   // 正在训练的士兵数量
+};
+//========== 兵营类 ==========
+class Barracks : public BaseBuilding {
+ public:
+     static Barracks* create(const cocos2d::Vec2& tilePos, float mapScale);
+     bool init(const cocos2d::Vec2& tilePos, float mapScale) ;
+
+     // 重写特殊行为
+     void doSpecialAction() override;
+     std::string getSpecialDesc() override;
+	 // 训练士兵接口
+     int getTroopSpace()const { return _maxTroopSpace; }; // 获取容量
+     int getPulseSpace()const { return _pulseSpace; }; // 获取升级后新增容量
+     //应重写升级函数，升级后增加总容量
+    private:
+        int _maxTroopSpace; // 总容量
+		int _pulseSpace; // 升级增加的容量
+        
+  };
 // ========== 大本营类 ==========
 class TownHall : public BaseBuilding {
 public:

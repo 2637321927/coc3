@@ -171,6 +171,10 @@ public:
     // 按钮点击回调
     void onSaveBtnClicked(cocos2d::Ref* sender);
     void onLoadBtnClicked(cocos2d::Ref* sender);
+    // 容量管理相关方法
+    int getTotalTroopCapacity() const { return _maxPopulation; }
+    void addTroopCapacity(int bonus); // 增加容量
+    void removeTroopCapacity(int bonus); // 移除容量（比如兵营被摧毁）
 private:
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
@@ -210,8 +214,6 @@ private:
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
 	// 金矿生产控制(如切换到其他场景，战争模式时暂停生产)
-	void pauseAllGoldMines();// 暂停所有金矿生产
-	void resumeAllGoldMines();// 恢复所有金矿生产
     // -------------------------- 兵种相关成员变量 --------------------------
     bool _isTroopBarShow = false;// 兵种栏是否显示
     Sprite* _troopPreview;               // 兵种放置预览图
@@ -219,9 +221,14 @@ private:
     std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期）
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
 
-    //金币，圣水数量
+    //资源相关
     int _gold ;
     int _elixir ;
+	int _maxPopulation=0; //人口总数(兵营）
+	int _population = 0; //当前人口数
+    std::unordered_map<TroopType, int> _troopStorage;// 兵营存储的兵种信息：兵种类型 -> 数量
+	std::unordered_map<TroopType, int> _troopLevel; // 兵种等级信息：兵种类型 -> 等级
+	int _builder;    //建造者数量
     cocos2d::Label* _goldLabel;      // 金币显示标签
     cocos2d::Label* _elixirLabel;    // 圣水显示标签
     cocos2d::Sprite* _goldIcon;      // 金币图标
@@ -275,6 +282,10 @@ private:
     void destroyBuilding(BaseBuilding* building);
     // 辅助：释放建筑占用的瓦片
     void releaseBuildingTiles(BaseBuilding* building);
+    // 暂停所有金矿生产
+    void pauseAllGoldMines();
+    // 恢复所有金矿生产
+    void resumeAllGoldMines();
     // -------------------------- 兵种相关方法声明 --------------------------
     // 初始化兵种放置预览
     void initTroopPreview();
