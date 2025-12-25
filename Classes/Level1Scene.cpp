@@ -1,6 +1,6 @@
 // Level1Scene.cpp
 #include "Level1Scene.h"
-#include "BaseTroop.h"
+
 
 USING_NS_CC;
 
