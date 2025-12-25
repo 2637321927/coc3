@@ -64,7 +64,7 @@ public:
     int getLevel() const { return _config.level; }
     const BuildingConfig& getConfig() const { return _config; }
     void syncScale(float mapScale);     // 同步地图缩放（通用）
-
+    void setLevel(int level) { _config.level = level; }
     // ========== 交互接口（通用） ==========
     void bindClickCallback(const std::function<void(BaseBuilding*)>& callback);
 

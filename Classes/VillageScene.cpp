@@ -1,6 +1,8 @@
 #include "VillageScene.h"
 #include "cocos2d.h"
 #include "Building.h"
+#include "BuildingPopup.h"
+#include "ui/CocosGUI.h" 
 
 bool VillageScene::init()
 {
@@ -1289,6 +1291,237 @@ void VillageScene::showResourceShortageTip(const std::string& message) {
     auto remove = RemoveSelf::create();
     tip->runAction(Sequence::create(blink, remove, nullptr));
 }
+//存档相关
+// 1. 打包当前场景数据为存档结构
+SaveData::Village VillageScene::packSaveData() {
+    SaveData::Village saveData;
+    // 填充地图尺寸
+    saveData.mapSize = _mapSize;
+    // 填充当前模式
+    saveData.currentMode = _Mode;
+    // 填充已占用格子
+    saveData.occupiedTiles = _occupiedTiles;
+	saveData.gold = _gold;
+	saveData.elixir = _elixir;
+    // 填充所有建筑数据
+    for (const auto& building : _buildings) {
+        SaveData::Building bData;
+        bData.type = building->getType();
+        bData.tilePos = building->getTilePos(); 
+        bData.state = building->getState();
+        bData.level = building->getLevel(); 
+            saveData.buildings.push_back(bData);
+    }
+    return saveData;
+}
+// 辅助：字符串分割函数
+std::vector<std::string> split(const std::string& s, const std::string& delim) {
+    std::vector<std::string> result;
+    if (delim.empty() || s.empty()) {
+        result.push_back(s); // 分隔符为空/原字符串为空，直接返回原字符串
+        return result;
+    }
+
+    std::string str = s; // 拷贝原字符串避免修改输入
+    size_t pos = 0;
+    std::string token;
+
+    // 循环查找分隔符并截取子串
+    while ((pos = str.find(delim)) != std::string::npos) {
+        token = str.substr(0, pos);
+        if (!token.empty()) { // 跳过空串（避免连续分隔符导致的空元素）
+            result.push_back(token);
+        }
+        str.erase(0, pos + delim.length()); // 移除已处理的部分
+    }
+
+    // 处理最后一段剩余的字符串
+    if (!str.empty()) {
+        result.push_back(str);
+    }
+
+    return result;
+}
+// 从存档结构恢复场景数据
+void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
+    // 清空当前场景的旧数据
+	for (auto building : _buildings) {
+		if (building) {
+			building->destroy();
+		}
+	}
+    _buildings.clear();
+    _goldMines.clear();
+    _townHalls.clear();
+    _occupiedTiles.clear();
+    // 恢复地图尺寸（可选，根据需求）
+    _mapSize = saveData.mapSize;
+    // 恢复当前模式
+    _Mode = saveData.currentMode;
+    // 恢复已占用格子
+    _occupiedTiles = saveData.occupiedTiles;
+	// 恢复资源数值
+	setGold(saveData.gold);
+	setElixir(saveData.elixir);
+    // 重新创建所有建筑
+    for (const auto& bData : saveData.buildings) {
+        // 调用placeBuilding逻辑创建建筑（复用现有代码）
+        auto building = BaseBuilding::create(bData.type, bData.tilePos, 1.0f);
+        if (building) {
+            // 恢复建筑状态/等级
+            building->setState(bData.state);    // 需给BaseBuilding添加setState方法
+            building->setLevel(bData.level);    // 需给BaseBuilding添加setLevel方法
+
+            // 复用placeBuilding中的坐标/锚点/ZOrder逻辑
+            auto config = building->getConfig();
+            float centerTileX = bData.tilePos.x + (config.tileWidth) / 2.0f;
+            float centerTileY = bData.tilePos.y + (config.tileHeight - 1) / 2.0f;
+            Vec2 centerTilePos(centerTileX, centerTileY);
+            Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
+            building->setAnchorPoint(Vec2(0.5f, 0.5f));
+            building->setPosition(containerLocalPos);
+            building->setLocalZOrder(1000 - (bData.tilePos.x + bData.tilePos.y));
+
+            // 重新绑定点击回调
+            building->bindClickCallback([this](BaseBuilding* building) {
+                if (_Mode != Mode::NONE) return;
+                auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
+                    handleBuildingBtnClick(building, type);
+                    });
+                this->addChild(popup, 100);
+                });
+
+            // 重新加入容器和分类列表
+            _mapContainer->addChild(building);
+            _buildings.push_back(building);
+            if (bData.type == BuildingType::GOLD_MINE) {
+                _goldMines.push_back(dynamic_cast<GoldMine*>(building));
+            }
+            else if (bData.type == BuildingType::TOWN_HALL) {
+                _townHalls.push_back(dynamic_cast<TownHall*>(building));
+            }
+        }
+    }
+}
+
+//存档到文件
+bool VillageScene::saveGame(const std::string& savePath) {
+    // 打包数据
+    SaveData::Village saveData = packSaveData();
+    std::string saveStr = saveData.toString();
+
+    // 获取Cocos2d-x可写路径（跨平台）
+    std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;
+    // 写入文件
+    return cocos2d::FileUtils::getInstance()->writeStringToFile(saveStr, fullPath);
+}
+
+// 从文件读档
+bool VillageScene::loadGame(const std::string& savePath) {
+    // 获取文件完整路径
+    std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;
+    // 检查文件是否存在
+    if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
+        CCLOG("存档文件不存在：%s", fullPath.c_str());
+        return false;
+    }
+    // 读取文件内容
+    std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
+    // 反序列化数据
+    SaveData::Village saveData = SaveData::Village::fromString(saveStr);
+    // 恢复场景数据
+    unpackSaveData(saveData);
+    CCLOG("读档成功：恢复了 %d 栋建筑", (int)saveData.buildings.size());
+    return true;
+}
+
+// 创建存档/读档按钮
+void VillageScene::initSaveLoadButtons() {
+    // 创建存档按钮
+    _saveBtn = ui::Button::create(
+        "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
+        "ui/btn_pressed.png",  // 按下状态图片
+        "ui/btn_disabled.png"  // 禁用状态图片（可选）
+    );
+    if (_saveBtn) {
+        // 设置按钮大小（根据UI资源调整）
+        _saveBtn->setContentSize(Size(120, 60));
+        // 设置按钮位置（屏幕右上角，留出边距）
+        Size winSize = Director::getInstance()->getWinSize();
+        _saveBtn->setPosition(Vec2(winSize.width - 140, winSize.height - 80));
+        // 设置按钮文字
+        auto saveText = ui::Text::create("存档", "fonts/Marker Felt.ttf", 24);
+        saveText->setColor(Color3B::WHITE);
+        _saveBtn->addChild(saveText);
+        // 绑定点击回调
+        _saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
+        // 添加到场景（层级高于地图，避免被遮挡）
+        this->addChild(_saveBtn, 200);
+    }
+
+    // ========== 2. 创建读档按钮 ==========
+    _loadBtn = ui::Button::create(
+        "ui/btn_normal.png",
+        "ui/btn_pressed.png",
+        "ui/btn_disabled.png"
+    );
+    if (_loadBtn) {
+        _loadBtn->setContentSize(Size(120, 60));
+        // 位置在存档按钮下方，间距20
+        _loadBtn->setPosition(Vec2(_saveBtn->getPositionX(), _saveBtn->getPositionY() - 80));
+        // 设置按钮文字
+        auto loadText = ui::Text::create("读档", "fonts/Marker Felt.ttf", 24);
+        loadText->setColor(Color3B::WHITE);
+        _loadBtn->addChild(loadText);
+        // 绑定点击回调
+        _loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
+        // 添加到场景
+        this->addChild(_loadBtn, 200);
+    }
+}
+
+//存档按钮点击回调
+void VillageScene::onSaveBtnClicked(Ref* sender) {
+    // 调用已实现的存档方法
+    bool success = saveGame();
+    // 提示玩家存档结果
+    std::string tip = success ? "save success" : "save failed";
+    CCLOG("%s", tip.c_str());
+
+    // 添加弹窗提示
+    auto tipLabel = Label::createWithSystemFont(tip, "Arial", 30);
+    tipLabel->setColor(success ? Color3B::GREEN : Color3B::RED);
+    tipLabel->setPosition(Director::getInstance()->getWinSize() / 2);
+    this->addChild(tipLabel, 300);
+    // 2秒后隐藏提示
+    tipLabel->runAction(Sequence::create(
+        DelayTime::create(2.0f),
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr
+    ));
+}
+
+//读档按钮点击回调
+void VillageScene::onLoadBtnClicked(Ref* sender) {
+    // 调用已实现的读档方法
+    bool success = loadGame();
+    std::string tip = success ? "load success" : "load failed";
+    CCLOG("%s", tip.c_str());
+
+    // 弹窗提示
+    auto tipLabel = Label::createWithSystemFont(tip, "Arial", 30);
+    tipLabel->setColor(success ? Color3B::GREEN : Color3B::RED);
+    tipLabel->setPosition(Director::getInstance()->getWinSize() / 2);
+    this->addChild(tipLabel, 300);
+    tipLabel->runAction(Sequence::create(
+        DelayTime::create(2.0f),
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr
+    ));
+}
+
 
 // 初始化关卡选择按钮
 void VillageScene::initLevelSelectBtn() {
