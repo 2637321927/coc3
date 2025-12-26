@@ -166,10 +166,8 @@ public:
     }
     // Cocos2d-x 标准创建方法（必须）
     static cocos2d::Scene* createScene(BaseMode baseMode=BaseMode::CREATING);
-
     // 初始化方法
     virtual bool init();
-
     // CREATE_FUNC 宏：自动生成 create() 方法
     CREATE_FUNC(VillageScene);
     // 存档（保存到本地文件）
@@ -278,6 +276,7 @@ private:
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
+
     void onMouseScroll(Event* event);
     void onMouseDown(Event* event);
     void onMouseMove(Event* event);
@@ -327,6 +326,8 @@ private:
     void pauseAllGoldMines();
     // 恢复所有金矿生产
     void resumeAllGoldMines();
+	//一键收集所有资源建筑的资源
+    void collectOneNote();
     //训练营相关
     
     // 弹窗UI初始化
@@ -379,6 +380,8 @@ private:
     bool addElixir(int amount);
     bool spendElixir(int amount);
     void showResourceShortageTip(const std::string& message);
+	void addGoldStorageCapacity(int bonus);
+	void addElixirStorageCapacity(int bonus);
     // 关卡选择相关
     cocos2d::Layer* _levelSelectLayer;
     bool _isLevelSelectShow;

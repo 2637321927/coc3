@@ -122,6 +122,7 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type,int level)
             { {"gold", 900}, {"elixir", 400} }, // cost
             15.0f                   // buildTime
         };
+        break;
     case(BuildingType::CANNON):
         Config = {
             6,                      // id

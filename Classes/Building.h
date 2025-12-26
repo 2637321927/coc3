@@ -196,9 +196,11 @@ public:
     // 实现基类虚函数
     void doSpecialAction() override; 
     std::string getSpecialDesc() override { return "用于储存金币的建筑"; }
-	int getStorageCapacity() const { return _storageCapacity; }
+    int getStorageCapacity() const { return _storageCapacity; }
+    int getStoragePulse() const { return _storagePulse; }
 private:
-	int _storageCapacity; // 储存容量
+    int _storageCapacity = 10000; // 储存容量
+    int _storagePulse; // 升级增加的容量
 };
 
 //================ 圣水瓶 =================
@@ -210,8 +212,11 @@ public:
 	void doSpecialAction() override;
 	std::string getSpecialDesc() override { return "用于储存圣水的建筑"; }
 	int getStorageCapacity() const { return _storageCapacity; }
+    int getStoragePulse() const { return _storagePulse; }
 private:
-	int _storageCapacity; // 储存容量
+    int _storageCapacity = 10000; // 储存容量
+    //每次升级同样增加储存容量，给village增加升级容量，摧毁时village调用储存容量减少
+	int _storagePulse; // 升级增加的容量
 };
 
 // ========== 攻击型建筑基类 ==========

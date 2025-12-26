@@ -75,6 +75,15 @@ void BuildingPopup::createButtons() {
 	else if (_targetBuilding->getType() == BuildingType::ARROW_TOWER) {
 		btnCount = 3; // 箭塔3个按钮
 	}
+	else if (_targetBuilding->getType() == BuildingType::VAULT) {
+		btnCount = 3; // 金库3个按钮
+	}
+	else if(_targetBuilding->getType() == BuildingType::ELIXIR_BOTTLE) {
+		btnCount = 3; // 圣水瓶3个按钮
+	}
+	else if (_targetBuilding->getType() == BuildingType::WALL) {
+		btnCount = 3; // 城墙3个按钮
+	}
     else {
         return; // 其他建筑类型暂不支持弹窗
     }
@@ -134,6 +143,12 @@ void BuildingPopup::createButtons() {
 	}
     else if (_targetBuilding->getType() == BuildingType::ARROW_TOWER) {
         //  箭塔按钮（3个，居中）
+        createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+        createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
+        createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
+    }
+    else  {
+        //  标准3按钮
         createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
         createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
         createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));

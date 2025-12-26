@@ -33,6 +33,15 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
 	case BuildingType::ARROW_TOWER:
 		building = ArrowTower::create(tilePos, mapScale);
 		break;
+	case BuildingType::VAULT:
+		building = Vault::create(tilePos, mapScale);
+		break;
+	case BuildingType::WALL:
+		building = Wall::create(tilePos, mapScale);
+		break;
+    case BuildingType::ELIXIR_BOTTLE:
+		building = ElixirBottle::create(tilePos, mapScale);
+		break;
     default:
         break;
     }
