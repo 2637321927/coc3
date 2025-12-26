@@ -6,6 +6,7 @@
 #include "Building.h"
 #include "cocos2d.h"
 #include "VillageScene.h"
+#include "PathFinder.h" 
 USING_NS_CC;
 
 // ========== 工厂方法：根据类型创建子类实例 ==========
@@ -233,5 +234,38 @@ void BaseTroop::update(float dt) {
     }
     default:
         break;
+    }
+}
+
+// ========== 寻路逻辑 ========== 
+// 获取当前瓦片坐标（使用公有接口）
+Vec2 BaseTroop::getCurrentTilePos() const {
+    if (!_villageScene) return Vec2::ZERO;
+    // 调用 VillageScene 提供的公有转换接口
+    return _villageScene->screenToIsoTilePublic(this->convertToWorldSpace(Vec2::ZERO));
+}
+
+// 设置目标并寻路（使用公有接口）
+void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
+    if (!_villageScene) return;  // 确保场景指针有效
+
+    // 1. 坐标转换（通过公有接口）
+    Vec2 startTile = getCurrentTilePos();
+    Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
+
+    // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
+    _pathPoints = PathFinder::findPath(
+        startTile,
+        targetTile,
+        _villageScene->getPathLayer(),        // 公有接口获取路径层
+        _villageScene->getMapSize(),          // 公有接口获取地图尺寸
+        _villageScene->getOccupiedTiles()     // 公有接口获取占用瓦片
+    );
+
+    // 3. 初始化路径索引
+    _currentPathIndex = 0;
+    _targetWorldPos = targetPos;
+    if (!_pathPoints.empty()) {
+        setState(TroopState::MOVING);
     }
 }

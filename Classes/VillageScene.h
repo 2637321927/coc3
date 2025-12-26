@@ -159,16 +159,49 @@ namespace SaveData {
 class VillageScene : public Scene
 {
 public:
+    // 新增：提供坐标转换接口
+    Vec2 screenToIsoTilePublic(const Vec2& screenPos){
+        return screenToIsoTile(screenPos);  // 调用原有私有方法
+    }
+    Vec2 isoTileToContainerPosPublic(const Vec2& tilePos){
+        return isoTileToContainerPos(tilePos);  // 调用原有私有方法
+    }
+
+    // 新增：提供地图数据接口
+    cocos2d::TMXLayer* getPathLayer() const { return _pathLayer; }  // 返回路径层
+    cocos2d::Size getMapSize() const { return _mapSize; }        // 返回地图尺寸
+    const std::vector<Vec2>& getOccupiedTiles() const {    // 返回占用瓦片
+        return _occupiedTiles;
+    }
     static VillageScene* getInstance() { // 提供外部访问接口
         auto currentScene = Director::getInstance()->getRunningScene();
         if (!currentScene) return nullptr;
         // 找到场景中 Tag=100 的子节点（就是你的 VillageScene 实例）
         return dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
     }
+
+    // 新增：查找最近的敌方建筑
+    BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos) {
+        BaseBuilding* nearestBuilding = nullptr;
+        float minDistance = FLT_MAX;
+
+        // 遍历所有建筑（假设场景中有存储建筑的容器 _buildings）
+        for (auto& building : _buildings) {
+            float distance = troopPos.distance(building->getPosition());
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestBuilding = building;
+            }
+        }
+        return nearestBuilding;
+    }
+
     // Cocos2d-x 标准创建方法（必须）
     static cocos2d::Scene* createScene(BaseMode baseMode=BaseMode::CREATING);
+
     // 初始化方法
     virtual bool init();
+
     // CREATE_FUNC 宏：自动生成 create() 方法
     CREATE_FUNC(VillageScene);
     // 存档（保存到本地文件）
@@ -278,7 +311,6 @@ private:
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
-
     void onMouseScroll(Event* event);
     void onMouseDown(Event* event);
     void onMouseMove(Event* event);
@@ -328,8 +360,6 @@ private:
     void pauseAllGoldMines();
     // 恢复所有金矿生产
     void resumeAllGoldMines();
-	//一键收集所有资源建筑的资源
-    void collectOneNote();
     //训练营相关
     
     // 弹窗UI初始化
@@ -382,8 +412,6 @@ private:
     bool addElixir(int amount);
     bool spendElixir(int amount);
     void showResourceShortageTip(const std::string& message);
-	void addGoldStorageCapacity(int bonus);
-	void addElixirStorageCapacity(int bonus);
     // 关卡选择相关
     cocos2d::Layer* _levelSelectLayer;
     bool _isLevelSelectShow;

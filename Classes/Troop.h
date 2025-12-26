@@ -13,6 +13,35 @@ class BaseBuilding;
 
 // 抽象基类（不可实例化，只能继承）
 class BaseTroop : public cocos2d::Sprite {
+protected:
+    BaseTroop() = default;
+    ~BaseTroop() override = default;
+
+    // 通用辅助方法（子类可调用）
+    void initCommonUI();                // 初始化通用UI（血条、等级标签）
+    void updateAttackCD();              // 更新攻击冷却
+    void updateMovement(float dt);      // 更新移动逻辑
+
+    // 通用成员（子类可访问）
+    TroopConfig _config;                // 通用配置
+    TroopState _state = TroopState::UNKNOWN;
+    cocos2d::Vec2 _spawnPos;            // 出生坐标
+    cocos2d::Vec2 _targetPos;           // 目标坐标
+    BaseBuilding* _attackTarget = nullptr; // 攻击目标
+    float _mapScale = 1.0f;             // 地图缩放比例
+    float _trainingTimer = 0.0f;        // 训练计时器
+    float _attackCDTimer = 0.0f;        // 攻击冷却计时器
+    int _currentHp;                     // 当前生命值
+    cocos2d::ProgressTimer* _hpBar = nullptr; // 通用血条
+
+    // 寻路相关成员
+    std::vector<Vec2> _pathPoints;      // 路径点列表（瓦片坐标）
+    int _currentPathIndex;              // 当前路径点索引
+    cocos2d::Vec2 _targetWorldPos;      // 目标坐标
+    VillageScene* _villageScene;        // 场景指针
+
+    // 交互回调
+    std::function<void(BaseTroop*, BaseBuilding*)> _attackCallback;
 public:
     // 工厂方法（创建子类实例，基类指针接收）
     static BaseTroop* create(TroopType type, const cocos2d::Vec2& spawnPos, float mapScale);
@@ -50,29 +79,16 @@ public:
     // ========== 生命周期（通用） ==========
     virtual void update(float dt) override; // 帧更新（处理移动、攻击冷却）
 
-protected:
-    BaseTroop() = default;
-    ~BaseTroop() override = default;
+    // ========== 设置目标点并触发寻路 ==========
+    void setTargetWorldPosition(const cocos2d::Vec2& targetPos);
 
-    // 通用辅助方法（子类可调用）
-    void initCommonUI();                // 初始化通用UI（血条、等级标签）
-    void updateAttackCD();              // 更新攻击冷却
-    void updateMovement(float dt);      // 更新移动逻辑
+    // ========== 获取当前所在瓦片坐标 ==========
+    cocos2d::Vec2 getCurrentTilePos() const;
 
-    // 通用成员（子类可访问）
-    TroopConfig _config;                // 通用配置
-    TroopState _state = TroopState::UNKNOWN;
-    cocos2d::Vec2 _spawnPos;            // 出生坐标
-    cocos2d::Vec2 _targetPos;           // 目标坐标
-    BaseBuilding* _attackTarget = nullptr; // 攻击目标
-    float _mapScale = 1.0f;             // 地图缩放比例
-    float _trainingTimer = 0.0f;        // 训练计时器
-    float _attackCDTimer = 0.0f;        // 攻击冷却计时器
-    int _currentHp;                     // 当前生命值
-    cocos2d::ProgressTimer* _hpBar = nullptr; // 通用血条
-
-    // 交互回调
-    std::function<void(BaseTroop*, BaseBuilding*)> _attackCallback;
+    // ============ 初始化场景指针 ==============
+    void setVillageScene(VillageScene* scene) {
+        _villageScene = scene;
+    }
 };
 
 #endif // __TROOP_H__#pragma once
