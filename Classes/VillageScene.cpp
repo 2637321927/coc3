@@ -1439,14 +1439,14 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
 
     // 调试日志
-    CCLOG("兵种生成：屏幕坐标(%.1f,%.1f) → 瓦片坐标(%.1f,%.1f)",
+    CCLOG("adasdasdasvs生成：屏幕坐标(%.1f,%.1f) → 瓦片坐标(%.1f,%.1f)",
         screenPos.x, screenPos.y, tilePos.x, tilePos.y);
 
     // ===== 第二步：可放置检测 =====
     // 注意：兵种检测应该使用checkCanSpawnTroop而不是checkCanPlace
     if (!checkCanSpawnTroop(tilePos)) {
         showCannotPlaceTip(screenPos);
-        CCLOG("failure：该瓦片不可放置兵种");
+        CCLOG("failure：1111111");
         return;
     }
 
@@ -1460,14 +1460,14 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
 
     // 调试坐标转换
-    CCLOG("troop种坐标转换：瓦片(%.1f,%.1f) → 容器(%.1f,%.1f)",
-        centerTilePos.x, centerTilePos.y, containerLocalPos.x, containerLocalPos.y);
+   // CCLOG("troop种坐标转换：瓦片(%.1f,%.1f) → 容器(%.1f,%.1f)",
+       // centerTilePos.x, centerTilePos.y, containerLocalPos.x, containerLocalPos.y);
 
     // ===== 第四步：创建兵种并设置位置 =====
     BaseTroop* troop = BaseTroop::create(type, tilePos, 1.0f);
     if (!troop) {
         // 兜底创建纯色占位
-        CCLOG("BaseTroop创建失败，创建纯色占位");
+       // CCLOG("BaseTroop创建失败，创建纯色占位");
         auto troopSprite = LayerColor::create(Color4B(255, 150, 0, 200), 40, 60);
         if (!troopSprite) {
             CCLOG("占位都创建失败！");
@@ -1479,7 +1479,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
         troopSprite->setLocalZOrder(2000 - (tilePos.x + tilePos.y)); // 层级比建筑高
         _mapContainer->addChild(troopSprite);
         _spawnedTroops.push_back(nullptr);
-        CCLOG("成功：纯色占位已生成");
+        //CCLOG("成功：纯色占位已生成");
         return;
     }
 
@@ -1493,10 +1493,27 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第六步：记录兵种 =====
     _spawnedTroops.push_back(troop);
-    CCLOG("success：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
-        containerLocalPos.x, containerLocalPos.y, _spawnedTroops.size());
+   // CCLOG("success：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
+        //containerLocalPos.x, containerLocalPos.y, _spawnedTroops.size());
     if (_Mode == Mode::FIGHT) {
         _enemyTroops.push_back(troop);
+    }    // 新增的寻路部分
+    addEnemyTroop(troop);
+    // 1. 绑定场景指针（让兵种能访问寻路相关接口）
+    troop->setVillageScene(this);  // 需要在 BaseTroop 中声明该方法
+
+    // 2. 查找最近的敌方建筑作为目标
+    BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
+    if (targetBuilding) {
+        // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
+        CCLOG("troop is %s", troop ? "valid" : "null");
+        troop->setTargetWorldPosition(targetBuilding->getPosition());
+        CCLOG("YEoS!!!!!!!");
+        CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
+            targetBuilding->getPosition().x, targetBuilding->getPosition().y);
+    }
+    else {
+        CCLOG("未找到敌方建筑，兵种进入lazy状态");
     }
 }
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {

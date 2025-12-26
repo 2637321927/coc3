@@ -51,6 +51,7 @@ bool BaseTroop::init(const TroopConfig& config, const Vec2& spawnPos, float mapS
 
     // 默认状态
     setState(TroopState::IDLE);
+    this->scheduleUpdate();
     return true;
 }
 
@@ -175,12 +176,19 @@ void BaseTroop::updateAttackCD() {
 
 // ========== 通用：更新移动逻辑 ==========
 void BaseTroop::updateMovement(float dt) {
-    if (_state != TroopState::MOVING || _targetPos.isZero()) return;
-
+    if (_state != TroopState::MOVING ) {
+		CCLOG("NOMOVE1");
+        return;
+    }
+    if (_targetPos.isZero()) {
+        CCLOG("NOMOVE2");
+        return;
+    }
+    //CCLOG("MOVE");
     // 计算移动方向
     Vec2 direction = _targetPos - this->getPosition();
     float distance = direction.length();
-
+    CCLOG("MOVEsdas2");
     // 到达目标则停止移动
     if (distance < _config.attackRange) {
         setState(TroopState::IDLE);
@@ -196,7 +204,6 @@ void BaseTroop::updateMovement(float dt) {
 // ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);
-
     // 根据不同状态处理逻辑
     switch (_state) {
     case TroopState::TRAINING: {
@@ -247,25 +254,32 @@ Vec2 BaseTroop::getCurrentTilePos() const {
 
 // 设置目标并寻路（使用公有接口）
 void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
-    if (!_villageScene) return;  // 确保场景指针有效
-
-    // 1. 坐标转换（通过公有接口）
-    Vec2 startTile = getCurrentTilePos();
-    Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
-
-    // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
-    _pathPoints = PathFinder::findPath(
-        startTile,
-        targetTile,
-        _villageScene->getPathLayer(),        // 公有接口获取路径层
-        _villageScene->getMapSize(),          // 公有接口获取地图尺寸
-        _villageScene->getOccupiedTiles()     // 公有接口获取占用瓦片
-    );
-
-    // 3. 初始化路径索引
-    _currentPathIndex = 0;
-    _targetWorldPos = targetPos;
-    if (!_pathPoints.empty()) {
-        setState(TroopState::MOVING);
+    CCLOG("setTargetWorldPosition entered"); // 入口日志
+    if (!_villageScene) {
+        CCLOG("NO!!!!!!!");
+        return;  // 确保场景指针有效 
     }
-}
+        CCLOG("YES!!!!!!!");
+        // 1. 坐标转换（通过公有接口）
+        Vec2 startTile = getCurrentTilePos();
+        Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
+        CCLOG("YES!!!!!!!");
+        // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
+        _pathPoints = PathFinder::findPath(
+            startTile,
+            targetTile,
+            _villageScene->getPathLayer(),        // 公有接口获取路径层
+            _villageScene->getMapSize(),          // 公有接口获取地图尺寸
+            _villageScene->getOccupiedTiles()     // 公有接口获取占用瓦片
+        );
+
+        // 3. 初始化路径索引
+        _currentPathIndex = 0;
+        _targetPos = targetPos;
+        CCLOG("Troop：(%.1f,%.1f)(%.1f,%.1f),%z",
+            startTile.x, startTile.y, targetTile.x, targetTile.y, _pathPoints.size());
+        if (!_pathPoints.empty()) {
+            setState(TroopState::MOVING);
+        }
+    }
+

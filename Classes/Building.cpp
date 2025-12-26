@@ -240,7 +240,6 @@ void BaseBuilding::bindClickCallback(const std::function<void(BaseBuilding*)>& c
 // 通用：帧更新（进度处理,主建造和升级）子类如果有额外的帧更新逻辑（如加农炮的攻击逻辑），只需重写 update，并在开头调用 BaseBuilding::update(dt) 即可复用父类进度逻辑，本身重写自父类Node
 void BaseBuilding::update(float dt) {
     if (_state != BuildingState::BUILDING && _state != BuildingState::UPGRADING) return;
-    CCLOG("2123132116565465123");
     _progressTimer += dt;
     float progress = _progressTimer / _config.buildTime;
     progress = clampf(progress, 0.0f, 1.0f);
@@ -413,7 +412,6 @@ bool TownHall::init(const Vec2& tilePos, float mapScale) {
 }
 
 void TownHall::doSpecialAction() {
-    CCLOG("大本营管理中心已就绪");
 }
 //TrainingCamp 子类实现
 TrainingCamp* TrainingCamp::create(const Vec2& tilePos, float mapScale) {
@@ -666,7 +664,6 @@ void BaseAttackBuilding::update(float dt) {
 BaseTroop* BaseAttackBuilding::findTargetInRange() {
     std::vector<BaseTroop*> allEnemies = VillageScene::getInstance()->getAllEnemyTroops();
     if (allEnemies.empty()) {
-        CCLOG("NO！！！！！");
         return nullptr;
     }
 
@@ -681,9 +678,7 @@ BaseTroop* BaseAttackBuilding::findTargetInRange() {
         if (distance <= _attackRange && distance < minDistance) {
             minDistance = distance;
             closestTroop = troop;
-            CCLOG("attack yes");
         }
-        CCLOG("attack yes——f");
     }
     return closestTroop;
 }
