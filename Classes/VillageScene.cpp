@@ -23,7 +23,7 @@ bool VillageScene::init()
     initLevelSelectBtn();
     //initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
- 
+
     //initTouchEvent();
     //  监听鼠标滚轮事件
     auto  mouseListener = EventListenerMouse::create();
@@ -82,7 +82,6 @@ void VillageScene::restoreLastTileColor() {
     _hasLastTile = false; // 重置标记
 }
 // 鼠标按下：开始拖拽/记录位置
-//TODO : 划分不可拖拽区域（放置建筑和一些按钮的位置）和拖拽区域
 void VillageScene::onMouseDown(Event* event)
 {
     //TODO: 划分不可拖拽区域（放置建筑和一些按钮的位置）和拖拽区域;
@@ -136,6 +135,15 @@ void VillageScene::onMouseDown(Event* event)
         }
 
     }
+    else if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_RIGHT) {
+        if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING) {
+            // 右键取消建造模式
+            if (_buildPreview) {
+                _buildPreview->setVisible(false);
+            }
+            _Mode = Mode::NONE;
+        }
+    }
 }
 // 鼠标移动：处理拖拽偏移/建筑预览跟随
 void VillageScene::onMouseMove(Event* event)
@@ -183,6 +191,7 @@ void VillageScene::onMouseMove(Event* event)
     }
 
 }
+
 // 显示无法放置提示
 void VillageScene::showCannotPlaceTip(Vec2 pos) {
     auto tip = Label::createWithTTF("无法放置在这里!", "fonts/Marker Felt.ttf", 20);
@@ -442,7 +451,7 @@ Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
 
     // 2. 计算中心点偏移：向上移动半个瓦片高度
     // Cocos2d-x 坐标系 Y 轴向上，所以是 + height/2
-    Vec2 localCenter = basePos + Vec2(_tileSize.height, _tileSize.width/2.0f);
+    Vec2 localCenter = basePos + Vec2(_tileSize.height, _tileSize.width / 2.0f);
 
     // 3. 将 Layer 内部坐标转换为容器 (_mapContainer) 的坐标
     // 考虑到你可能有多个 Layer 或者 Layer 做了偏移，用转换函数最安全
@@ -525,59 +534,89 @@ void VillageScene::createBuildBar() {
             _buildPreview->setTexture("building/gold_mine_preview.png");
         }
     );
-	// 建筑按钮 - 圣水收集器
-	auto elixirCollectorBtn = MenuItemImage::create(
-		"building/elixir_collector_icon.png",
-		"building/elixir_collector_icon_selected.png",
-		[this](Ref* sender) {
-			_Mode = Mode::PLACE_BUILDING;
-			_selectedBuildingType = BuildingType::ELIXIR_COLLECTOR;
-			_buildPreview->setVisible(true);
-			_buildPreview->setTexture("building/elixir_collector_preview.png");
-		}
-	);
-	// 建筑按钮 - 军营
-	auto barracksBtn = MenuItemImage::create(
-		"building/barracks_icon.png",
-		"building/barracks_icon_selected.png",
-		[this](Ref* sender) {
-			_Mode = Mode::PLACE_BUILDING;
-			_selectedBuildingType = BuildingType::BARRACKS;
-			_buildPreview->setVisible(true);
-			_buildPreview->setTexture("building/barracks_preview.png");
-		}
-	);
-	// 建筑按钮 - 训练营
-	auto trainingCampBtn = MenuItemImage::create(
-		"building/training_camp_icon.png",
-		"building/training_camp_icon_selected.png",
-		[this](Ref* sender) {
-			_Mode = Mode::PLACE_BUILDING;
-			_selectedBuildingType = BuildingType::TRAINING_CAMP;
-			_buildPreview->setVisible(true);
-			_buildPreview->setTexture("building/training_camp_preview.png");
-		}
-	);
+    // 建筑按钮 - 圣水收集器
+    auto elixirCollectorBtn = MenuItemImage::create(
+        "building/elixir_collector_icon.png",
+        "building/elixir_collector_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::ELIXIR_COLLECTOR;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/elixir_collector_preview.png");
+        }
+    );
+    // 建筑按钮 - 军营
+    auto barracksBtn = MenuItemImage::create(
+        "building/barracks_icon.png",
+        "building/barracks_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::BARRACKS;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/barracks_preview.png");
+        }
+    );
+    // 建筑按钮 - 训练营
+    auto trainingCampBtn = MenuItemImage::create(
+        "building/training_camp_icon.png",
+        "building/training_camp_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::TRAINING_CAMP;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/training_camp_preview.png");
+        }
+    );
     auto cannonBtn = MenuItemImage::create(
-		"building/cannon_icon.png",
-		"building/cannon_icon_selected.png",
-		[this](Ref* sender) {
-			_Mode = Mode::PLACE_BUILDING;
-			_selectedBuildingType = BuildingType::CANNON;
-			_buildPreview->setVisible(true);
-			_buildPreview->setTexture("building/cannon_preview.png");
-		}
-	);
-	auto arrowTowerBtn = MenuItemImage::create(
-		"building/arrow_tower_icon.png",
-		"building/arrow_tower_icon_selected.png",
-		[this](Ref* sender) {
-			_Mode = Mode::PLACE_BUILDING;
-			_selectedBuildingType = BuildingType::ARROW_TOWER;
-			_buildPreview->setVisible(true);
-			_buildPreview->setTexture("building/arrow_tower_preview.png");
-		}
-	);
+        "building/cannon_icon.png",
+        "building/cannon_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::CANNON;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/cannon_preview.png");
+        }
+    );
+    auto arrowTowerBtn = MenuItemImage::create(
+        "building/arrow_tower_icon.png",
+        "building/arrow_tower_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::ARROW_TOWER;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/arrow_tower_preview.png");
+        }
+    );
+    auto wallBtn = MenuItemImage::create(
+        "building/wall_icon.png",
+        "building/wall_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::WALL;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/wall_preview.png");
+        }
+    );
+    auto elixirBottleBtn = MenuItemImage::create(
+        "building/elixir_bottle_icon.png",
+        "building/elixir_bottle_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::ELIXIR_BOTTLE;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/elixir_bottle_preview.png");
+        }
+    );
+    auto vaultBtn = MenuItemImage::create(
+        "building/vault_icon.png",
+        "building/vault_icon_selected.png",
+        [this](Ref* sender) {
+            _Mode = Mode::PLACE_BUILDING;
+            _selectedBuildingType = BuildingType::VAULT;
+            _buildPreview->setVisible(true);
+            _buildPreview->setTexture("building/vault_preview.png");
+        }
+    );
     // 取消放置按钮（仅退出当前建造模式，不隐藏建筑栏）
     auto cancelPlaceBtn = MenuItemImage::create(
         "ui/cancel_place_btn.png",
@@ -588,7 +627,7 @@ void VillageScene::createBuildBar() {
         }
     );
     // 排列按钮
-    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,barracksBtn,trainingCampBtn,cannonBtn,arrowTowerBtn,cancelPlaceBtn, nullptr);
+    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn, barracksBtn, trainingCampBtn, cannonBtn, arrowTowerBtn, wallBtn, elixirBottleBtn, vaultBtn, cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     _buildBarLayer->addChild(menu);
@@ -616,10 +655,10 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
         // 建筑升级逻辑（调用BaseBuilding的升级方法）
         if (building->getState() == BuildingState::IDLE) { // 仅闲置状态可升级
             building->startUpgrade();
-            log("建筑开始升级！");
+            CCLOG("建筑开始升级！");
         }
         else {
-            log("建筑非闲置状态，无法升级！");
+            CCLOG("建筑非闲置状态，无法升级！");
         }
         break;
 
@@ -632,13 +671,13 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
                 addGold(goldMine->collectGold());
             }
         }
-		else if(building->getType() == BuildingType::ELIXIR_COLLECTOR){
-			auto elixirCollector = dynamic_cast<ElixirCollector*>(building);
-			if (elixirCollector) {
-				// 调用收集资源的方法
-				addElixir(elixirCollector->collectElixir());
-			}
-		}
+        else if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
+            auto elixirCollector = dynamic_cast<ElixirCollector*>(building);
+            if (elixirCollector) {
+                // 调用收集资源的方法
+                addElixir(elixirCollector->collectElixir());
+            }
+        }
         else {
         }
         break;
@@ -652,11 +691,11 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
             auto trainingCamp = dynamic_cast<TrainingCamp*>(building);
             if (trainingCamp) {
                 // 弹出训练窗口
-                 showTrainingCampPopup(trainingCamp);
+                showTrainingCampPopup(trainingCamp);
             }
-            
+
         }
-        else{}
+        else {}
     default:
         break;
     }
@@ -669,7 +708,7 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         // 加入建筑总列表（核心：保存实例引用，避免内存泄漏/无法管理）
         _buildings.push_back(building);
         // 按类型加入细分列表
-		//TODO: 哥布林攻击金矿，炸弹人攻击城墙等逻辑需要用到这些列表
+        //TODO: 哥布林攻击金矿，炸弹人攻击城墙等逻辑需要用到这些列表
         if (type == BuildingType::GOLD_MINE) {
             _goldMines.push_back(dynamic_cast<GoldMine*>(building));
         }
@@ -692,63 +731,95 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                     });
             }
         }
-            auto config = building->getConfig();
-
-            // 记录该建筑占用的所有瓦片
-            for (int x = 0; x < config.tileWidth; ++x) {
-                for (int y = 0; y < config.tileHeight; ++y) {
-                    _occupiedTiles.push_back(Vec2(tilePos.x + x, tilePos.y + y));
-                }
-            }
-            // 计算建筑占用瓦片范围的中心点（瓦片坐标）
-            // 对于2x2建筑：中心在 (tilePos.x + (2-1)/2, tilePos.y + (2-1)/2) = (x+0.5, y+0.5)
-            int n = config.tileWidth;
-            Vec2 topLeftTile = tilePos; // 左上角瓦片（基准瓦片）
-            Vec2 bottomRightTile = Vec2(
-                tilePos.x + n - 1,
-                tilePos.y + n - 1
-            ); // 右下角瓦片
-
-            // 2. 计算两个瓦片的中心点容器坐标
-            Vec2 posTopLeft = isoTileToContainerPos(topLeftTile);
-            Vec2 posBottomRight = isoTileToContainerPos(bottomRightTile);
-
-            // 3. 求中点（区域中心点）
-            Vec2 containerLocalPos = Vec2(
-                (posTopLeft.x + posBottomRight.x) / 2.0f,
-                (posTopLeft.y + posBottomRight.y) / 2.0f
-            );
-
-            // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
-            building->setAnchorPoint(Vec2(0.5f, 0.5f));
-            building->setPosition(containerLocalPos);
-            _mapContainer->addChild(building);
-
-            // Z-Order 排序建议：使用底部中心点的 Y 坐标
-            building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
-            // 通用逻辑：添加到场景 + 绑定点击回调
-            if (building) {
-
-                // 统一绑定点击回调（弹窗逻辑）
-                building->bindClickCallback([this](BaseBuilding* building) {
-                    if (_Mode != Mode::NONE) {
-                        // 非 NONE 模式，直接返回（不触发任何交互）
-                        return;
+        else if (type == BuildingType::VAULT) {
+            auto vault = dynamic_cast<Vault*>(building);
+            if (vault) {
+                // 绑定建造/升级完成回调
+                vault->bindBuildFinishCallback([this, vault](BaseBuilding* b) {
+                    // 升级时增加容量
+                    if (vault->getLevel() > 1) {
+                        this->addGoldStorageCapacity(vault->getStoragePulse());
                     }
-                    // 弹出功能窗口
-                    auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
-                        handleBuildingBtnClick(building, type);
-                        });
-                    this->addChild(popup, 100); // 高层级显示弹窗
+                    // 增加新的容量加成
+                    else {
+                        this->addGoldStorageCapacity(vault->getStorageCapacity());
+                    }
                     });
             }
-            // 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
-            this->scheduleOnce([this](float delay) {
-                _Mode = Mode::NONE;
-                }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
-
         }
-    
+        else if (type == BuildingType::ELIXIR_BOTTLE) {
+            auto elixirBottle = dynamic_cast<ElixirBottle*>(building);
+            if (elixirBottle) {
+                // 绑定建造/升级完成回调
+                elixirBottle->bindBuildFinishCallback([this, elixirBottle](BaseBuilding* b) {
+                    // 升级时增加容量
+                    if (elixirBottle->getLevel() > 1) {
+                        this->addGoldStorageCapacity(elixirBottle->getStoragePulse());
+                    }
+                    // 增加新的容量加成
+                    else {
+                        this->addGoldStorageCapacity(elixirBottle->getStorageCapacity());
+                    }
+                    });
+            }
+        }
+        auto config = building->getConfig();
+
+        // 记录该建筑占用的所有瓦片
+        for (int x = 0; x < config.tileWidth; ++x) {
+            for (int y = 0; y < config.tileHeight; ++y) {
+                _occupiedTiles.push_back(Vec2(tilePos.x + x, tilePos.y + y));
+            }
+        }
+        // 计算建筑占用瓦片范围的中心点（瓦片坐标）
+        // 对于2x2建筑：中心在 (tilePos.x + (2-1)/2, tilePos.y + (2-1)/2) = (x+0.5, y+0.5)
+        int n = config.tileWidth;
+        Vec2 topLeftTile = tilePos; // 左上角瓦片（基准瓦片）
+        Vec2 bottomRightTile = Vec2(
+            tilePos.x + n - 1,
+            tilePos.y + n - 1
+        ); // 右下角瓦片
+
+        // 2. 计算两个瓦片的中心点容器坐标
+        Vec2 posTopLeft = isoTileToContainerPos(topLeftTile);
+        Vec2 posBottomRight = isoTileToContainerPos(bottomRightTile);
+
+        // 3. 求中点（区域中心点）
+        Vec2 containerLocalPos = Vec2(
+            (posTopLeft.x + posBottomRight.x) / 2.0f,
+            (posTopLeft.y + posBottomRight.y) / 2.0f
+        );
+
+        // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
+        building->setAnchorPoint(Vec2(0.5f, 0.5f));
+        building->setPosition(containerLocalPos);
+        _mapContainer->addChild(building);
+
+        // Z-Order 排序建议：使用底部中心点的 Y 坐标
+        building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
+        // 通用逻辑：添加到场景 + 绑定点击回调
+        if (building) {
+
+            // 统一绑定点击回调（弹窗逻辑）
+            building->bindClickCallback([this](BaseBuilding* building) {
+                if (_Mode != Mode::NONE) {
+                    // 非 NONE 模式，直接返回（不触发任何交互）
+                    return;
+                }
+                // 弹出功能窗口
+                auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
+                    handleBuildingBtnClick(building, type);
+                    });
+                this->addChild(popup, 100); // 高层级显示弹窗
+                });
+        }
+        // 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
+        this->scheduleOnce([this](float delay) {
+            _Mode = Mode::NONE;
+            }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
+
+    }
+
 }
 // 摧毁建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::destroyBuilding(BaseBuilding* building) {
@@ -765,14 +836,14 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
             else if (resType == "elixir") {
                 _playerElixir += returnValue;
             }
-        
+
         // 刷新资源UI（需自行实现，如更新金币标签）
         // updateResourceUI();
     }
     */
     // 释放建筑占用的瓦片（地图位置）
     releaseBuildingTiles(building);
-	// 从渲染层移除建筑节点(basebuilding中已经调用过一次了，可以不调用)
+    // 从渲染层移除建筑节点(basebuilding中已经调用过一次了，可以不调用)
     //building->removeFromParentAndCleanup(true);
     // removeFromParentAndCleanup(true)：
     // 从_mapContainer的节点树中移除建筑
@@ -785,25 +856,33 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
     if (it != _buildings.end()) {
         _buildings.erase(it);
     }
-	// 酚类型列表移除
-	if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
-		auto it1= std::find(_elixirCollectors.begin(), _elixirCollectors.end(), dynamic_cast<ElixirCollector*>(building));
-		if (it1 != _elixirCollectors.end()) {
-			_elixirCollectors.erase(it1);
-		}
-	}
+    // 酚类型列表移除
+    if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
+        auto it1 = std::find(_elixirCollectors.begin(), _elixirCollectors.end(), dynamic_cast<ElixirCollector*>(building));
+        if (it1 != _elixirCollectors.end()) {
+            _elixirCollectors.erase(it1);
+        }
+    }
     else if (building->getType() == BuildingType::GOLD_MINE) {
         auto it1 = std::find(_goldMines.begin(), _goldMines.end(), dynamic_cast<GoldMine*>(building));
         if (it1 != _goldMines.end()) {
             _goldMines.erase(it1);
         }
     }
-	else if (building->getType() == BuildingType::BARRACKS) {
+    else if (building->getType() == BuildingType::BARRACKS) {
         auto barrack = dynamic_cast<Barracks*>(building);
-		this->removeTroopCapacity(barrack->getTroopSpace());
-	}   
-	else if (building->getType() == BuildingType::TRAINING_CAMP) {
-	}
+        this->removeTroopCapacity(barrack->getTroopSpace());
+    }
+    else if (building->getType() == BuildingType::TRAINING_CAMP) {
+    }
+    else if (building->getType() == BuildingType::VAULT) {
+        auto vault = dynamic_cast<Vault*>(building);
+        this->addGoldStorageCapacity(-(vault->getStorageCapacity()));
+    }
+    else if (building->getType() == BuildingType::ELIXIR_BOTTLE) {
+        auto elixirBottle = dynamic_cast<ElixirBottle*>(building);
+        this->addElixirStorageCapacity(-(elixirBottle->getStorageCapacity()));
+    }
     building->destroy();
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
@@ -840,6 +919,15 @@ void VillageScene::resumeAllGoldMines() {
         if (goldMine && goldMine->getState() == BuildingState::IDLE) {
             goldMine->doSpecialAction();
         }
+    }
+}
+// 一键收集资源
+void VillageScene::collectOneNote() {
+    for (auto goldMine : _goldMines) {
+        addGold(goldMine->collectGold());
+    }
+    for (auto elixirCollector : _elixirCollectors) {
+        addElixir(elixirCollector->collectElixir());
     }
 }
 // 显示训练营弹窗
@@ -896,7 +984,7 @@ void VillageScene::initTrainingPopupUI() {
         "fonts/arial.ttf", 30);
     title->setPosition(Vec2(_trainingPopup->getContentSize().width / 2, _trainingPopup->getContentSize().height - 30));
     title->setColor(Color3B::BLACK);
-    _trainingPopup->addChild(title,10000);
+    _trainingPopup->addChild(title, 10000);
 
     // 关闭按钮
     auto closeBtn = ui::Button::create("ui/btn_close.png");
@@ -905,7 +993,7 @@ void VillageScene::initTrainingPopupUI() {
     closeBtn->addClickEventListener([this](Ref*) {
         this->hideTrainingCampPopup();
         });
-    _trainingPopup->addChild(closeBtn,10000);
+    _trainingPopup->addChild(closeBtn, 10000);
     // 初始化兵种按钮和队列面板
     initTroopButtonsInPopup();
     initTrainQueuePanelInPopup();
@@ -1122,7 +1210,7 @@ void VillageScene::initBuildModeBtn() {
 
     auto menu = Menu::create(buildModeBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
-    this->addChild(menu, 100); 
+    this->addChild(menu, 100);
 }
 // 切换建筑栏显示/隐藏
 void VillageScene::toggleBuildBar() {
@@ -1410,24 +1498,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     if (_Mode == Mode::FIGHT) {
         _enemyTroops.push_back(troop);
     }
-    // 新增的寻路部分
-    addEnemyTroop(troop);
-    // 1. 绑定场景指针（让兵种能访问寻路相关接口）
-    troop->setVillageScene(this);  // 需要在 BaseTroop 中声明该方法
-
-    // 2. 查找最近的敌方建筑作为目标
-    BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
-    if (targetBuilding) {
-        // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
-        troop->setTargetWorldPosition(targetBuilding->getPosition());
-        CCLOG("为兵种设置寻路目标，目标建筑位置(%.1f,%.1f)",
-            targetBuilding->getPosition().x, targetBuilding->getPosition().y);
-    }
-    else {
-        CCLOG("未找到敌方建筑，兵种进入闲置状态");
-    }
 }
-
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {
     auto it = std::find(_enemyTroops.begin(), _enemyTroops.end(), troop);
     if (it != _enemyTroops.end()) {
@@ -1449,6 +1520,7 @@ void VillageScene::onTroopAttack(BaseTroop* troop, BaseBuilding* target) {
         target->getConfig().name.c_str(),
         troop->getConfig().attackPower);
 }
+
 //金币/圣水条
 // 初始化资源显示条
 void VillageScene::initResourceBar() {
@@ -1612,6 +1684,13 @@ bool VillageScene::spendElixir(int amount) {
     setElixir(_elixir - amount);
     return true;
 }
+// 仓库容量
+void VillageScene::addGoldStorageCapacity(int bonus) {
+    _maxGold += bonus;
+}
+void VillageScene::addElixirStorageCapacity(int bonus) {
+    _maxElixir += bonus;
+}
 // 部队容量相关方法
 void VillageScene::addTroopCapacity(int bonus) {
     _maxPopulation += bonus;
@@ -1646,16 +1725,16 @@ SaveData::Village VillageScene::packSaveData() {
     saveData.currentMode = _Mode;
     // 填充已占用格子
     saveData.occupiedTiles = _occupiedTiles;
-	saveData.gold = _gold;
-	saveData.elixir = _elixir;
+    saveData.gold = _gold;
+    saveData.elixir = _elixir;
     // 填充所有建筑数据
     for (const auto& building : _buildings) {
         SaveData::Building bData;
         bData.type = building->getType();
-        bData.tilePos = building->getTilePos(); 
+        bData.tilePos = building->getTilePos();
         bData.state = building->getState();
-        bData.level = building->getLevel(); 
-            saveData.buildings.push_back(bData);
+        bData.level = building->getLevel();
+        saveData.buildings.push_back(bData);
     }
     return saveData;
 }
@@ -1690,11 +1769,11 @@ std::vector<std::string> split(const std::string& s, const std::string& delim) {
 // 从存档结构恢复场景数据（添加建筑时需要实现）
 void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     // 清空当前场景的旧数据
-	for (auto building : _buildings) {
-		if (building) {
-			building->destroy();
-		}
-	}
+    for (auto building : _buildings) {
+        if (building) {
+            building->destroy();
+        }
+    }
     _buildings.clear();
     _goldMines.clear();
     _elixirCollectors.clear();
@@ -1705,9 +1784,9 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     _Mode = saveData.currentMode;
     // 恢复已占用格子
     _occupiedTiles = saveData.occupiedTiles;
-	// 恢复资源数值
-	setGold(saveData.gold);
-	setElixir(saveData.elixir);
+    // 恢复资源数值
+    setGold(saveData.gold);
+    setElixir(saveData.elixir);
     // 重新创建所有建筑
     for (const auto& bData : saveData.buildings) {
         // 调用placeBuilding逻辑创建建筑（复用现有代码）
@@ -1742,9 +1821,9 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
             if (bData.type == BuildingType::GOLD_MINE) {
                 _goldMines.push_back(dynamic_cast<GoldMine*>(building));
             }
-			else if (bData.type == BuildingType::ELIXIR_COLLECTOR) {
-				_elixirCollectors.push_back(dynamic_cast<ElixirCollector*>(building));
-			}
+            else if (bData.type == BuildingType::ELIXIR_COLLECTOR) {
+                _elixirCollectors.push_back(dynamic_cast<ElixirCollector*>(building));
+            }
         }
     }
 }
