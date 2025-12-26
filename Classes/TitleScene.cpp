@@ -1,16 +1,12 @@
 #include "TitleScene.h"
 #include "VillageScene.h" // 后续要跳转的主村庄场景（之前定义的）
 #include "cocos2d.h"
+#include "EnumType.h" 
 //#include "SimpleAudioEngine.h" // 音效（可选）
 
 using namespace cocos2d;
 //using namespace CocosDenshion;
 auto myLabel = Label::createWithTTF("myFont.ttf", "My Label Text", 16);
-enum class AllModes {
-	NORMAL,   //普通
-	CREATING, //创造
-	LEVEL     //关卡
-};
 
 bool TitleScene::init()
 {
@@ -101,7 +97,7 @@ void TitleScene::onStartGameClick(Ref* pSender)
      SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
      */
      // 创建目标场景（之前写的VillageScene）
-      Scene* villageScene = VillageScene::createScene();
+      Scene* villageScene = VillageScene::createScene(BaseMode::CREATING);
      //场景切换（加淡入淡出动画，提升体验）
       if (!villageScene) {
           log("VillageScene 创建失败！");

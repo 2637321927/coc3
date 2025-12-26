@@ -4,7 +4,7 @@
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
 #include "Troop.h"
-VillageScene* VillageScene::_instance = nullptr;
+//VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
     if (!Scene::init()) return false;
@@ -258,11 +258,14 @@ void VillageScene::clampMapPosition()
     float clampedY = clampf(containerPos.y, minY, maxY);
     _mapContainer->setPosition(Vec2(clampedX, clampedY));
 }
-Scene* VillageScene::createScene()
+Scene* VillageScene::createScene(BaseMode baseMode)
 {
     auto scene = Scene::create();
     auto layer = VillageScene::create();
     scene->addChild(layer);
+    layer->setTag(100);//便于getInstance获取
+    auto villageScene = dynamic_cast<VillageScene*>(layer);
+    villageScene->setBaseMode(baseMode); // 设置模式
     return scene;
 }
 // 加载等轴测地图
@@ -1453,7 +1456,6 @@ bool VillageScene::checkCanSpawnTroop(Vec2 tilePos) {
     }
 }
 // 生成兵种（放置到地图）
-// 生成兵种（放置到地图）
 void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     // ===== 第一步：计算瓦片坐标 =====
     Vec2 tilePos = screenToIsoTile(screenPos);
@@ -1467,7 +1469,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     // 注意：兵种检测应该使用checkCanSpawnTroop而不是checkCanPlace
     if (!checkCanSpawnTroop(tilePos)) {
         showCannotPlaceTip(screenPos);
-        CCLOG("失败：该瓦片不可放置兵种");
+        CCLOG("failure：该瓦片不可放置兵种");
         return;
     }
 
@@ -1481,7 +1483,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
 
     // 调试坐标转换
-    CCLOG("兵种坐标转换：瓦片(%.1f,%.1f) → 容器(%.1f,%.1f)",
+    CCLOG("troop种坐标转换：瓦片(%.1f,%.1f) → 容器(%.1f,%.1f)",
         centerTilePos.x, centerTilePos.y, containerLocalPos.x, containerLocalPos.y);
 
     // ===== 第四步：创建兵种并设置位置 =====
@@ -1514,10 +1516,23 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第六步：记录兵种 =====
     _spawnedTroops.push_back(troop);
-    CCLOG("成功：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
+    _enemyTroops.push_back(troop);
+    CCLOG("success：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
         containerLocalPos.x, containerLocalPos.y, _spawnedTroops.size());
+    if (_Mode == Mode::FIGHT) {
+        _enemyTroops.push_back(troop);
+    }
 }
-
+void VillageScene::removeEnemyTroop(BaseTroop* troop) {
+    auto it = std::find(_enemyTroops.begin(), _enemyTroops.end(), troop);
+    if (it != _enemyTroops.end()) {
+        _enemyTroops.erase(it); // 从列表中移除失效指针
+    }
+    auto it1 = std::find(_spawnedTroops.begin(), _spawnedTroops.end(), troop);
+    if (it1 != _spawnedTroops.end()) {
+        _spawnedTroops.erase(it1); // 从列表中移除失效指针
+    }
+}
 // 兵种攻击回调（处理伤害结算）
 void VillageScene::onTroopAttack(BaseTroop* troop, BaseBuilding* target) {
     if (!troop || !target) return;
@@ -1834,7 +1849,6 @@ bool VillageScene::saveGame(const std::string& savePath) {
     // 打包数据
     SaveData::Village saveData = packSaveData();
     std::string saveStr = saveData.toString();
-
     // 获取Cocos2d-x可写路径（跨平台）
     std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;
     // 写入文件

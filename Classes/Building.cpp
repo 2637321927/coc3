@@ -363,7 +363,7 @@ void ElixirCollector::destroy() {
 	BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
 	this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir)); // 停止生产
 }
-//Training
+//Barracks
 Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
     auto camp = new (std::nothrow) Barracks();
     if (camp && camp->init(tilePos, mapScale)) {
@@ -635,12 +635,15 @@ void BaseAttackBuilding::update(float dt) {
 // 目标检测逻辑
 BaseTroop* BaseAttackBuilding::findTargetInRange() {
     std::vector<BaseTroop*> allEnemies = VillageScene::getInstance()->getAllEnemyTroops();
-    if (allEnemies.empty()) return nullptr;
+    if (allEnemies.empty()) {
+        CCLOG("fuck");
+        return nullptr;
+    }
 
     BaseTroop* closestTroop = nullptr;
     float minDistance = FLT_MAX;
     Vec2 buildingPos = this->getPosition();
-
+    
     for (auto troop : allEnemies) {
         if (!troop || troop->getState() == TroopState::DEAD) continue;
 
@@ -648,7 +651,9 @@ BaseTroop* BaseAttackBuilding::findTargetInRange() {
         if (distance <= _attackRange && distance < minDistance) {
             minDistance = distance;
             closestTroop = troop;
+            CCLOG("attack yes");
         }
+        CCLOG("attack yes——f");
     }
     return closestTroop;
 }

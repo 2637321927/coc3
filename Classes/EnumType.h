@@ -2,6 +2,11 @@
 #define __ENUM_TYPE_H__
 #include <string>
 #include <unordered_map>
+enum class BaseMode {
+    NORMAL,   //普通
+    CREATING, //创造
+    LEVEL     //关卡
+};
 // 兵种类型枚举
 enum class TroopType {
     BARBARIAN,    // 野蛮人
@@ -33,7 +38,6 @@ enum class BuildingState {
     TRAINING,    // 训练中（仅训练营）
     UNKNOWN
 };
-
 // 兵种状态枚举
 enum class TroopState {
     IDLE,         // 闲置

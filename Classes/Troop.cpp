@@ -5,6 +5,7 @@
 #include "Bomber.h"
 #include "Building.h"
 #include "cocos2d.h"
+#include "VillageScene.h"
 USING_NS_CC;
 
 // ========== 工厂方法：根据类型创建子类实例 ==========
@@ -117,7 +118,10 @@ void BaseTroop::die() {
     this->setOpacity(100); // 半透明表示死亡
     _hpBar->setVisible(false); // 隐藏血条
     this->unscheduleUpdate();
-
+    auto villageScene = VillageScene::getInstance();
+    if (villageScene) {
+        villageScene->removeEnemyTroop(this);
+    }
     // 死亡动画（可在子类中重写增强）
     auto fadeOut = FadeOut::create(1.0f);
     auto remove = RemoveSelf::create();

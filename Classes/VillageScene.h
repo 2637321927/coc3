@@ -159,13 +159,13 @@ class VillageScene : public Scene
 {
 public:
     static VillageScene* getInstance() { // 提供外部访问接口
-        if (_instance == nullptr) {
-            _instance = VillageScene::create();
-        }
-        return _instance;
+        auto currentScene = Director::getInstance()->getRunningScene();
+        if (!currentScene) return nullptr;
+        // 找到场景中 Tag=100 的子节点（就是你的 VillageScene 实例）
+        return dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
     }
     // Cocos2d-x 标准创建方法（必须）
-    static cocos2d::Scene* createScene();
+    static cocos2d::Scene* createScene(BaseMode baseMode=BaseMode::CREATING);
 
     // 初始化方法
     virtual bool init();
@@ -188,21 +188,26 @@ public:
     void hideTrainingCampPopup(); // 隐藏训练弹窗
 	//获取敌军接口（用于给攻击建筑）
     std::vector<BaseTroop*>& getAllEnemyTroops() {
+        if (_enemyTroops.capacity() > 10000 || _enemyTroops.size() > 10000) {
+            CCLOGERROR("敌方士兵列表异常，长度：%zu，容量：%zu", _enemyTroops.size(), _enemyTroops.capacity());
+            _enemyTroops.clear();
+            return _enemyTroops;
+        }
         return _enemyTroops;
     }
+	//移除敌军军队指针（用于敌军士兵死亡后移除）
+    void removeEnemyTroop(BaseTroop* troop);
     // 添加/移除敌方兵种
     void addEnemyTroop(BaseTroop* troop) {
         _enemyTroops.push_back(troop);
     }
-    void removeEnemyTroop(BaseTroop* troop) {
-        auto it = std::find(_enemyTroops.begin(), _enemyTroops.end(), troop);
-        if (it != _enemyTroops.end()) {
-            _enemyTroops.erase(it);
-        }
-    }
-
+    //设置基础模式（关卡，创造，普通）
+	void setBaseMode(const BaseMode& baseMode) {
+		_baseMode = baseMode;
+	}
 private:
-	static VillageScene* _instance;// 单例实例指针
+    BaseMode _baseMode; // 所有模式管理器
+	//static VillageScene* _instance;// 单例实例指针
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
     TMXTiledMap* _tileMap;       // 等轴测地图对象
