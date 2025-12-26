@@ -174,7 +174,7 @@ void BuildingPopup::createButton(const std::string& imgPath, ButtonType type, co
             if (_btnCallback) {
                 _btnCallback(type); // 触发外部回调
             }
-            //this->removeFromParentAndCleanup(true); // 关闭弹窗
+            this->removeFromParentAndCleanup(true); // 关闭弹窗
         }
     );
     btn->setPosition(pos);
