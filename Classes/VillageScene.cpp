@@ -4,6 +4,7 @@
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
 #include "Troop.h"
+#include "EnumType.h" 
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
@@ -1154,118 +1155,6 @@ bool VillageScene::isTileOccupied(Vec2 tilePos) {
     }
     return false;
 }
-//获取建筑的配置(新增建筑类型时需要在此添加对应配置)
-const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type)
-{
-    static BuildingConfig Config;
-    switch (type) {
-    case(BuildingType::TOWN_HALL):
-        Config = {
-            1,                      // id
-            BuildingType::TOWN_HALL,// type
-            "大本营",               // name
-            "building/town_hall.png", // imgPath
-            2000,                   // hp
-            3,                      // tileWidth
-            3,                      // tileHeight
-            { {"gold", 1000}, {"elixir", 500} }, // cost
-            30.0f                   // buildTime
-        };
-        break;
-    case(BuildingType::GOLD_MINE):
-        Config = {
-            2,                      // id
-            BuildingType::GOLD_MINE,// type
-            "金矿",                 // name
-            "building/gold_mine.png", // imgPath
-            500,                    // hp
-            2,                      // tileWidth
-            2,                      // tileHeight
-            { {"gold", 500}, {"elixir", 200} }, // cost
-            10.0f                   // buildTime
-        };
-        break;
-
-    case(BuildingType::ELIXIR_COLLECTOR):
-        Config = {
-            4,                      // id
-            BuildingType::ELIXIR_COLLECTOR, // type
-            "圣水收集器",           // name
-            "building/elixir_collector.png", // imgPath
-            500,                    // hp
-            2,                      // tileWidth
-            2,                      // tileHeight
-            { {"gold", 600}, {"elixir", 250} }, // cost
-            12.0f                   // buildTime
-        };
-        break;
-    case(BuildingType::BARRACKS):
-        Config = {
-            3,                      // id
-            BuildingType::BARRACKS, // type
-            "兵营",                 // name
-            "building/barracks.png", // imgPath
-            800,                    // hp
-            2,                      // tileWidth
-            2,                      // tileHeight
-            { {"gold", 800}, {"elixir", 300} }, // cost
-            20.0f                   // buildTime
-        };
-        break;
-	case(BuildingType::TRAINING_CAMP):
-		Config = {
-			5,                      // id
-			BuildingType::TRAINING_CAMP, // type
-			"训练营",                 // name
-			"building/training_camp.png", // imgPath
-			800,                    // hp
-			1,                      // tileWidth
-			1,                      // tileHeight
-			{ {"gold", 900}, {"elixir", 400} }, // cost
-			15.0f                   // buildTime
-		};
-    case(BuildingType::CANNON):
-		Config = {
-			6,                      // id
-			BuildingType::CANNON, // type
-			"加农炮",                 // name
-			"building/cannon.png", // imgPath
-			1000,                    // hp
-			2,                      // tileWidth
-			2,                      // tileHeight
-			{ {"gold", 1200}, {"elixir", 0} }, // cost
-			25.0f                   // buildTime
-		};
-		break;
-    case(BuildingType::ARROW_TOWER):
-		Config = {
-			7,                      // id
-			BuildingType::ARROW_TOWER, // type
-			"箭塔",                 // name
-			"building/arrow_tower.png", // imgPath
-			900,                    // hp
-			2,                      // tileWidth
-			2,                      // tileHeight
-			{ {"gold", 1100}, {"elixir", 0} }, // cost
-			22.0f                   // buildTime
-		};
-		break;
-    default:
-        static BuildingConfig Config = {
-            -1,
-            BuildingType::UNKNOWN,
-            "未知建筑",
-            "",
-            0,
-            0,
-            0,
-            {},
-            0.0f
-        };
-        break;
-    }
-    return  Config;
-}
 // -------------------------- 兵种相关方法 --------------------------
 // 初始化兵种放置预览图
 void VillageScene::initTroopPreview() {
@@ -1516,7 +1405,6 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第六步：记录兵种 =====
     _spawnedTroops.push_back(troop);
-    _enemyTroops.push_back(troop);
     CCLOG("success：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
         containerLocalPos.x, containerLocalPos.y, _spawnedTroops.size());
     if (_Mode == Mode::FIGHT) {

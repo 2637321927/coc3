@@ -257,15 +257,7 @@ GoldMine* GoldMine::create(const Vec2& tilePos, float mapScale) {
 }
 
 bool GoldMine::init(const Vec2& tilePos, float mapScale) {
-    BuildingConfig config;
-    config.type = BuildingType::GOLD_MINE;
-    config.name = "金矿";
-    config.imgPath = "building/55.png"; // 确保路径正确
-    config.hp = 500;
-    config.tileWidth = 2;  // 占地 2x2
-    config.tileHeight = 2;
-    config.buildTime = 10.0f; // 10秒建完
-    config.cost = { {"gold", 100}, {"elixir", 50} }; // 建造消耗
+    BuildingConfig config = getBuildingConfigByType(BuildingType::GOLD_MINE);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     _state = BuildingState::IDLE;
@@ -376,16 +368,7 @@ Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
 
 bool Barracks::init(const cocos2d::Vec2& tilePos, float mapScale) {
     // 初始化兵营配置
-    BuildingConfig config;
-    config.type = BuildingType::BARRACKS;
-    config.name = "兵营";
-    config.imgPath = "building/barracks.png";
-    config.hp = 800;
-    config.tileWidth = 2;
-    config.tileHeight = 2;
-    config.cost = { {"gold", 800}, {"elixir", 300} };
-    config.buildTime = 20.0f;
-    config.level = 1;
+    BuildingConfig config= getBuildingConfigByType(BuildingType::BARRACKS);
     _maxTroopSpace = 20; // 基础容量20
     if (!BaseBuilding::init(config, tilePos, mapScale)) {
         return false;
@@ -412,16 +395,9 @@ TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {
 }
 
 bool TownHall::init(const Vec2& tilePos, float mapScale) {
-    BuildingConfig config;
-    config.type = BuildingType::TOWN_HALL;
-    config.name = "大本营";
-    config.imgPath = "building/town_hall.png";
-    config.hp = 2000;
-    config.tileWidth = 3;  // 占地 3x3
-    config.tileHeight = 3;
-    config.buildTime = 30.0f;
+	BuildingConfig config = getBuildingConfigByType(BuildingType::TOWN_HALL);
 
-    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    if(!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     _state = BuildingState::IDLE;
     return true;
@@ -455,15 +431,7 @@ void TrainingCamp::initTroopTrainTimeConfig() {
 
 // 初始化训练营
 bool TrainingCamp::init(const Vec2& tilePos, float mapScale) {
-    BuildingConfig config;
-    config.type = BuildingType::TRAINING_CAMP;
-    config.name = "训练营";
-    config.imgPath = "building/training_camp.png";
-    config.hp = 600;
-    config.tileWidth = 1;
-    config.tileHeight = 1;
-    config.buildTime = 15.0f;
-    config.cost = { {"gold", 400}, {"elixir", 200} };
+    BuildingConfig config= getBuildingConfigByType(BuildingType::TRAINING_CAMP);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     // 初始化兵种训练时间配置
@@ -636,7 +604,7 @@ void BaseAttackBuilding::update(float dt) {
 BaseTroop* BaseAttackBuilding::findTargetInRange() {
     std::vector<BaseTroop*> allEnemies = VillageScene::getInstance()->getAllEnemyTroops();
     if (allEnemies.empty()) {
-        CCLOG("fuck");
+        CCLOG("NO！！！！！");
         return nullptr;
     }
 
@@ -728,16 +696,7 @@ Cannon* Cannon::create(const Vec2& tilePos, float mapScale) {
 // 初始化
 bool Cannon::init(const Vec2& tilePos, float mapScale) {
     // 1. 初始化建筑基础属性（和训练营一致）
-    BuildingConfig config;
-    config.type = BuildingType::CANNON;
-    config.name = "加农炮";
-    config.imgPath = "building/cannon.png";
-    config.hp = 800 ;
-    config.tileWidth = 1;
-    config.tileHeight = 1;
-    config.buildTime = 20.0f;
-    config.cost = { {"gold", 500 } };
-    config.level = 1; // 设置等级
+    BuildingConfig config = getBuildingConfigByType(BuildingType::CANNON);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
     // 2. 初始化攻击属性（复用 BaseAttackBuilding 的接口）
     float range = 100 ;
@@ -793,16 +752,7 @@ ArrowTower* ArrowTower::create(const Vec2& tilePos, float mapScale) {
 
 bool ArrowTower::init(const Vec2& tilePos, float mapScale) {
     // 1. 基础建筑属性初始化
-    BuildingConfig config;
-    config.type = BuildingType::ARROW_TOWER;
-    config.name = "箭塔";
-    config.imgPath = "building/arrow_tower.png";
-    config.hp = 600 ;
-    config.tileWidth = 1;
-    config.tileHeight = 1;
-    config.buildTime = 15.0f;
-    config.cost = { {"gold", 400} };
-    config.level = 1;
+    BuildingConfig config=getBuildingConfigByType(BuildingType::ARROW_TOWER);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     // 2. 攻击属性初始化

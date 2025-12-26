@@ -25,6 +25,9 @@ enum class BuildingType {
     TRAINING_CAMP, // 训练营
 	CANNON, // 加农炮
 	ARROW_TOWER, // 箭塔
+	WALL,         // 城墙
+	VAULT,        // 金库
+	ELIXIR_BOTTLE, // 圣水瓶
     UNKNOWN
 };
 
@@ -75,5 +78,5 @@ struct TroopConfig {
     int spaceCost;              // 占用人口空间
     int unlockCampLevel = 1;        // 解锁所需兵营等级
 };
-
+const BuildingConfig& getBuildingConfigByType(BuildingType type,int level=1);
 #endif // __ENUM_TYPE_H__#pragma once

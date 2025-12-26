@@ -310,8 +310,6 @@ private:
     void hideBuildBar();  
 	// 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
-	// 获取建筑配置
-    const BuildingConfig& VillageScene::getBuildingConfigByType(BuildingType type);
 	// 处理建筑弹窗按钮点击回调
     void handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type);
     // 摧毁建筑核心函数
