@@ -6,7 +6,7 @@
 #include <functional>
 #include "ui/CocosGUI.h" 
 #include "EnumType.h" 
-using namespace cocos2d;
+USING_NS_CC;
 // Ç°ÖÃÉùÃ÷
 class VillageScene;
 extern std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig;

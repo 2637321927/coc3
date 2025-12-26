@@ -71,7 +71,7 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     // 初始化触摸监听器（统一调用封装的方法，避免重复绑定）
     initTouchListener();
     startBuild();
-    // setState(BuildingState::IDLE);
+     //setState(BuildingState::IDLE);
 	doSpecialAction(); 
     return true;
 }
@@ -305,8 +305,8 @@ std::string GoldMine::getSpecialDesc()  {
 }
 // 覆盖摧毁方法
 void GoldMine::destroy() {
-    BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
     this->unschedule(CC_SCHEDULE_SELECTOR(GoldMine::produceGold)); // 停止生产
+    BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
 }
 //ElixirCollector 子类实现
 ElixirCollector* ElixirCollector::create(const Vec2& tilePos, float mapScale) {
@@ -361,8 +361,8 @@ std::string ElixirCollector::getSpecialDesc() {
 }
 // 覆盖摧毁方法
 void ElixirCollector::destroy() {
+    this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir)); // 停止生产
 	BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
-	this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir)); // 停止生产
 }
 //Barracks
 Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
@@ -729,7 +729,6 @@ void BaseAttackBuilding::showAttackRange(bool isShow) {
 
 // 重写销毁逻辑（清空目标）
 void BaseAttackBuilding::destroy() {
-    BaseBuilding::destroy();
     _targetTroop = nullptr;
     _currentCooldown = 0.0f;
     if (_rangeDraw) {
@@ -737,6 +736,7 @@ void BaseAttackBuilding::destroy() {
         _rangeDraw->removeFromParentAndCleanup(true);
         _rangeDraw = nullptr;
     }
+    BaseBuilding::destroy();
 }
 
 //加农炮类

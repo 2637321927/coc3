@@ -6,24 +6,22 @@
 #include "Troop.h"
 #include "EnumType.h" 
 #include "LevelScene.h"
+#include "TitleScene.h"
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
     if (!Scene::init()) return false;
     // 初始化流程
 
-    initResourceBar();
     _mapContainer = Node::create();
     this->addChild(_mapContainer);
     initMap();
+    initBtns();
     initBuildPreview();
-    initBuildModeBtn();
-    initTroopModeBtn();
     initTroopPreview();
-    initLevelSelectBtn();
+    initResourceBar();
     //initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
-
     //initTouchEvent();
     //  监听鼠标滚轮事件
     auto  mouseListener = EventListenerMouse::create();
@@ -315,6 +313,104 @@ void VillageScene::initMap()
     */
     //TODO
    // _pathLayer = _tileMap->getLayer("path_layer");
+}
+// 初始化按钮相关代码
+void VillageScene::initBtns(BaseMode baseMode) {
+    //获取可视区域
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    //有黑边时origin不为0
+	Vec2 origin = Director::getInstance()->getVisibleOrigin();
+	//origin.x, origin.y为左下角
+	// origin.x+visibleSize.width最右边
+	// origin。y+visibleSize.height最上边
+    //  创建布局容器（统一管理按钮）
+    auto btnLayout = ui::Layout::create();
+    btnLayout->setContentSize(visibleSize); // 布局尺寸等于可视区域
+    btnLayout->setPosition(Vec2::ZERO);
+    btnLayout->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
+    this->addChild(btnLayout, 200); // 布局层级200
+
+    //  创建返回按钮（MenuItemImage）
+    auto backBtn = ui::Button::create(
+        "ui/btn_back.png",       // 正常状态图片
+        "ui/btn_back_selected.png"// 按下状态图片
+    );
+    btnLayout->addChild(backBtn, 200);
+    // 兵种模式开关按钮（在建筑按钮左侧）
+    auto troopModeBtn = ui::Button::create(
+        "ui/troop_mode_btn_normal.png",  // 正常状态图片
+        "ui/troop_mode_btn_selected.png"// 按下状态图片
+    );
+    btnLayout->addChild(troopModeBtn, 200);
+    // 创建建筑模式开关按钮（右上角悬浮）
+    auto buildModeBtn = ui::Button::create(
+        "ui/build_mode_btn_normal.png",  // 正常状态图片
+        "ui/build_mode_btn_selected.png"// 按下状态图片
+    );
+    btnLayout->addChild(buildModeBtn, 200);
+    // 创建关卡选择按钮（左下角）
+    auto levelSelectBtn = ui::Button::create(
+        "ui/level_select_btn_normal.png",  // 正常状态图片
+        "ui/level_select_btn_selected.png"// 按下状态图片
+    );
+    btnLayout->addChild(levelSelectBtn, 200);
+    // 初始化关卡选择层状态（TODO：为什么要加在这里？）
+    _isLevelSelectShow = false;
+    _levelSelectLayer = nullptr;
+	// 创建存档按钮
+    auto loadBtn = ui::Button::create(
+        "ui/btn_normal.png",
+        "ui/btn_pressed.png",
+        "ui/btn_disabled.png"
+    );
+    btnLayout->addChild(loadBtn, 200);
+    // 创建存档按钮
+    auto saveBtn = ui::Button::create(
+        "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
+        "ui/btn_pressed.png",  // 按下状态图片
+        "ui/btn_disabled.png"  // 禁用状态图片（可选）
+    );
+    btnLayout->addChild(saveBtn, 200);
+    // 设置按钮大小和位置
+    backBtn->setScale(0.8f);
+    backBtn->setPosition(Vec2(origin.x + 50, origin.y + visibleSize.height - 50)); // 右上角
+
+    buildModeBtn->setScale(0.8f);
+    buildModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y +visibleSize.height - 100));
+
+    troopModeBtn->setScale(0.8f);
+    troopModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 220, origin.y + visibleSize.height - 100)); // 建筑按钮左侧
+
+    levelSelectBtn->setScale(0.8f);
+    levelSelectBtn->setPosition(Vec2(origin.x+100, origin.y + 100)); // 左下角，距离左边缘和下边缘各50像素
+
+    saveBtn->setContentSize(Size(120, 60));
+    saveBtn->setPosition(Vec2(backBtn->getPositionX(), backBtn->getPositionY()-80));
+
+    loadBtn->setContentSize(Size(120, 60));// 位置在存档按钮下方，间距20
+    loadBtn->setPosition(Vec2(saveBtn->getPositionX(), saveBtn->getPositionY() - 80));
+     // 设置按钮文字
+     auto saveText = ui::Text::create("save", "fonts/Marker Felt.ttf", 24);
+     saveText->setColor(Color3B::WHITE);
+     saveBtn->addChild(saveText);
+     auto loadText = ui::Text::create("load", "fonts/Marker Felt.ttf", 24);
+     loadText->setColor(Color3B::WHITE);
+     loadBtn->addChild(loadText);
+    // 绑定点击回调
+    saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
+    levelSelectBtn->addClickEventListener([this](Ref* sender) {
+        this->toggleLevelSelectMenu(); // 点击切换关卡选择菜单
+        });
+    buildModeBtn->addClickEventListener([this](Ref* sender) {
+        this->toggleBuildBar(); // 点击切换建筑栏
+        });
+    troopModeBtn->addClickEventListener([this](Ref* sender) {
+        this->toggleTroopBar(); // 点击切换兵种栏
+        });
+    backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：销毁当前场景，返回主菜单
+        this->destroyScene();
+        });
+    loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
 }
 // 初始化建筑放置预览图
 void VillageScene::initBuildPreview() {
@@ -795,8 +891,8 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         building->setPosition(containerLocalPos);
         _mapContainer->addChild(building);
 
-        // Z-Order 排序建议：使用底部中心点的 Y 坐标
-        building->setLocalZOrder(1000 - (tilePos.x + tilePos.y));
+		// 越在右，越在下的建筑层级越高
+        building->setLocalZOrder(1000 + (tilePos.x + tilePos.y));
         // 通用逻辑：添加到场景 + 绑定点击回调
         if (building) {
 
@@ -1744,6 +1840,8 @@ SaveData::Village VillageScene::packSaveData() {
     saveData.occupiedTiles = _occupiedTiles;
     saveData.gold = _gold;
     saveData.elixir = _elixir;
+	CCLOG("Packing save data: gold=%d, elixir=%d, buildings=%zu",
+        saveData.gold, saveData.elixir, _buildings.size());
     // 填充所有建筑数据
     for (const auto& building : _buildings) {
         SaveData::Building bData;
@@ -1810,6 +1908,7 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
         auto building = BaseBuilding::create(bData.type, bData.tilePos, 1.0f);
         if (building) {
             // 恢复建筑状态/等级
+			//TODO:恢复建造中的建筑有问题，需要额外处理建造进度
             building->setState(bData.state);    // 需给BaseBuilding添加setState方法
             building->setLevel(bData.level);    // 需给BaseBuilding添加setLevel方法
 
@@ -1878,45 +1977,45 @@ bool VillageScene::loadGame(const std::string& savePath) {
 // 创建存档/读档按钮
 void VillageScene::initSaveLoadButtons() {
     // 创建存档按钮
-    _saveBtn = ui::Button::create(
+    saveBtn = ui::Button::create(
         "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
         "ui/btn_pressed.png",  // 按下状态图片
         "ui/btn_disabled.png"  // 禁用状态图片（可选）
     );
-    if (_saveBtn) {
+    if (saveBtn) {
         // 设置按钮大小（根据UI资源调整）
-        _saveBtn->setContentSize(Size(120, 60));
+        saveBtn->setContentSize(Size(120, 60));
         // 设置按钮位置（屏幕右上角，留出边距）
         Size winSize = Director::getInstance()->getWinSize();
-        _saveBtn->setPosition(Vec2(winSize.width - 140, winSize.height - 80));
+        saveBtn->setPosition(Vec2(winSize.width - 140, winSize.height - 80));
         // 设置按钮文字
         auto saveText = ui::Text::create("存档", "fonts/Marker Felt.ttf", 24);
         saveText->setColor(Color3B::WHITE);
-        _saveBtn->addChild(saveText);
+        saveBtn->addChild(saveText);
         // 绑定点击回调
-        _saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
+        saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
         // 添加到场景（层级高于地图，避免被遮挡）
-        this->addChild(_saveBtn, 200);
+        this->addChild(saveBtn, 200);
     }
 
     // ========== 2. 创建读档按钮 ==========
-    _loadBtn = ui::Button::create(
+    loadBtn = ui::Button::create(
         "ui/btn_normal.png",
         "ui/btn_pressed.png",
         "ui/btn_disabled.png"
     );
-    if (_loadBtn) {
-        _loadBtn->setContentSize(Size(120, 60));
+    if (loadBtn) {
+        loadBtn->setContentSize(Size(120, 60));
         // 位置在存档按钮下方，间距20
-        _loadBtn->setPosition(Vec2(_saveBtn->getPositionX(), _saveBtn->getPositionY() - 80));
+        loadBtn->setPosition(Vec2(saveBtn->getPositionX(), saveBtn->getPositionY() - 80));
         // 设置按钮文字
         auto loadText = ui::Text::create("读档", "fonts/Marker Felt.ttf", 24);
         loadText->setColor(Color3B::WHITE);
-        _loadBtn->addChild(loadText);
+        loadBtn->addChild(loadText);
         // 绑定点击回调
-        _loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
+        loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
         // 添加到场景
-        this->addChild(_loadBtn, 200);
+        this->addChild(loadBtn, 200);
     }
 }
 
@@ -2254,4 +2353,35 @@ void VillageScene::gotoLevel3() {
     hideLevelSelectMenu();
     bool success = this->loadGame("level3_preset.txt");
     if (!success) CCLOG("无法加载关卡 3");
+}
+
+// 销毁场景并返回标题界面
+void VillageScene::destroyScene() {
+    //_eventDispatcher->removeEventListenersForTarget(this);
+    auto titleSceneLayer = TitleScene::getInstance();
+    if (titleSceneLayer) {
+        Scene* titleSceneContainer = dynamic_cast<Scene*>(titleSceneLayer->getParent());
+        if (titleSceneContainer) {
+            Director::getInstance()->replaceScene(TransitionFade::create(0.5f, titleSceneContainer, Color3B::BLACK)) ;
+        }
+    }
+}
+
+void VillageScene::onExit() {
+    Scene::onExit();
+    // 释放自定义资源：比如定时器、监听器、指针等
+    _eventDispatcher->removeEventListenersForTarget(this);// 移除本层下事件监听器，TODO：未知是否必要
+    CCLOG("VillageScene 已退出，准备销毁");
+}
+
+void VillageScene::cleanup() {
+    Node::cleanup();
+    _buildings.clear();
+    _goldMines.clear();
+    _elixirCollectors.clear();
+	_spawnedTroops.clear();
+    _enemyTroops.clear();
+    _eventDispatcher->removeEventListenersForTarget(this);
+    this->removeAllChildrenWithCleanup(true);
+    CCLOG("VillageScene 已完全whole清理所有资源");
 }

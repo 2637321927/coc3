@@ -4,9 +4,11 @@
 #include "EnumType.h" 
 //#include "SimpleAudioEngine.h" // 音效（可选）
 
-using namespace cocos2d;
+USING_NS_CC;
 //using namespace CocosDenshion;
 auto myLabel = Label::createWithTTF("myFont.ttf", "My Label Text", 16);
+// TitleScene.cpp
+
 
 bool TitleScene::init()
 {
@@ -19,10 +21,9 @@ bool TitleScene::init()
     initBackground();
     // 2. 初始化功能按钮
     initButtons();
-
     return true;
 }
-
+TitleScene* TitleScene::_instance = nullptr;
 void TitleScene::initBackground()
 {
     // 获取屏幕尺寸（适配不同分辨率）
@@ -40,7 +41,29 @@ void TitleScene::initBackground()
         this->addChild(bgSprite, 0); // 层级0：背景
     }
 }
-
+void dumpNodeRecursive(Node* node, int depth = 0) {
+    if (!node) return;
+    // 打印层级、节点名、类型、位置、大小
+    std::string indent(depth * 2, ' ');
+    CCLOG("%sNode: %s (Type: %s) | Pos: (%.1f, %.1f) | Size: (%.1f, %.1f)",
+        indent.c_str(),
+        node->getName().c_str(),
+        typeid(*node).name(),
+        node->getPositionX(), node->getPositionY(),
+        node->getContentSize().width, node->getContentSize().height);
+    // 递归打印子节点
+    for (auto& child : node->getChildren()) {
+        dumpNodeRecursive(child, depth + 1);
+    }
+}
+void TitleScene::onEnter() {
+	CCLOG("TitleScene::onEnter called");
+    Scene::onEnter();
+    // 打印当前场景的所有节点（含层级、位置、大小）
+    auto node=Director::getInstance()->getRunningScene();
+    dumpNodeRecursive(node);
+    // 输出示例：若有一个 size=全屏、优先级=0 的 Layer，就是它拦截了触摸
+}
 void TitleScene::initButtons()
 {
     Size visibleSize = Director::getInstance()->getVisibleSize();
@@ -53,7 +76,9 @@ void TitleScene::initButtons()
         startBtnNormal,
         startBtnPressed,
         CC_CALLBACK_1(TitleScene::onStartGameClick, this)
+        
     );
+ 
     // 按钮位置（屏幕中偏下，可自定义）
     startMenuItem->setPosition(origin.x + visibleSize.width / 2,
         origin.y + visibleSize.height / 2 - 50);
@@ -97,20 +122,18 @@ void TitleScene::onStartGameClick(Ref* pSender)
      SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
      */
      // 创建目标场景（之前写的VillageScene）
+    
       Scene* villageScene = VillageScene::createScene(BaseMode::CREATING);
      //场景切换（加淡入淡出动画，提升体验）
       if (!villageScene) {
-          log("VillageScene 创建失败！");
+          CCLOG("VillageScene 创建f失败！");
           return;
       }
-      log("VillageScene 创建成功，准备切换");
-      Director::getInstance()->replaceScene(villageScene);
+      CCLOG("VillageScene 创建s成功，准备切换");
+      Director::getInstance()->pushScene(villageScene);//将新场景压入栈顶，旧场景暂停保留；
      //TransitionFade* transition = TransitionFade::create(0.5f, villageScene);
      //Director::getInstance()->replaceScene(transition);
-    
     // 切换场景（使用过渡动画，可选）
-
-    
 }
 
 // 关卡选择按钮回调（预留，先打印日志，后续实现）

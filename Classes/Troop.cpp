@@ -256,14 +256,11 @@ Vec2 BaseTroop::getCurrentTilePos() const {
 void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
     CCLOG("setTargetWorldPosition entered"); // 入口日志
     if (!_villageScene) {
-        CCLOG("NO!!!!!!!");
         return;  // 确保场景指针有效 
     }
-        CCLOG("YES!!!!!!!");
         // 1. 坐标转换（通过公有接口）
         Vec2 startTile = getCurrentTilePos();
         Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
-        CCLOG("YES!!!!!!!");
         // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
         _pathPoints = PathFinder::findPath(
             startTile,

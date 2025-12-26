@@ -56,8 +56,8 @@ namespace SaveData {
         cocos2d::Vec2 mapSize;                 // 地图尺寸（可选）
         std::vector<Vec2> occupiedTiles; // 已占用格子（可选，可通过建筑数据推导）
         Mode currentMode = Mode::NONE;         // 当前模式（可选）
-		int gold=0; 						   // 金币
-		int elixir=0;					   // 圣水
+		int gold; 						   // 金币
+		int elixir;					   // 圣水
         // 序列化整个村庄数据
         std::string toString() const {
             std::stringstream ss;
@@ -68,6 +68,9 @@ namespace SaveData {
             // 3. 存已占用格子（可选）
             for (const auto& tile : occupiedTiles) {
                 ss << tile.x << "," << tile.y << ";";
+            }
+            if (occupiedTiles.empty()) {
+				ss << ','; // 结尾加分号
             }
             ss << "\n";
             ss << gold << "," << elixir << "\n";
@@ -98,6 +101,7 @@ namespace SaveData {
 
             // 解析已占用格子
             if (lines.size() >= 3 && !lines[2].empty()) {
+
                 std::vector<std::string> tileParts = split(lines[2], ";");
                 for (const auto& tileStr : tileParts) {
                     if (tileStr.empty()) continue;
@@ -118,12 +122,12 @@ namespace SaveData {
                         data.elixir = std::stoi(resParts[1]);
                     }
                     catch (const std::invalid_argument& e) {
-                        CCLOG("解析金币/圣水失败：%s", e.what());
+                        CCLOG("解析金币234324/圣水失败：%s", e.what());
                         data.gold = 0;
                         data.elixir = 0;
                     }
                     catch (const std::out_of_range& e) {
-                        CCLOG("金币/圣水数值超出范围：%s", e.what());
+                        CCLOG("金币/圣234水数值超出范围：%s", e.what());
                         data.gold = 0;
                         data.elixir = 0;
                     }
@@ -191,7 +195,7 @@ public:
     static VillageScene* getInstance() { // 提供外部访问接口
         auto currentScene = Director::getInstance()->getRunningScene();
         if (!currentScene) return nullptr;
-        // 找到场景中 Tag=100 的子节点（就是你的 VillageScene 实例）
+        // 找到场景中 Tag=100 的子节点
         return dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
     }
     // Cocos2d-x 标准创建方法（必须）
@@ -258,8 +262,8 @@ private:
     bool _isBuildBarShow = false; // 建筑栏是否显示
     Layer* _buildBarLayer = nullptr; // 建筑栏容器层
     // 存储所有建筑（基类指针，兼容所有建筑类型）
-    ui::Button* _saveBtn;
-    ui::Button* _loadBtn;
+    ui::Button* saveBtn;
+    ui::Button* loadBtn;
     std::vector<BaseBuilding*> _buildings;
     // 按类型拆分存储（便于快速查找,资源类一键停止/开启）
     std::vector<GoldMine*> _goldMines;
@@ -320,6 +324,7 @@ private:
     void clampMapPosition();
     // 初始化地图
     void initMap();
+	void initBtns(BaseMode baseMode=BaseMode::CREATING); //初始化一切按钮
     // 初始化建筑预览（暂时屏蔽）
     void initBuildPreview();
 	// 显示无法放置提示
@@ -333,7 +338,7 @@ private:
 	// 坐标转换：瓦片坐标 → 容器坐标
     Vec2 isoTileToContainerPos(Vec2 tilePos);
 	// 初始化建筑放置按钮
-    void VillageScene::initBuildModeBtn();
+    void initBuildModeBtn();
     // 检测瓦片是否可放置建筑
     bool checkCanPlace(Vec2 tilePos, BuildingType type);
     // 放置建筑
@@ -431,6 +436,9 @@ private:
     void gotoLevel3();
     // -------------------------- 整体控制--------------------------
 	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
+	void destroyScene(); // 销毁场景，释放资源
+	void onExit(); // 重写退出方法，清理资源
+	void cleanup(); // 重写清理方法，释放资源
     //存档相关
     // 辅助：将当前场景数据转为存档结构
     SaveData::Village packSaveData();
