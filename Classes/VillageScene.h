@@ -13,7 +13,8 @@ enum class Mode {
     NONE,       // 无建造模式
     PLACE_BUILDING,  // 放置建筑模式
     SPAWN_TROOP,    // 放置兵种模式
-	FIGHT       // 战斗模式（预留）
+	FIGHT,     // 战斗模式（预留）
+	MOVE  	// 移动建筑模式
 };
 //存档相关
 namespace SaveData {
@@ -203,6 +204,7 @@ public:
 	void setBaseMode(const BaseMode& baseMode) {
 		_baseMode = baseMode;
 	}
+     BaseMode getBaseMode() const { return _baseMode;}
 protected:
     bool level_init();
 private:

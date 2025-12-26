@@ -625,7 +625,6 @@ void VillageScene::createBuildBar() {
             _buildPreview->setVisible(false);
         }
     );
-
     // 排列按钮
     auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn,barracksBtn,trainingCampBtn,cannonBtn,arrowTowerBtn,wallBtn,elixirBottleBtn,vaultBtn,cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
@@ -1210,7 +1209,7 @@ void VillageScene::initBuildModeBtn() {
 
     auto menu = Menu::create(buildModeBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
-    this->addChild(menu, 100); // 最高层级，确保不被遮挡
+    this->addChild(menu, 100); 
 }
 // 切换建筑栏显示/隐藏
 void VillageScene::toggleBuildBar() {

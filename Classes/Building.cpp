@@ -70,12 +70,9 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
 
     // 初始化触摸监听器（统一调用封装的方法，避免重复绑定）
     initTouchListener();
-
-    //if普通模式
-    //startBuild()
-    // 默认状态初始化
-    setState(BuildingState::IDLE);
-	doSpecialAction(); // 金矿开始生产金币
+    startBuild();
+    // setState(BuildingState::IDLE);
+	doSpecialAction(); 
     return true;
 }
 bool BaseBuilding::loadBuildingSprite() {
@@ -163,6 +160,11 @@ void BaseBuilding::initTouchListener() {
 }
 // 通用：开始建造
 void BaseBuilding::startBuild() {
+    /*if (VillageScene::getInstance()->getBaseMode() == BaseMode::CREATING) {
+        setState(BuildingState::IDLE);
+		this->scheduleUpdate();//便于哪些建筑依赖于帧更新执行本职工作
+        return;
+    }*/
     setState(BuildingState::BUILDING);
     _progressTimer = 0.0f;
     _progressBar->setVisible(true);
@@ -174,6 +176,8 @@ void BaseBuilding::startBuild() {
 void BaseBuilding::finishBuild() {
     setState(BuildingState::IDLE);
     _progressBar->setVisible(false);
+	//依赖于帧更新执行本职工作的建筑不停止帧更新
+    if(_config.type!=BuildingType::TRAINING_CAMP&& _config.type != BuildingType::CANNON&&_config.type != BuildingType::ARROW_TOWER)
     this->unscheduleUpdate();
     if (_buildFinishCallback) {
         _buildFinishCallback(this);
@@ -233,10 +237,10 @@ void BaseBuilding::bindClickCallback(const std::function<void(BaseBuilding*)>& c
     _clickCallback = callback;
 }
 
-// 通用：帧更新（进度处理,主建造和升级）子类如果有额外的帧更新逻辑（如加农炮的攻击逻辑），只需重写 update，并在开头调用 BaseBuilding::update(dt) 即可复用父类进度逻辑
+// 通用：帧更新（进度处理,主建造和升级）子类如果有额外的帧更新逻辑（如加农炮的攻击逻辑），只需重写 update，并在开头调用 BaseBuilding::update(dt) 即可复用父类进度逻辑，本身重写自父类Node
 void BaseBuilding::update(float dt) {
     if (_state != BuildingState::BUILDING && _state != BuildingState::UPGRADING) return;
-
+    CCLOG("2123132116565465123");
     _progressTimer += dt;
     float progress = _progressTimer / _config.buildTime;
     progress = clampf(progress, 0.0f, 1.0f);
@@ -268,8 +272,6 @@ GoldMine* GoldMine::create(const Vec2& tilePos, float mapScale) {
 bool GoldMine::init(const Vec2& tilePos, float mapScale) {
     BuildingConfig config = getBuildingConfigByType(BuildingType::GOLD_MINE);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-
-    _state = BuildingState::IDLE;
     return true;
 }
 
@@ -328,7 +330,6 @@ bool ElixirCollector::init(const Vec2& tilePos, float mapScale) {
 	config.buildTime = 10.0f; // 10秒建完
 	config.cost = { {"gold", 100}, {"elixir", 50} }; // 建造消耗
 	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-	_state = BuildingState::IDLE;
 	return true;
 }
 void ElixirCollector::doSpecialAction() {
@@ -408,7 +409,6 @@ bool TownHall::init(const Vec2& tilePos, float mapScale) {
 
     if(!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
-    _state = BuildingState::IDLE;
     return true;
 }
 
@@ -446,9 +446,6 @@ bool TrainingCamp::init(const Vec2& tilePos, float mapScale) {
     // 初始化兵种训练时间配置
     initTroopTrainTimeConfig();
 
-    _state = BuildingState::IDLE;
-    // 启动训练逻辑更新
-    this->scheduleUpdate();
 
     return true;
 }
@@ -770,8 +767,6 @@ bool Cannon::init(const Vec2& tilePos, float mapScale) {
     cooldown = std::max(cooldown, 1.0f); // 最低冷却1秒
     initAttackProps(range, damage, cooldown, "effect/cannon_ball.png");
 
-    // 3. 启动帧更新（攻击逻辑依赖）
-    this->scheduleUpdate();
 
     // 调试：显示攻击范围
     showAttackRange(true);
@@ -827,8 +822,7 @@ bool ArrowTower::init(const Vec2& tilePos, float mapScale) {
     cooldown = std::max(cooldown, 0.4f);
     initAttackProps(range, damage, cooldown, "effect/arrow.png");
 
-    // 3. 启动更新
-    this->scheduleUpdate();
+ 
 
     // 调试：显示攻击范围
     showAttackRange(true);
