@@ -148,8 +148,47 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type,int level)
             22.0f                   // buildTime
         };
         break;
+	case(BuildingType::WALL):
+		Config = {
+			8,
+			BuildingType::WALL,
+			"城墙",
+			"building/wall.png",
+			1500,
+			1,
+			1,
+			{ {"gold", 300}, {"elixir", 0} },
+			0.0f
+		};
+		break;
+	case(BuildingType::VAULT):
+        Config = {
+            9,
+            BuildingType::VAULT,
+            "金库",
+            "building/vault.png",
+            2500,
+            2,
+            2,
+            { {"gold", 2000}, {"elixir", 0} },
+            40.0f
+        };
+        break;
+	case(BuildingType::ELIXIR_BOTTLE):
+		Config = {
+			10,
+			BuildingType::ELIXIR_BOTTLE,
+			"圣水瓶",
+			"building/elixir_bottle.png",
+			2500,
+			2,
+			2,
+			{ {"gold", 0}, {"elixir", 2000} },
+			40.0f
+		};
+		break;
     default:
-        static BuildingConfig Config = {
+         Config = {
             -1,
             BuildingType::UNKNOWN,
             "未知建筑",

@@ -557,7 +557,63 @@ void TrainingCamp::destroy() {
     _troopsInTraining = 0;
 }
 
+//Wall 子类实现
+Wall* Wall::create(const cocos2d::Vec2& tilePos, float mapScale) {
+	Wall* sprite = new (std::nothrow) Wall();
+	if (sprite && sprite->init(tilePos, mapScale)) {
+		sprite->autorelease();
+		return sprite;
+	}
+	CC_SAFE_DELETE(sprite);
+	return nullptr;
+ }
+bool Wall::init(const cocos2d::Vec2& tilePos, float mapScale) {
+	BuildingConfig config= getBuildingConfigByType(BuildingType::WALL);
+	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+	_state = BuildingState::IDLE;
+	return true;
+}
+void Wall::doSpecialAction() {}
+
+// Vault 子类实现
+Vault* Vault::create(const cocos2d::Vec2& tilePos, float mapScale) {
+	Vault* sprite = new (std::nothrow) Vault();
+	if (sprite && sprite->init(tilePos, mapScale)) {
+		sprite->autorelease();
+		return sprite;
+	}
+	CC_SAFE_DELETE(sprite);
+	return nullptr;
+}
+bool Vault::init(const cocos2d::Vec2& tilePos, float mapScale) {
+	BuildingConfig config = getBuildingConfigByType(BuildingType::VAULT);
+	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+	_state = BuildingState::IDLE;
+	return true;
+}
+void Vault::doSpecialAction() {}
+
+// ElixirBottle 子类实现
+ElixirBottle* ElixirBottle::create(const cocos2d::Vec2& tilePos, float mapScale) {
+	ElixirBottle* sprite = new (std::nothrow) ElixirBottle();
+	if (sprite && sprite->init(tilePos, mapScale)) {
+		sprite->autorelease();
+		return sprite;
+	}
+	CC_SAFE_DELETE(sprite);
+	return nullptr;
+}
+bool ElixirBottle::init(const cocos2d::Vec2& tilePos, float mapScale) {
+	BuildingConfig config = getBuildingConfigByType(BuildingType::ELIXIR_BOTTLE);
+	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+	_state = BuildingState::IDLE;
+	return true;
+}
+void ElixirBottle::doSpecialAction() {}
+
+
 //攻击型建筑基类
+
 // 初始化攻击属性
 void BaseAttackBuilding::initAttackProps(float range, float damage, float cooldown, const std::string& effectPath) {
     _attackRange = range;

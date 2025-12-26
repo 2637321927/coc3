@@ -178,6 +178,43 @@ public:
     virtual void doSpecialAction() override; // 升级解锁逻辑
     virtual std::string getSpecialDesc() override { return "村庄的核心建筑"; }
 };
+// ========== 城墙 ==========
+class Wall : public BaseBuilding {
+public:
+	static Wall* create(const Vec2& tilePos, float mapScale);
+	bool init(const Vec2& tilePos, float mapScale);
+	// 实现基类虚函数
+	void doSpecialAction() override; // 墙体无特殊行为
+	std::string getSpecialDesc() override { return "用于防御敌人攻击的建筑"; }
+};
+
+// ========== 金库 ==========
+class Vault: public BaseBuilding {
+public:
+    static Vault* create(const Vec2& tilePos, float mapScale);
+    bool init(const Vec2& tilePos, float mapScale);
+    // 实现基类虚函数
+    void doSpecialAction() override; 
+    std::string getSpecialDesc() override { return "用于储存金币的建筑"; }
+	int getStorageCapacity() const { return _storageCapacity; }
+private:
+	int _storageCapacity; // 储存容量
+};
+
+//================ 圣水瓶 =================
+class ElixirBottle : public BaseBuilding {
+public:
+	static ElixirBottle* create(const Vec2& tilePos, float mapScale);
+	bool init(const Vec2& tilePos, float mapScale);
+	// 实现基类虚函数
+	void doSpecialAction() override;
+	std::string getSpecialDesc() override { return "用于储存圣水的建筑"; }
+	int getStorageCapacity() const { return _storageCapacity; }
+private:
+	int _storageCapacity; // 储存容量
+};
+
+// ========== 攻击型建筑基类 ==========
 class BaseAttackBuilding : public BaseBuilding {
 protected:
     // 核心攻击属性
@@ -233,6 +270,7 @@ public:
     void attackTarget() ;
     std::string getSpecialDesc() ;
 };
+
 #endif // __BUILDING_H__
 
 

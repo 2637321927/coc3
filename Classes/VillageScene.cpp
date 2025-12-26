@@ -5,6 +5,7 @@
 #include "ui/CocosGUI.h" 
 #include "Troop.h"
 #include "EnumType.h" 
+#include "LevelScene.h"
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
@@ -1958,7 +1959,7 @@ void VillageScene::createLevelSelectMenu() {
         "ui/level1_btn_normal.png",
         "ui/level1_btn_selected.png",
         [this](Ref* sender) {
-            this->gotoLevel1();
+            this->gotoLevel1("level1_preset.txt");
         }
     );
     level1Btn->setPosition(Vec2(-200, -110));
@@ -1994,7 +1995,7 @@ void VillageScene::createLevelSelectMenu() {
             this->hideLevelSelectMenu();
         }
     );
-    closeBtn->setPosition(Vec2(200,0));
+    closeBtn->setPosition(Vec2(200, 0));
     closeBtn->setScale(0.8f);
 
     // 创建菜单
@@ -2006,49 +2007,139 @@ void VillageScene::createLevelSelectMenu() {
     if (!level1Btn->getNormalImage()) {
         auto label1 = Label::createWithTTF("关卡 1: 新手训练", "fonts/Marker Felt.ttf", 28);
         label1->setColor(Color3B::WHITE);
-        label1->setPosition(Vec2(visibleSize.width / 2-200, visibleSize.height / 2 ));
+        label1->setPosition(Vec2(visibleSize.width / 2 - 200, visibleSize.height / 2));
         _levelSelectLayer->addChild(label1);
 
         auto label2 = Label::createWithTTF("关卡 2: 丛林之战", "fonts/Marker Felt.ttf", 28);
         label2->setColor(Color3B::WHITE);
-        label2->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2 ));
+        label2->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
         _levelSelectLayer->addChild(label2);
 
         auto label3 = Label::createWithTTF("关卡 3: 最终决战", "fonts/Marker Felt.ttf", 28);
         label3->setColor(Color3B::WHITE);
-        label3->setPosition(Vec2(visibleSize.width / 2+200, visibleSize.height / 2 ));
+        label3->setPosition(Vec2(visibleSize.width / 2 + 200, visibleSize.height / 2));
         _levelSelectLayer->addChild(label3);
     }
 }
 
-auto myScene = Scene::create();
+bool VillageScene::level_init()
+{
+    if (!Scene::init()) return false;
+    // 初始化流程
 
 
+    _mapContainer = Node::create();
+    this->addChild(_mapContainer);
+    initMap();
+    initBuildPreview();
 
-// 跳转到关卡1
-void VillageScene::gotoLevel1() {
-    hideLevelSelectMenu();
+    initTroopPreview();
+    go_back_Btn();
+    //TODO：建筑和触摸暂时屏蔽
 
-    // 创建场景切换过渡效果
-    auto transition = TransitionFade::create(1.0f, myScene);
+    //initTouchEvent();
+    //  监听鼠标滚轮事件
+    auto  mouseListener = EventListenerMouse::create();
+    // 绑定滚轮回调
+    mouseListener->onMouseScroll = CC_CALLBACK_1(VillageScene::onMouseScroll, this);
+    mouseListener->onMouseDown = CC_CALLBACK_1(VillageScene::onMouseDown, this);    // 鼠标按下
+    mouseListener->onMouseMove = CC_CALLBACK_1(VillageScene::onMouseMove, this);    // 鼠标移动
+    mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
+    // 添加监听到事件分发器
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
+    return true;
+}
+
+// 初始化回营按钮
+void VillageScene::go_back_Btn() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 创建关卡选择按钮（左下角）
+    auto levelSelectBtn = MenuItemImage::create(
+        "ui/btn_blue.png",  // 正常状态图片
+        "ui/go_back_bt.png",// 按下状态图片
+        [this](Ref* sender) {
+            this->go_back("village.txt"); // 点击切换关卡选择菜单
+        }
+    );
+
+    // 设置按钮大小和位置（左下角）
+    levelSelectBtn->setScale(0.8f);
+    levelSelectBtn->setPosition(Vec2(100, 100)); // 左下角，距离左边缘和下边缘各50像素
+
+    auto menu = Menu::create(levelSelectBtn, nullptr);
+    menu->setPosition(Vec2::ZERO); // Menu 位置设为原点，按钮相对 Menu 定位
+    menu->setName("LevelSelectMenu"); // 给 Menu 命名，方便隐藏/显示
+    this->addChild(menu, 300); // 添加到场景，层级300（确保在最上层）
+    // 初始化关卡选择层状态
+    _isLevelSelectShow = false;
+    _levelSelectLayer = nullptr;
+}
+
+void VillageScene::go_back(const std::string& fileName) {
+    std::string fullPath = FileUtils::getInstance()->getWritablePath() + fileName;
+    std::string saveStr = FileUtils::getInstance()->getStringFromFile(fullPath);
+    auto nextScene = VillageScene::create(); // 假设你使用了 CREATE_FUNC
+
+    // 3. 将数据交给新场景（可以写个成员变量存起来）
+    // nextScene->setPendingData(saveStr); 
+
+    // 4. 切换
+    auto transition = TransitionFade::create(0.5f, nextScene);
     Director::getInstance()->replaceScene(transition);
+}
+
+
+
+// 创建关卡1场景
+
+void VillageScene::gotoLevel1(const std::string& Path) {
+    hideLevelSelectMenu();
+    VillageScene::saveGame();
+    // 1. 调用 LevelScene 的工厂函数（返回 Scene*，需强转为 LevelScene*）
+    Scene* scene = LevelScene::createWithLevel(Path);
+    LevelScene* levelScene = dynamic_cast<LevelScene*>(scene); // 安全强转
+
+    if (levelScene) { // 强转成功才继续
+        // 2. 获取文件完整路径（Cocos 自动从 Resources 目录查找）
+        std::string fullPath = FileUtils::getInstance()->fullPathForFilename(Path);
+
+        if (FileUtils::getInstance()->isFileExist(fullPath)) {
+            // 3. 调用 loadGame（无需加 VillageScene::，子类已继承）
+            bool success = levelScene->loadGame(Path);
+
+            if (success) {
+                CCLOG("成功将关卡数据注入 levelScene: %s", Path.c_str());
+            }
+            else {
+                CCLOGERROR("加载关卡数据失败: %s", Path.c_str());
+                return; // 加载失败则不切换场景
+            }
+        }
+        else {
+            CCLOGERROR("错误：找不到关卡文件 %s", fullPath.c_str());
+            return;
+        }
+
+        // 4. 场景切换（确保传入 Scene* 类型）
+        auto transition = TransitionSlideInR::create(0.5f, scene);
+        Director::getInstance()->replaceScene(transition);
+    }
+    else {
+        CCLOGERROR("LevelScene::createWithLevel 创建实例失败！");
+    }
 }
 
 // 跳转到关卡2
 void VillageScene::gotoLevel2() {
     hideLevelSelectMenu();
-
-    // 创建场景切换过渡效果
-    auto transition = TransitionFade::create(1.0f, myScene);
-    Director::getInstance()->replaceScene(transition);
+    bool success = this->loadGame("level2_preset.txt");
+    if (!success) CCLOG("无法加载关卡 2");
 }
 
 // 跳转到关卡3
 void VillageScene::gotoLevel3() {
     hideLevelSelectMenu();
-
-    // 创建场景切换过渡效果
-    auto transition = TransitionFade::create(1.0f, myScene);
-    Director::getInstance()->replaceScene(transition);
+    bool success = this->loadGame("level3_preset.txt");
+    if (!success) CCLOG("无法加载关卡 3");
 }
-

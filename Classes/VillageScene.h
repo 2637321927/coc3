@@ -53,7 +53,7 @@ namespace SaveData {
     struct Village {
         std::vector<Building> buildings;       // 所有建筑数据
         cocos2d::Vec2 mapSize;                 // 地图尺寸（可选）
-        std::vector<cocos2d::Vec2> occupiedTiles; // 已占用格子（可选，可通过建筑数据推导）
+        std::vector<Vec2> occupiedTiles; // 已占用格子（可选，可通过建筑数据推导）
         Mode currentMode = Mode::NONE;         // 当前模式（可选）
 		int gold=0; 						   // 金币
 		int elixir=0;					   // 圣水
@@ -205,6 +205,8 @@ public:
 	void setBaseMode(const BaseMode& baseMode) {
 		_baseMode = baseMode;
 	}
+protected:
+    bool level_init();
 private:
     BaseMode _baseMode; // 所有模式管理器
 	//static VillageScene* _instance;// 单例实例指针
@@ -232,6 +234,7 @@ private:
     std::vector<BaseBuilding*> _buildings;
     // 按类型拆分存储（便于快速查找,资源类一键停止/开启）
     std::vector<GoldMine*> _goldMines;
+    //TODO:实现一些特殊建筑子列便于兵种寻找
     std::vector<ElixirCollector*> _elixirCollectors;
     // 缩放相关
     float _minScale = 0.5f;      // 最小缩放比例（避免缩太小）
@@ -258,8 +261,10 @@ private:
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
 	std::vector<BaseTroop*> _enemyTroops; // 敌方兵种列表(预留，用于战斗模式)
     //资源相关
-    int _gold ;
-    int _elixir ;
+    int _gold;
+    int _elixir;
+    int _maxGold;
+	int _maxElixir;
 	int _maxPopulation=0; //人口总数(兵营）
 	int _population = 0; //当前人口数
     std::unordered_map<TroopType, int> _troopStorage;// 兵营存储的兵种信息：兵种类型 -> 数量
@@ -277,6 +282,7 @@ private:
     void onMouseDown(Event* event);
     void onMouseMove(Event* event);
     void onMouseUp(Event* event);
+    
 	// 鼠标移动时高亮瓦片(测试坐标转换函数是否正确)
 	void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type);//测试用
     void restoreLastTileColor();
@@ -380,10 +386,13 @@ private:
     void showLevelSelectMenu();
     void hideLevelSelectMenu();
     void toggleLevelSelectMenu();
-    void VillageScene::initLevelSelectBtn();
-
+    void initLevelSelectBtn();
+    void go_back(const std::string& fileName);
     // 跳转到关卡的函数
-    void gotoLevel1();
+
+    void go_back_Btn();
+    void gotoLevel1(const std::string& savePath);
+    // 跳转到关卡的函数
     void gotoLevel2();
     void gotoLevel3();
     // -------------------------- 整体控制--------------------------
