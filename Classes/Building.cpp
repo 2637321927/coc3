@@ -159,7 +159,7 @@ void BaseBuilding::takeDamage(int damage) {
 	//EffectManager::getInstance()->playHitEffect(this->getPosition());
 	// 检查是否摧毁
 	if (_currentHp == 0) {
-		destroy();
+        VillageScene::getInstance()->destroyBuilding(this);
 	}
 }
 // 初始化触摸监听器

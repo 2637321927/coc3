@@ -6,7 +6,6 @@
 #include "Troop.h"
 #include "EnumType.h" 
 #include "LevelScene.h"
-#include "FightScene.h"
 #include "TitleScene.h"
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
@@ -280,6 +279,7 @@ void VillageScene::clampMapPosition()
     float clampedY = clampf(containerPos.y, minY, maxY);
     _mapContainer->setPosition(Vec2(clampedX, clampedY));
 }
+
 Scene* VillageScene::createScene(BaseMode mode)
 {
     auto scene = Scene::create();
@@ -978,6 +978,9 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
 }
 // 放置建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
+    if (_baseMode == BaseMode::NORMAL) {
+
+    }
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
     if (building) {
         _buildPreview->setVisible(false);
@@ -1089,6 +1092,8 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 this->addChild(popup, 100); // 高层级显示弹窗
                 });
         }
+
+		// 1. 播放建造音效
         // 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
         this->scheduleOnce([this](float delay) {
             _Mode = Mode::NONE;
@@ -1117,6 +1122,7 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         // updateResourceUI();
     }
     */
+
     // 释放建筑占用的瓦片（地图位置）
     releaseBuildingTiles(building);
     // 从渲染层移除建筑节点(basebuilding中已经调用过一次了，可以不调用)
@@ -1160,6 +1166,11 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         this->addElixirStorageCapacity(-(elixirBottle->getStorageCapacity()));
     }
     building->destroy();
+    if (_baseMode == BaseMode::FIGHT) {
+        _destroyedBuildingCount++;
+        updateDestroyPercent();
+        checkStarUnlock();
+    }
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
     // 建筑实例会在下次主循环被自动销毁，无需手动delete
@@ -2148,7 +2159,7 @@ bool VillageScene::saveGame(const std::string& savePath) {
 
 bool VillageScene::loadGame(const std::string& savePath) {
     // 获取文件完整路径
-    std::string fullPath = savePath;// cocos2d::FileUtils::getInstance()->getWritablePath() + 
+    std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;// cocos2d::FileUtils::getInstance()->getWritablePath() + 
     // 检查文件是否存在
     //if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
       //  CCLOG("存档文件不存在：%s", fullPath.c_str());
@@ -2156,7 +2167,7 @@ bool VillageScene::loadGame(const std::string& savePath) {
    // }
     // 读取文件内容
     //std::string saveStr = fullPath;
-    std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
+   std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
     // 反序列化数据
     SaveData::Village saveData = SaveData::Village::fromString(saveStr);
     // 恢复场景数据
@@ -2646,7 +2657,76 @@ void VillageScene::initStarRatingUI() {
         starSprites.pushBack(star);
     }
 }
+// 建筑被摧毁时调用（外部触发，如建筑血量为0时）
+//void VillageScene::onBuildingDestroyed() {
+    //_destroyedBuildingCount++;
+   // updateDestroyPercent();
+    //checkStarUnlock();
+//}
 
+// 更新摧毁百分比显示
+void VillageScene::updateDestroyPercent() {
+    // 计算百分比（防止超过100%）
+    destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
+    // 更新标签显示
+   percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));
+}
+
+// 检查星级解锁逻辑
+void VillageScene::checkStarUnlock() {
+    int newStarCount = 0;
+    // 判断当前应解锁的星级
+    if (destroyPercent >= 50.0f) newStarCount = 1;
+    if (destroyPercent >= 80.0f) newStarCount = 2;
+    if (destroyPercent >= 100.0f) newStarCount = 3;
+
+    // 解锁新星级时执行动画
+    while (currentStars < newStarCount) {
+        currentStars++;
+        flyStarToTarget(currentStars - 1); // 索引从0开始
+        updateStarDisplay();
+    }
+}
+
+// 星级飞行动画（由大到小飞到指定位置）
+void VillageScene::flyStarToTarget(int starIndex) {
+    if (starIndex < 0 || starIndex >= starSprites.size()) return;
+
+    Sprite* star = starSprites.at(starIndex);
+    // 随机生成初始位置（屏幕随机位置，模拟从战场飞出）
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    Vec2 startPos = Vec2(rand() % (int)visibleSize.width, rand() % (int)visibleSize.height);
+
+    // 初始状态：放大+透明
+    star->setPosition(startPos);
+    star->setScale(2.0f);
+    star->setOpacity(0);
+    star->setTexture("ui/star_yellow.png"); // 切换为黄色激活状态
+
+    // 组合动画：淡入+缩放+移动
+    auto fadeIn = FadeIn::create(0.2f);
+    auto scaleTo = ScaleTo::create(0.8f, 0.8f); // 缩放到目标大小
+    auto moveTo = MoveTo::create(0.8f,
+        Vec2(_starTargetPos.x + (starIndex * 50), _starTargetPos.y));
+    auto easeMove = EaseBackOut::create(moveTo); // 缓动效果更自然
+
+    // 并行执行动画
+    star->runAction(Spawn::create(fadeIn, scaleTo, easeMove, nullptr));
+}
+
+// 更新星级显示状态（处理边界情况）
+void VillageScene::updateStarDisplay() {
+    for (int i = 0; i < starSprites.size(); i++) {
+        Sprite* star = starSprites.at(i);
+        // 已解锁的星星显示黄色，未解锁的显示灰色
+        if (i < currentStars) {
+            star->setTexture("ui/star_yellow.png");
+        }
+        else {
+            star->setTexture("ui/star_grey.png");
+        }
+    }
+}
 // 销毁场景并返回标题界面
 void VillageScene::destroyScene() {
     //_eventDispatcher->removeEventListenersForTarget(this);
