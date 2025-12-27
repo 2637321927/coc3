@@ -37,6 +37,7 @@ public:
     BuildingType getType() const { return _config.type; }
     Vec2 getTilePos() const { return _tilePos; }
     int getLevel() const { return _config.level; }
+	void buildImmediately() { _immediatelyBuild = 1; }
     const BuildingConfig& getConfig() const { return _config; }
     void syncScale(float mapScale);     // 同步地图缩放（通用）
     void setLevel(int level) { _config.level = level; }
@@ -74,6 +75,7 @@ protected:
     ProgressTimer* _progressBar = nullptr; // 通用进度条
     ProgressTimer* _hpBar = nullptr; // 通用血条
 	Sprite*  _buildingSprite;        // 建筑图片精灵
+	bool _immediatelyBuild = 0; // 是否立即建造完成
 };
 class GoldMine : public BaseBuilding {
 public:

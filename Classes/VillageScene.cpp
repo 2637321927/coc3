@@ -121,7 +121,7 @@ void VillageScene::onMouseDown(Event* event)
         // 记录容器的位置
         _mapOriginPos = _mapContainer->getPosition();
         // 只有建筑栏显示且处于建造模式时，才处理放置逻辑
-        if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING) {
+        if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING&& !_isLastMouseLeftButtonDown) {
             Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
             Vec2 tilePos = screenToIsoTile(currentPos);
             tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
@@ -136,14 +136,14 @@ void VillageScene::onMouseDown(Event* event)
             }
         }
         // 兵种放置逻辑
-        if (_isTroopBarShow && _Mode == Mode::SPAWN_TROOP) {
+        if (_isTroopBarShow && _Mode == Mode::SPAWN_TROOP&& _isLastMouseLeftButtonDown) {
             Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
             spawnTroop(currentPos, _selectedTroopType);
             // 可选：放置后不退出模式，继续生成同类型兵种
             // _Mode = Mode::NONE;
             // _troopPreview->setVisible(false);
         }
-
+        _isLastMouseLeftButtonDown = true;
     }
     else if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_RIGHT) {
         if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING) {
@@ -153,11 +153,34 @@ void VillageScene::onMouseDown(Event* event)
             }
             _Mode = Mode::NONE;
         }
+        _isLastMouseLeftButtonDown = false;
     }
+}
+//鼠标松开：结束拖拽
+void VillageScene::onMouseUp(Event* event)
+{
+    _isLastMouseLeftButtonDown = false;
+    EventMouse* e = (EventMouse*)event;
+    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
+        _isDragging = false;
+    }
+    /*
+    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
+        // 计算鼠标移动距离，小于5像素则视为“点击”，否则是“拖拽”
+        Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
+        float moveDistance = currentPos.distance(_lastMousePos);
+        if (moveDistance < 5.0f) {
+            log("鼠标点击了地图，位置：%f, %f", currentPos.x, currentPos.y);
+            // 这里可以加点击建筑/瓦片的逻辑
+        }
+        _isDragging = false;
+    }
+    */
 }
 // 鼠标移动：处理拖拽偏移/建筑预览跟随
 void VillageScene::onMouseMove(Event* event)
 {
+    _isLastMouseLeftButtonDown = false;
     restoreLastTileColor();
     EventMouse* e = (EventMouse*)event;
     Vec2 currentMousePos = Vec2(e->getCursorX(), e->getCursorY());
@@ -204,7 +227,7 @@ void VillageScene::onMouseMove(Event* event)
 
 // 显示无法放置提示
 void VillageScene::showCannotPlaceTip(Vec2 pos) {
-    auto tip = Label::createWithTTF("无法放置在这里!", "fonts/Marker Felt.ttf", 20);
+    auto tip = Label::createWithTTF("No Place Here!", "fonts/Marker Felt.ttf", 20);
     tip->setColor(Color3B::RED);
     tip->setPosition(pos + Vec2(0, 30));
     this->addChild(tip, 20);
@@ -217,29 +240,24 @@ void VillageScene::showCannotPlaceTip(Vec2 pos) {
         nullptr
     ));
 }
-//鼠标松开：结束拖拽
-void VillageScene::onMouseUp(Event* event)
-{
-    EventMouse* e = (EventMouse*)event;
-    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
-        _isDragging = false;
-    }
-    /*
-    if (e->getMouseButton() == EventMouse::MouseButton::BUTTON_LEFT) {
-        // 计算鼠标移动距离，小于5像素则视为“点击”，否则是“拖拽”
-        Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
-        float moveDistance = currentPos.distance(_lastMousePos);
-        if (moveDistance < 5.0f) {
-            log("鼠标点击了地图，位置：%f, %f", currentPos.x, currentPos.y);
-            // 这里可以加点击建筑/瓦片的逻辑
-        }
-        _isDragging = false;
-    }
-    */
+void VillageScene::showText(std::string string,Vec2 pos,float duringTime) {
+    auto tip = Label::createWithTTF(string, "fonts/Marker Felt.ttf", 20);
+    tip->setColor(Color3B::RED);
+    tip->setPosition(pos + Vec2(0, 30));
+    this->addChild(tip, 20);
+
+    // duringTime秒后自动消失
+    tip->runAction(Sequence::create(
+        DelayTime::create(duringTime),
+        FadeOut::create(0.5f),
+        RemoveSelf::create(),
+        nullptr
+    ));
 }
 // 滚轮缩放核心函数
 void VillageScene::onMouseScroll(Event* event)
 {
+    _isLastMouseLeftButtonDown = false;
     EventMouse* e = (EventMouse*)event;
     float currentScale = _mapContainer->getScale();
     float newScale = (e->getScrollY() < 0) ?
@@ -979,9 +997,28 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
 // 放置建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
     if (_baseMode == BaseMode::NORMAL) {
-
+		if (_gold <= getGoldCost(type)&&_elixir<=getElixirCost(type)) {
+			showText("Not Enough Money And Elixir");
+			return;
+		}
+        else if (_gold <= getGoldCost(type)) {
+			showText("Not Enough Money");
+			return;
+		}
+        else if (_elixir <= getElixirCost(type)) {
+            showText("Not Enough Elixir");
+            return;
+        }
+		else{
+            spendGold(getGoldCost(type));
+            spendElixir(getElixirCost(type));
+		}
     }
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
+	//创造模式立即建造完成
+    if (_baseMode == BaseMode::CREATING) {
+        building->buildImmediately();
+    }
     if (building) {
         _buildPreview->setVisible(false);
         // 加入建筑总列表（核心：保存实例引用，避免内存泄漏/无法管理）
@@ -1073,12 +1110,10 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         building->setAnchorPoint(Vec2(0.5f, 0.5f));
         building->setPosition(containerLocalPos);
         _mapContainer->addChild(building);
-
 		// 越在右，越在下的建筑层级越高
         building->setLocalZOrder(1000 + (tilePos.x + tilePos.y));
         // 通用逻辑：添加到场景 + 绑定点击回调
-        if (building) {
-
+        if (building&&_baseMode!=BaseMode::FIGHT) {
             // 统一绑定点击回调（弹窗逻辑）
             building->bindClickCallback([this](BaseBuilding* building) {
                 if (_Mode != Mode::NONE) {
@@ -1094,10 +1129,10 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         }
 
 		// 1. 播放建造音效
-        // 2. 延迟0.1秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
+        // 2. 延迟0.5秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
         this->scheduleOnce([this](float delay) {
             _Mode = Mode::NONE;
-            }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
+            }, 0.5f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
 
     }
 
@@ -2099,7 +2134,7 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
         auto building = BaseBuilding::create(bData.type, bData.tilePos, 1.0f);
         if (building) {
             // 恢复建筑状态/等级
-			//TODO:恢复建造中的建筑有问题，需要额外处理建造进度
+            //TODO:恢复建造中的建筑有问题，需要额外处理建造进度
             building->setState(bData.state);    // 需给BaseBuilding添加setState方法
             building->setLevel(bData.level);    // 需给BaseBuilding添加setLevel方法
 
@@ -2124,15 +2159,16 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
             building->setPosition(containerLocalPos);
             building->setLocalZOrder(1000 + (bData.tilePos.x + bData.tilePos.y));
 
-            // 重新绑定点击回调
-            building->bindClickCallback([this](BaseBuilding* building) {
-                if (_Mode != Mode::NONE) return;
-                auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
-                    handleBuildingBtnClick(building, type);
+            // 重新绑定点击回调::TODO:可以测试摧毁假惺惺功能
+            if (_baseMode != BaseMode::FIGHT) {
+                building->bindClickCallback([this](BaseBuilding* building) {
+                    if (_Mode != Mode::NONE) return;
+                    auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
+                        handleBuildingBtnClick(building, type);
+                        });
+                    this->addChild(popup, 100);
                     });
-                this->addChild(popup, 100);
-                });
-
+            }
             // 重新加入容器和分类列表
             _mapContainer->addChild(building);
             _buildings.push_back(building);

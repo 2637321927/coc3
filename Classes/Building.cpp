@@ -12,7 +12,6 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
     // 按类型创建子类（后续新增建筑只需加case，无需改基类）
     switch (type) {
     case BuildingType::GOLD_MINE:
-        // 后续实现GOLD_MINE后替换
         building = GoldMine::create(tilePos, mapScale);
         break;
     case BuildingType::TOWN_HALL:
@@ -72,9 +71,9 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     // 初始化触摸监听器（统一调用封装的方法，避免重复绑定）
     initTouchListener();
 
-    //startBuild();
+    startBuild();
     this->scheduleUpdate();
-     setState(BuildingState::IDLE);
+    // setState(BuildingState::IDLE);
 	doSpecialAction(); 
     return true;
 }
@@ -276,7 +275,10 @@ void BaseBuilding::update(float dt) {
     float progress = _progressTimer / _config.buildTime;
     progress = clampf(progress, 0.0f, 1.0f);
     _progressBar->setPercentage(progress * 100);
-
+    if (_immediatelyBuild) {
+        progress = 1.0f; 
+        _progressBar->setPercentage(progress * 100);
+    }
     if (progress >= 1.0f) {
         _state == BuildingState::BUILDING ? finishBuild() : finishBuild();
     }

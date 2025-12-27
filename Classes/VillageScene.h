@@ -290,6 +290,7 @@ private:
     Vec2 _lastMousePos;          // 上一帧鼠标位置
     Vec2 _mapOriginPos;          // 地图初始位置（用于计算偏移）
 	// 瓦片高亮相关
+	bool _isLastMouseLeftButtonDown = false; // 上一帧鼠标左键状态
     std::vector<Vec2> _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
@@ -363,6 +364,7 @@ private:
     void initFightScene();
 	// 显示无法放置提示
     void VillageScene::showCannotPlaceTip(Vec2 pos);
+    void VillageScene::showText(std::string string, Vec2 pos=Vec2(1000,1000), float duringTime = 2.0f);
     // 初始化触摸事件（暂时屏蔽）(手机版用，如时间不够则放弃）
     void initTouchEvent();
     // 坐标转换：屏幕坐标 → 等轴测瓦片坐标

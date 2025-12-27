@@ -52,6 +52,22 @@ std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
       1
   }}
 };
+int getGoldCost(BuildingType type)  {
+    auto config = getBuildingConfigByType(type);
+    std::unordered_map<std::string, int>::const_iterator it = config.cost.find("gold");
+    if (it != config.cost.end()) {
+        return it->second;
+    }
+    return 0;
+}
+int getElixirCost(BuildingType type)  {
+    auto config = getBuildingConfigByType(type);
+    std::unordered_map<std::string, int>::const_iterator it = config.cost.find("elixir");
+    if (it != config.cost.end()) {
+        return it->second;
+    }
+    return 0;
+}
 //获取建筑的配置(新增建筑类型时需要在此添加对应配置)
 const BuildingConfig& getBuildingConfigByType(BuildingType type,int level)
 {
