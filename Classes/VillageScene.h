@@ -196,7 +196,15 @@ public:
         auto currentScene = Director::getInstance()->getRunningScene();
         if (!currentScene) return nullptr;
         // 找到场景中 Tag=100 的子节点
-        return dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
+        auto scene_100 = dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
+        if (scene_100 && scene_100->isRunning()) {
+            return dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
+        }
+        auto scene_25 = dynamic_cast<VillageScene*>(currentScene->getChildByTag(25));
+		if (scene_25 && scene_25->isRunning()) {
+			return dynamic_cast<VillageScene*>(currentScene->getChildByTag(25));
+		}
+        return nullptr;
     }
     // Cocos2d-x 标准创建方法（必须）
     static cocos2d::Scene* createScene(BaseMode baseMode=BaseMode::CREATING);
@@ -238,8 +246,12 @@ public:
 		_baseMode = baseMode;
 	}
      BaseMode getBaseMode() const { return _baseMode;}
+     void setTroopModeBtnInvisible() {
+         _troopModeBtn->setVisible(true);
+     }
 protected:
     bool level_init();
+    ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
 private:
     BaseMode _baseMode; // 所有模式管理器
 	//static VillageScene* _instance;// 单例实例指针
@@ -305,7 +317,6 @@ private:
     cocos2d::Label* _elixirLabel;    // 圣水显示标签
     cocos2d::Sprite* _goldIcon;      // 金币图标
     cocos2d::Sprite* _elixirIcon;    // 圣水图标
-    cocos2d::ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
@@ -323,6 +334,14 @@ private:
     ui::Button* _fightBtn;
     ui::Button* _fightStartBtn;
     Label* _countDownLabel;
+    // 星级评定相关成员变量
+    float destroyPercent; // 建筑摧毁百分比
+    int currentStars;     // 当前星级
+    Label* percentLabel; // 百分比显示标签
+    Vector<cocos2d::Sprite*> starSprites; // 星级精灵数组
+    Vec2 _starTargetPos; // 星级最终停留位置
+    float _totalBuildingCount;    // 总建筑数量
+    float _destroyedBuildingCount;// 已摧毁建筑数量
 
     void onMouseScroll(Event* event);
     void onMouseDown(Event* event);
@@ -453,6 +472,12 @@ private:
     void beginFight(); //开始战斗
     void updateCountDown(float dt);//战斗计时
     void onFightSettle();//战斗结算
+    // 星星相关
+    void initStarRatingUI(); // 初始化星级UI
+    void updateDestroyPercent(); // 更新摧毁百分比
+    void checkStarUnlock(); // 检查星级解锁
+    void flyStarToTarget(int starIndex); // 星级飞行动画
+    void updateStarDisplay(); // 更新星级显示状态
     // -------------------------- 整体控制--------------------------
 	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
 	void destroyScene(); // 销毁场景，释放资源

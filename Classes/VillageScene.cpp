@@ -6,9 +6,9 @@
 #include "Troop.h"
 #include "EnumType.h" 
 #include "LevelScene.h"
+#include "FightScene.h"
 #include "TitleScene.h"
 //VillageScene* VillageScene::_instance = nullptr;
-BaseMode initBaseMode;
 bool VillageScene::init()
 {
     if (!Scene::init()) return false;
@@ -23,16 +23,15 @@ bool VillageScene::init()
     _uiLayer->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
     this->addChild(_uiLayer, 200); // 布局层级200
     initMap();
-    initBtns(initBaseMode);
-    if (initBaseMode == BaseMode::FIGHT) {
+    initBtns(_baseMode);
+    if (_baseMode == BaseMode::FIGHT) {
         initFightScene();
     }
-    if (initBaseMode != BaseMode::FIGHT) {
+    if (_baseMode != BaseMode::FIGHT) {
         initBuildPreview();
         initResourceBar();
     }
     initTroopPreview();
-    
     //initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
     //initTouchEvent();
@@ -45,6 +44,9 @@ bool VillageScene::init()
     mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
+	if (_baseMode == BaseMode::FIGHT) {
+        loadGame("fight.txt");
+	}
     return true;
 }
 //设置瓦片颜色（放置预览）
@@ -278,17 +280,42 @@ void VillageScene::clampMapPosition()
     float clampedY = clampf(containerPos.y, minY, maxY);
     _mapContainer->setPosition(Vec2(clampedX, clampedY));
 }
-Scene* VillageScene::createScene(BaseMode baseMode)
+Scene* VillageScene::createScene(BaseMode mode)
 {
-	initBaseMode = baseMode;
     auto scene = Scene::create();
-    auto layer = VillageScene::create();
-    scene->addChild(layer);
-    if (baseMode != BaseMode::FIGHT) {
-        layer->setTag(100);//便于getInstance获取
+    if (!scene) {
+        return nullptr;
     }
-    auto villageScene = dynamic_cast<VillageScene*>(layer);
-    villageScene->setBaseMode(baseMode); // 设置模式
+
+    //手动新建 VillageScene 对象（不依赖 CREATE_FUNC，掌控初始化顺序）
+    VillageScene* layer = new (std::nothrow) VillageScene();
+    if (layer) {
+        // 3. 关键：先设置 BaseMode（此时未调用 init()，参数有效）
+            layer->setBaseMode(mode); // 设置模式
+
+        // 4. 再手动调用 init()（此时 _baseMode 已赋值，init 中可识别模式）
+        if (layer->init()) {
+            layer->autorelease(); // 加入自动释放池，兼容 Cocos 内存管理
+            scene->addChild(layer);
+            if (mode != BaseMode::FIGHT) {
+                layer->setTag(100);//便于getInstance获取
+                // }
+            }
+            else {
+                layer->setTag(25);
+            }
+        }
+        else {
+            // 初始化失败，释放资源避免内存泄漏
+            delete layer;
+            layer = nullptr;
+            scene = nullptr;
+        }
+    }
+    else {
+        delete scene;
+        scene = nullptr;
+    }
     return scene;
 }
 // 加载等轴测地图
@@ -369,6 +396,9 @@ void VillageScene::initBtns(BaseMode baseMode) {
     _troopModeBtn->addClickEventListener([this](Ref* sender) {
         this->toggleTroopBar(); // 点击切换兵种栏
         });
+	if (_baseMode == BaseMode::FIGHT) {
+		_troopModeBtn->setVisible(false);
+	}
     // 创建建筑模式开关按钮（右上角悬浮）
     if (baseMode != BaseMode::FIGHT) {
          _buildModeBtn = ui::Button::create(
@@ -449,6 +479,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
         _uiLayer->addChild(_fightStartBtn, 200);
         _fightStartBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100));
         _fightStartBtn->addClickEventListener([this](Ref* sender) {
+            setTroopModeBtnInvisible();
             this->beginFight(); // 开始战斗
             });
     }
@@ -1635,6 +1666,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第六步：记录兵种 =====
     _spawnedTroops.push_back(troop);
+    //_enemyTroops.push_back(troop);
    // CCLOG("success：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
         //containerLocalPos.x, containerLocalPos.y, _spawnedTroops.size());
     if (_Mode == Mode::FIGHT) {
@@ -1648,14 +1680,14 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
     if (targetBuilding) {
         // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
-        CCLOG("troop is %s", troop ? "valid" : "null");
+       // CCLOG("troop is %s", troop ? "valid" : "null");
         troop->setTargetWorldPosition(targetBuilding->getPosition());
-        CCLOG("YEoS!!!!!!!");
-        CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
-            targetBuilding->getPosition().x, targetBuilding->getPosition().y);
+       // CCLOG("YEoS!!!!!!!");
+        //CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
+            targetBuilding->getPosition().x, targetBuilding->getPosition().y;
     }
     else {
-        CCLOG("未找到敌方建筑，兵种进入lazy状态");
+       // CCLOG("未找到敌方建筑，兵种进入lazy状态");
     }
 }
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {
@@ -1929,11 +1961,11 @@ std::vector<std::string> split(const std::string& s, const std::string& delim) {
 // 从存档结构恢复场景数据（添加建筑时需要实现）
 void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     // 清空当前场景的旧数据
-    for (auto building : _buildings) {
-        if (building) {
-            building->destroy();
+     for (auto building : _buildings) {
+            if (building) {
+                building->destroy();
+            }
         }
-    }
     _buildings.clear();
     _goldMines.clear();
     _elixirCollectors.clear();
@@ -2411,14 +2443,14 @@ void VillageScene::gotoLevel3() {
     if (!success) CCLOG("无法加载关卡 3");
 }
 void VillageScene::gotoFight() {
-    Scene* villageScene = VillageScene::createScene(BaseMode::FIGHT);
-    //场景切换（加淡入淡出动画，提升体验）
-    if (!villageScene) {
+    saveGame("fight.txt");
+    Scene* fightScene = VillageScene::createScene(BaseMode::FIGHT);
+    if (!fightScene) {
         CCLOG("FIght创建f失败！");
         return;
     }
     CCLOG("FIGHT创建s成功，准备切换");
-    Director::getInstance()->pushScene(villageScene);
+    Director::getInstance()->pushScene(fightScene);
 }
 void VillageScene::backfromFight() {
 	Director::getInstance()->popScene();
@@ -2462,6 +2494,35 @@ void VillageScene::updateCountDown(float dt)
 void VillageScene::onFightSettle() {
 
 }
+void VillageScene::initStarRatingUI() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    //有黑边时origin不为0
+    Vec2 origin = Director::getInstance()->getVisibleOrigin();
+    // 初始化星级数据
+    _totalBuildingCount = _buildings.size(); // 替换为实际总建筑数量（建议从场景数据中读取）
+    _destroyedBuildingCount = 0;
+    destroyPercent = 0.0f;
+    currentStars = 0;
+    _starTargetPos = Vec2(origin.x+visibleSize.width - 150,
+        origin.y+visibleSize.height - 150); // 星级最终位置
+
+    // 1. 创建百分比显示标签
+    percentLabel = Label::createWithTTF("0%", "fonts/Marker Felt.ttf", 32);
+    percentLabel->setPosition(_starTargetPos.x - 80, _starTargetPos.y + 40);
+    percentLabel->setColor(Color3B::YELLOW);
+    _uiLayer->addChild(percentLabel, 201);
+
+    // 2. 创建3颗星星（初始为灰色未激活状态）
+    for (int i = 0; i < 3; i++) {
+        Sprite* star = Sprite::create("ui/star_grey.png"); // 灰色星星资源
+        star->setScale(0.8f);
+        star->setPosition(0, 0);
+        star->setVisible(true);
+        _uiLayer->addChild(star, 201);
+        starSprites.pushBack(star);
+    }
+}
+
 // 销毁场景并返回标题界面
 void VillageScene::destroyScene() {
     //_eventDispatcher->removeEventListenersForTarget(this);

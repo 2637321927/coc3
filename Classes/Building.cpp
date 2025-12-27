@@ -71,8 +71,10 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
 
     // 初始化触摸监听器（统一调用封装的方法，避免重复绑定）
     initTouchListener();
-    startBuild();
-     //setState(BuildingState::IDLE);
+
+    //startBuild();
+    this->scheduleUpdate();
+     setState(BuildingState::IDLE);
 	doSpecialAction(); 
     return true;
 }
@@ -708,6 +710,7 @@ BaseTroop* BaseAttackBuilding::findTargetInRange() {
         if (distance <= _attackRange && distance < minDistance) {
             minDistance = distance;
             closestTroop = troop;
+            CCLOG("attatck!");
         }
     }
     return closestTroop;
@@ -805,7 +808,7 @@ void Cannon::attackTarget() {
 
     // 扣减目标血量
     _targetTroop->takeDamage(_attackDamage);
-    
+    CCLOG("attatsdack!");
 
     // 播放炮弹特效
     Vec2 startPos = this->getPosition();
