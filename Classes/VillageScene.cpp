@@ -631,6 +631,109 @@ Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
     return _mapContainer->convertToNodeSpace(_bgLayer->convertToWorldSpace(localCenter));
 }
 
+void VillageScene::init_level_Btns(BaseMode baseMode) {
+    //获取可视区域
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    //有黑边时origin不为0
+    Vec2 origin = Director::getInstance()->getVisibleOrigin();
+    //origin.x, origin.y为左下角
+    // origin.x+visibleSize.width最右边
+    // origin。y+visibleSize.heigh
+    if (baseMode == BaseMode::FIGHT) {
+        if (_troopModeBtn) {
+            _troopModeBtn->setVisible(true);
+        }
+        else {
+            initTroopModeBtn(); // 如果没初始化，先初始化
+        }
+    }
+    // 创建建筑模式开关按钮（右上角悬浮）
+    if (baseMode != BaseMode::FIGHT) {
+        _buildModeBtn = ui::Button::create(
+            "ui/build_mode_btn_normal.png",  // 正常状态图片
+            "ui/build_mode_btn_selected.png"// 按下状态图片
+        );
+        _uiLayer->addChild(_buildModeBtn, 200);
+        _buildModeBtn->setScale(0.8f);
+        _buildModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 100));
+        _buildModeBtn->addClickEventListener([this](Ref* sender) {
+            this->toggleBuildBar(); // 点击切换建筑栏
+            });
+    }
+
+
+    // 创建关卡选择按钮（左下角）
+    if (baseMode != BaseMode::FIGHT) {
+        _levelSelectBtn = ui::Button::create(
+            "ui/level_select_btn_normal.png",  // 正常状态图片
+            "ui/level_select_btn_selected.png"// 按下状态图片
+        );
+        _uiLayer->addChild(_levelSelectBtn, 200);
+        // 初始化关卡选择层状态（TODO：为什么要加在这里？）
+        _isLevelSelectShow = false;
+        _levelSelectLayer = nullptr;
+        _levelSelectBtn->setScale(0.8f);
+        _levelSelectBtn->setPosition(Vec2(origin.x + 100, origin.y + 100)); // 左下角，距离左边缘和下边缘各50像素
+        _levelSelectBtn->addClickEventListener([this](Ref* sender) {
+            this->toggleLevelSelectMenu(); // 点击切换关卡选择菜单
+            });
+    }
+
+    if (baseMode != BaseMode::FIGHT) {
+        // 创建存档按钮
+        _loadBtn = ui::Button::create(
+            "ui/btn_normal.png",
+            "ui/btn_pressed.png",
+            "ui/btn_disabled.png"
+        );
+        _uiLayer->addChild(_loadBtn, 200);
+        // 创建存档按钮
+        _saveBtn = ui::Button::create(
+            "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
+            "ui/btn_pressed.png",  // 按下状态图片
+            "ui/btn_disabled.png"  // 禁用状态图片（可选）
+        );
+        _uiLayer->addChild(_saveBtn, 200);
+        _saveBtn->setContentSize(Size(120, 60));
+        _saveBtn->setPosition(Vec2(_backBtn->getPositionX(), _backBtn->getPositionY() - 80));
+
+        _loadBtn->setContentSize(Size(120, 60));// 位置在存档按钮下方，间距20
+        _loadBtn->setPosition(Vec2(_saveBtn->getPositionX(), _saveBtn->getPositionY() - 80));
+        // 设置按钮文字
+        auto saveText = ui::Text::create("save", "fonts/Marker Felt.ttf", 24);
+        saveText->setColor(Color3B::WHITE);
+        _saveBtn->addChild(saveText);
+        auto loadText = ui::Text::create("load", "fonts/Marker Felt.ttf", 24);
+        loadText->setColor(Color3B::WHITE);
+        _loadBtn->addChild(loadText);
+        _saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
+        _loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
+    }
+
+    if (baseMode != BaseMode::FIGHT) {
+        _fightBtn = ui::Button::create(
+            "ui/fight_btn_normal.png",  // 正常状态图片
+            "ui/fight_btn_selected.png"// 按下状态图片
+        );
+        _uiLayer->addChild(_fightBtn, 200);
+        _fightBtn->setScale(0.8f);
+        _fightBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100)); // 右下角，距离右边缘和下边缘各50像素
+        _fightBtn->addClickEventListener([this](Ref* sender) {
+            this->gotoFight(); // 点击进入战斗场景
+            });
+    }
+    if (baseMode == BaseMode::FIGHT) {
+        _fightStartBtn = ui::Button::create("ui/fight_start_btn.png");
+        _uiLayer->addChild(_fightStartBtn, 200);
+        _fightStartBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100));
+        _fightStartBtn->addClickEventListener([this](Ref* sender) {
+            // 点击开始战斗后，隐藏掉选兵按钮
+            if (_troopModeBtn) _troopModeBtn->setVisible(false);
+            this->beginFight();
+            });
+    }
+}
+
 // 检测瓦片是否可放置建筑
 //用途：判断某个瓦片是否允许放置建筑，在建筑放置预览和实际放置时调用，根据这个建筑覆盖的所有瓦片依次调用
 bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
@@ -1461,7 +1564,7 @@ void VillageScene::initTroopModeBtn() {
 
     auto menu = Menu::create(troopModeBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
-    this->addChild(menu, 100); // 最高层级
+    _uiLayer->addChild(menu); // 最高层级
 }
 // 创建兵种栏（训练/放置按钮）
 void VillageScene::createTroopBar() {
@@ -2054,15 +2157,14 @@ bool VillageScene::saveGame(const std::string& savePath) {
     return cocos2d::FileUtils::getInstance()->writeStringToFile(saveStr, fullPath);
 }
 
-// 从文件读档
 bool VillageScene::loadGame(const std::string& savePath) {
     // 获取文件完整路径
     std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;// cocos2d::FileUtils::getInstance()->getWritablePath() + 
     // 检查文件是否存在
-    if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
-        CCLOG("存档文件不存在：%s", fullPath.c_str());
-        return false;
-    }
+    //if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
+      //  CCLOG("存档文件不存在：%s", fullPath.c_str());
+       // return false;
+   // }
     // 读取文件内容
     //std::string saveStr = fullPath;
    std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
@@ -2313,24 +2415,6 @@ void VillageScene::createLevelSelectMenu() {
     auto menu = Menu::create(level1Btn, level2Btn, level3Btn, closeBtn, nullptr);
     menu->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
     _levelSelectLayer->addChild(menu);
-
-    // 如果图片不存在，创建文字标签作为备选
-    if (!level1Btn->getNormalImage()) {
-        auto label1 = Label::createWithTTF("关卡 1: 新手训练", "fonts/Marker Felt.ttf", 28);
-        label1->setColor(Color3B::WHITE);
-        label1->setPosition(Vec2(visibleSize.width / 2 - 200, visibleSize.height / 2));
-        _levelSelectLayer->addChild(label1);
-
-        auto label2 = Label::createWithTTF("关卡 2: 丛林之战", "fonts/Marker Felt.ttf", 28);
-        label2->setColor(Color3B::WHITE);
-        label2->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
-        _levelSelectLayer->addChild(label2);
-
-        auto label3 = Label::createWithTTF("关卡 3: 最终决战", "fonts/Marker Felt.ttf", 28);
-        label3->setColor(Color3B::WHITE);
-        label3->setPosition(Vec2(visibleSize.width / 2 + 200, visibleSize.height / 2));
-        _levelSelectLayer->addChild(label3);
-    }
 }
 
 bool VillageScene::level_init()
@@ -2338,16 +2422,22 @@ bool VillageScene::level_init()
     if (!Scene::init()) return false;
     // 初始化流程
 
-
     _mapContainer = Node::create();
     this->addChild(_mapContainer);
+    _uiLayer = ui::Layout::create();
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    _uiLayer->setContentSize(visibleSize); // 布局尺寸等于可视区域
+    _uiLayer->setPosition(Vec2::ZERO);
+    _uiLayer->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
+    this->addChild(_uiLayer, 200); // 布局层级200
     initMap();
-    initBuildPreview();
+    init_level_Btns(BaseMode::FIGHT);
+    go_back_Btn();
+    
 
     initTroopPreview();
-    go_back_Btn();
+    //initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
-
     //initTouchEvent();
     //  监听鼠标滚轮事件
     auto  mouseListener = EventListenerMouse::create();
@@ -2358,6 +2448,10 @@ bool VillageScene::level_init()
     mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
+    if (_baseMode == BaseMode::FIGHT) {
+        loadGame("level1.txt");
+    }
+
     return true;
 }
 

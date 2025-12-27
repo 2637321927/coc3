@@ -693,8 +693,18 @@ void BaseAttackBuilding::update(float dt) {
 }
 
 // 目标检测逻辑
+// 在 Building.cpp 中找到这个函数
 BaseTroop* BaseAttackBuilding::findTargetInRange() {
-    std::vector<BaseTroop*> allEnemies = VillageScene::getInstance()->getAllEnemyTroops();
+    // 【修复开始】增加安全检查
+    auto villageScene = VillageScene::getInstance();
+    if (!villageScene) {
+        // 如果场景还没准备好，或者 Tag 没设置对，直接返回 nullptr，防止崩溃
+        return nullptr;
+    }
+    // 【修复结束】
+
+    // 原有逻辑
+    std::vector<BaseTroop*> allEnemies = villageScene->getAllEnemyTroops();
     if (allEnemies.empty()) {
         return nullptr;
     }
@@ -702,7 +712,7 @@ BaseTroop* BaseAttackBuilding::findTargetInRange() {
     BaseTroop* closestTroop = nullptr;
     float minDistance = FLT_MAX;
     Vec2 buildingPos = this->getPosition();
-    
+
     for (auto troop : allEnemies) {
         if (!troop || troop->getState() == TroopState::DEAD) continue;
 
@@ -710,7 +720,6 @@ BaseTroop* BaseAttackBuilding::findTargetInRange() {
         if (distance <= _attackRange && distance < minDistance) {
             minDistance = distance;
             closestTroop = troop;
-            CCLOG("attatck!");
         }
     }
     return closestTroop;
