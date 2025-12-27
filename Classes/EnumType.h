@@ -5,7 +5,8 @@
 enum class BaseMode {
     NORMAL,   //普通
     CREATING, //创造
-    LEVEL     //关卡
+    LEVEL,     //关卡
+	FIGHT     //战斗
 };
 // 兵种类型枚举
 enum class TroopType {
@@ -35,7 +36,7 @@ enum class BuildingType {
 enum class BuildingState {
     IDLE,        // 正常
     BUILDING,    // 建造中
-    ATTACKING,      // 攻击中（新增）
+    ATTACKING,      // 攻击中
     UPGRADING,   // 升级中
     DESTROYED,   // 摧毁
     TRAINING,    // 训练中（仅训练营）

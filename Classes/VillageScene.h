@@ -262,8 +262,6 @@ private:
     bool _isBuildBarShow = false; // 建筑栏是否显示
     Layer* _buildBarLayer = nullptr; // 建筑栏容器层
     // 存储所有建筑（基类指针，兼容所有建筑类型）
-    ui::Button* saveBtn;
-    ui::Button* loadBtn;
     std::vector<BaseBuilding*> _buildings;
     // 按类型拆分存储（便于快速查找,资源类一键停止/开启）
     std::vector<GoldMine*> _goldMines;
@@ -307,10 +305,24 @@ private:
     cocos2d::Label* _elixirLabel;    // 圣水显示标签
     cocos2d::Sprite* _goldIcon;      // 金币图标
     cocos2d::Sprite* _elixirIcon;    // 圣水图标
-    cocos2d::Layer* _resourceLayer;  // 资源显示层（方便统一管理）
+    cocos2d::ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
+    //战斗相关
+    float _totalTime; // 总倒计时时长（150秒 = 2分30秒）
+    float _remainingTime; // 剩余时间
+
+    //ui组件
+    ui::Button* _saveBtn;
+    ui::Button* _loadBtn;
+    ui::Button* _backBtn;
+    ui::Button* _troopModeBtn;
+    ui::Button* _buildModeBtn;
+    ui::Button* _levelSelectBtn;
+    ui::Button* _fightBtn;
+    ui::Button* _fightStartBtn;
+    Label* _countDownLabel;
 
     void onMouseScroll(Event* event);
     void onMouseDown(Event* event);
@@ -327,6 +339,7 @@ private:
 	void initBtns(BaseMode baseMode=BaseMode::CREATING); //初始化一切按钮
     // 初始化建筑预览（暂时屏蔽）
     void initBuildPreview();
+    void initFightScene();
 	// 显示无法放置提示
     void VillageScene::showCannotPlaceTip(Vec2 pos);
     // 初始化触摸事件（暂时屏蔽）(手机版用，如时间不够则放弃）
@@ -434,6 +447,12 @@ private:
     // 跳转到关卡的函数
     void gotoLevel2();
     void gotoLevel3();
+    //战斗相关
+    void gotoFight();//跳转到战斗场景的函数
+    void backfromFight();//从战斗场景退出
+    void beginFight(); //开始战斗
+    void updateCountDown(float dt);//战斗计时
+    void onFightSettle();//战斗结算
     // -------------------------- 整体控制--------------------------
 	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
 	void destroyScene(); // 销毁场景，释放资源

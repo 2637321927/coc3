@@ -57,6 +57,7 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     _config = config;
     _tilePos = tilePos;
     _mapScale = mapScale;
+	_currentHp = config.hp; // 初始化当前血量为满值
 	CCLOG("tile.x: %f, tile.y: %f", tilePos.x, tilePos.y);
     // 加载建筑图片（仅创建一次Sprite子节点，避免重复）
     if (!loadBuildingSprite()) {
@@ -105,13 +106,26 @@ bool BaseBuilding::loadBuildingSprite() {
     return true;
 }
 
-// 初始化通用UI（进度条、等级标签）
+// 初始化通用UI（进度条、等级标签，血条）
 void BaseBuilding::initCommonUI() {
     //建造/升级进度条
     auto progressBg = Sprite::create("ui/progress_bar.png");
+
     if (!progressBg) {
         return;
     }
+    
+	auto hpBg = Sprite::create("ui/hp_bar.png");
+    if (!hpBg) {
+        return;
+    }
+	// 血量条位置：建筑上方20像素（基于精灵尺寸）
+	_hpBar = ProgressTimer::create(hpBg);
+    _hpBar->setType(ProgressTimer::Type::BAR);
+    _hpBar->setMidpoint(Vec2(0, 0.5f));
+    _hpBar->setBarChangeRate(Vec2(1, 0));
+    _hpBar->setPosition(0, -_buildingSprite->getContentSize().height / 2 + 20);
+    _hpBar->setVisible(false);
     _progressBar = ProgressTimer::create(progressBg);
     _progressBar->setType(ProgressTimer::Type::BAR);
     _progressBar->setMidpoint(Vec2(0, 0.5f));
@@ -130,6 +144,21 @@ void BaseBuilding::initCommonUI() {
         levelLabel->setColor(Color3B::YELLOW);
         this->addChild(levelLabel, 1);
     }
+}
+void BaseBuilding::takeDamage(int damage) {
+	_currentHp -= damage;
+	if (_currentHp < 0) _currentHp = 0;
+	// 更新血条显示
+	float hpPercent = (static_cast<float>(_currentHp) / static_cast<float>(_config.hp)) * 100.0f;
+	if (_hpBar) {
+		_hpBar->setPercentage(hpPercent);
+	}
+	// 显示受击特效
+	//EffectManager::getInstance()->playHitEffect(this->getPosition());
+	// 检查是否摧毁
+	if (_currentHp == 0) {
+		destroy();
+	}
 }
 // 初始化触摸监听器
 void BaseBuilding::initTouchListener() {

@@ -29,8 +29,8 @@ public:
     virtual void finishBuild();         // 完成建造（通用逻辑）
     virtual void startUpgrade();        // 开始升级（通用逻辑）
     virtual void destroy();             // 摧毁建筑（通用逻辑）
-    void setState(BuildingState state); // 设置状态（通用）
     virtual void takeDamage(int damage); // 受到伤害（通用逻辑）
+    void setState(BuildingState state); // 设置状态（通用）
     BuildingState getState() const { return _state; }
 
     // ========== 通用属性接口（所有建筑都有） ==========
@@ -67,11 +67,12 @@ protected:
     BuildingConfig _config;             // 通用配置
 	//需要在public加一些接口供外部访问
 	BuildingState _state = BuildingState::UNKNOWN;  // 当前状态
-    int _currentHp;                   // 当前生命值
-    Vec2  _tilePos ;             // 瓦片坐标(左上角)
+    Vec2 _tilePos;             // 瓦片坐标(左上角)
+	int _currentHp;          // 当前生命值
     float _mapScale = 1.0f;             // 地图缩放比例
     float _progressTimer = 0.0f;        // 进度计时器
     ProgressTimer* _progressBar = nullptr; // 通用进度条
+    ProgressTimer* _hpBar = nullptr; // 通用血条
 	Sprite*  _buildingSprite;        // 建筑图片精灵
 };
 class GoldMine : public BaseBuilding {
@@ -155,8 +156,8 @@ private:
 //========== 兵营类 ==========
 class Barracks : public BaseBuilding {
  public:
-     static Barracks* create(const cocos2d::Vec2& tilePos, float mapScale);
-     bool init(const cocos2d::Vec2& tilePos, float mapScale) ;
+     static Barracks* create(const Vec2& tilePos, float mapScale);
+     bool init(const Vec2& tilePos, float mapScale) ;
 
      // 重写特殊行为
      void doSpecialAction() override;

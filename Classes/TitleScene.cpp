@@ -122,7 +122,6 @@ void TitleScene::onStartGameClick(Ref* pSender)
      SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
      */
      // 创建目标场景（之前写的VillageScene）
-    
       Scene* villageScene = VillageScene::createScene(BaseMode::CREATING);
      //场景切换（加淡入淡出动画，提升体验）
       if (!villageScene) {
