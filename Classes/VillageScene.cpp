@@ -2212,6 +2212,35 @@ bool VillageScene::loadGame(const std::string& savePath) {
     return true;
 }
 
+bool VillageScene::loadGame2(const std::string& savePath) {
+    // 1. 拼接完整路径（沙盒路径 + 文件名）
+    std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;
+
+    // 2. 检查文件是否存在
+    if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
+        CCLOG("读档失败：文件不存在 -> %s", fullPath.c_str());
+        return false;
+    }
+
+    // 3. 读取字符串
+    std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
+
+    // 4. 校验存档内容是否为空
+    if (saveStr.empty()) {
+        CCLOG("读档失败：存档内容为空");
+        return false;
+    }
+
+    // 5. 反序列化
+    SaveData::Village saveData = SaveData::Village::fromString(saveStr);
+
+    // 6. 恢复场景
+    unpackSaveData(saveData);
+
+    CCLOG("读档成功：恢复了 %d 栋建筑", (int)saveData.buildings.size());
+    return true;
+}
+
 // 创建存档/读档按钮
 void VillageScene::initSaveLoadButtons() {
     // 创建存档按钮
@@ -2282,7 +2311,7 @@ void VillageScene::onSaveBtnClicked(Ref* sender) {
 //读档按钮点击回调
 void VillageScene::onLoadBtnClicked(Ref* sender) {
     // 调用已实现的读档方法
-    bool success = loadGame();
+    bool success = loadGame2("village_save.txt");
     std::string tip = success ? "load success" : "load failed";
     CCLOG("%s", tip.c_str());
 

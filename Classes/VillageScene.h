@@ -215,7 +215,8 @@ public:
     // 存档（保存到本地文件）
     bool saveGame(const std::string& savePath = "village_save.txt");
     // 读档（从本地文件恢复）
-    bool loadGame(const std::string& savePath = "village_save.txt");
+    bool loadGame(const std::string& savePath);
+    bool VillageScene::loadGame2(const std::string& savePath = "village_save.txt"); 
     // 按钮点击回调
     void onSaveBtnClicked(cocos2d::Ref* sender);
     void onLoadBtnClicked(cocos2d::Ref* sender);
