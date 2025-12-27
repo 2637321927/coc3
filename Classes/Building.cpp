@@ -57,7 +57,7 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     _config = config;
     _tilePos = tilePos;
     _mapScale = mapScale;
-
+	CCLOG("tile.x: %f, tile.y: %f", tilePos.x, tilePos.y);
     // 加载建筑图片（仅创建一次Sprite子节点，避免重复）
     if (!loadBuildingSprite()) {
         return false;
@@ -95,7 +95,8 @@ bool BaseBuilding::loadBuildingSprite() {
 
     // 设置精灵锚点和位置（居中在BaseBuilding节点）
     _buildingSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
-    _buildingSprite->setPosition(Vec2::ZERO); // Node默认锚点是(0,0)，精灵居中则设为(0,0)
+    _buildingSprite->setPosition(Vec2::ZERO); // Node默认锚点是(0,0)，精灵居中则设为(0,0
+   // _buildingSprite->setContentSize(Size(64*_config.tileWidth,32*_config.tileHeight));//统一设置尺寸TODO：后续调试
     this->addChild(_buildingSprite, -1); // Z=-1：保证在UI下方
 
     // 同步精灵缩放（和建筑节点一致）

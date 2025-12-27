@@ -158,7 +158,7 @@ void VillageScene::onMouseMove(Event* event)
         // 建造预览跟随（磁吸效果）
         if (_Mode == Mode::PLACE_BUILDING && _buildPreview->isVisible()) {
             Vec2 tilePos = screenToIsoTile(currentMousePos);
-            currentMousePos.y += 50; // 微调Y轴位置，以便显示真实放置格子
+            //currentMousePos.y += 50; // 微调Y轴位置，以便显示真实放置格子
             // 将预览图位置设为容器本地坐标
             Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
             _buildPreview->setPosition(containerLocalPos);
@@ -180,11 +180,11 @@ void VillageScene::onMouseMove(Event* event)
     // 兵种预览跟随
     if (_Mode == Mode::SPAWN_TROOP && _troopPreview && _troopPreview->isVisible()) {
         Vec2 tilePos = screenToIsoTile(currentMousePos);
-        // 核心：和建筑预览用同一个位置计算方式
+        // 和建筑预览用同一个位置计算方式
         Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
         _troopPreview->setPosition(containerLocalPos);
         _troopPreview->setScale(_mapContainer->getScale());
-        // 临时：和建筑用同一个检测函数，确保预览颜色正确
+        // 和建筑用同一个检测函数，确保预览颜色正确
         _troopPreview->setColor(checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED);
     }
 
@@ -293,7 +293,7 @@ void VillageScene::initMap()
     // 整个容器居中
     _mapContainer->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
     // 地图在容器内部居中（相对于容器原点）
-    _tileMap->setAnchorPoint(Vec2(0.5f, 0.0f));
+    _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f));
     _tileMap->setPosition(Vec2::ZERO);
     /*
     // 加载地图文件
@@ -544,11 +544,13 @@ Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
     // 1. 获取该瓦片在 Layer 内部的局部坐标（官方函数）
         // 注意：getPositionAt 返回的是瓦片菱形的底端点
     Vec2 basePos = _bgLayer->getPositionAt(tilePos);
-
+    CCLOG("basePos.x: %f, basePos.y: %f", basePos.x, basePos.y);
     // 2. 计算中心点偏移：向上移动半个瓦片高度
     // Cocos2d-x 坐标系 Y 轴向上，所以是 + height/2
-    Vec2 localCenter = basePos + Vec2(_tileSize.height, _tileSize.width / 2.0f);
-
+    Vec2 localCenter = basePos + Vec2(_tileSize.width /2.0f
+		, _tileSize.height / 2.0f
+    );
+    CCLOG("localCenter.x: %f, basePos.y: %f", localCenter.x, localCenter.y);
     // 3. 将 Layer 内部坐标转换为容器 (_mapContainer) 的坐标
     // 考虑到你可能有多个 Layer 或者 Layer 做了偏移，用转换函数最安全
     return _mapContainer->convertToNodeSpace(_bgLayer->convertToWorldSpace(localCenter));
@@ -872,20 +874,20 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         int n = config.tileWidth;
         Vec2 topLeftTile = tilePos; // 左上角瓦片（基准瓦片）
         Vec2 bottomRightTile = Vec2(
-            tilePos.x + n - 1,
-            tilePos.y + n - 1
+            tilePos.x + config.tileWidth - 1,
+            tilePos.y + config.tileHeight - 1
         ); // 右下角瓦片
-
-        // 2. 计算两个瓦片的中心点容器坐标
+        CCLOG("aaatile.x: %f, tile.y: %f", tilePos.x, tilePos.y);
+        // 计算两个瓦片的中心点容器坐标
         Vec2 posTopLeft = isoTileToContainerPos(topLeftTile);
         Vec2 posBottomRight = isoTileToContainerPos(bottomRightTile);
 
-        // 3. 求中点（区域中心点）
+        // 求中点（区域中心点）
         Vec2 containerLocalPos = Vec2(
             (posTopLeft.x + posBottomRight.x) / 2.0f,
             (posTopLeft.y + posBottomRight.y) / 2.0f
         );
-
+        CCLOG("containerLocalPos.x: %f, containerLocalPos.y: %f", containerLocalPos.x, containerLocalPos.y);
         // 确保建筑锚点居中（关键：默认锚点可能不是中心，需显式设置）
         building->setAnchorPoint(Vec2(0.5f, 0.5f));
         building->setPosition(containerLocalPos);
@@ -1850,6 +1852,7 @@ SaveData::Village VillageScene::packSaveData() {
         bData.state = building->getState();
         bData.level = building->getLevel();
         saveData.buildings.push_back(bData);
+        CCLOG("tile.x: %f, tile.y: %f", bData.tilePos.x, bData.tilePos.y);
     }
     return saveData;
 }
@@ -1893,7 +1896,7 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     _goldMines.clear();
     _elixirCollectors.clear();
     _occupiedTiles.clear();
-    // 恢复地图尺寸（可选，根据需求）
+    // 恢复地图尺寸
     _mapSize = saveData.mapSize;
     // 恢复当前模式
     _Mode = saveData.currentMode;
@@ -1914,13 +1917,24 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
 
             // 复用placeBuilding中的坐标/锚点/ZOrder逻辑
             auto config = building->getConfig();
-            float centerTileX = bData.tilePos.x + (config.tileWidth) / 2.0f;
-            float centerTileY = bData.tilePos.y + (config.tileHeight - 1) / 2.0f;
-            Vec2 centerTilePos(centerTileX, centerTileY);
-            Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
+            CCLOG("tile.x: %f, tile.y: %f", bData.tilePos.x, bData.tilePos.y);
+            Vec2 topLeftTile = bData.tilePos; // 左上角瓦片（基准瓦片）
+            Vec2 bottomRightTile = Vec2(
+                bData.tilePos.x + config.tileWidth - 1,
+                bData.tilePos.y + config.tileHeight - 1
+            ); // 右下角瓦片
+            Vec2 posTopLeft = isoTileToContainerPos(topLeftTile);
+            Vec2 posBottomRight = isoTileToContainerPos(bottomRightTile);
+
+            // 求中点（区域中心点）
+            Vec2 containerLocalPos = Vec2(
+                (posTopLeft.x + posBottomRight.x) / 2.0f,
+                (posTopLeft.y + posBottomRight.y) / 2.0f
+            );
+            CCLOG("load  containerLocalPos.x: %f, containerLocalPos.y: %f", containerLocalPos.x, containerLocalPos.y);
             building->setAnchorPoint(Vec2(0.5f, 0.5f));
             building->setPosition(containerLocalPos);
-            building->setLocalZOrder(1000 - (bData.tilePos.x + bData.tilePos.y));
+            building->setLocalZOrder(1000 + (bData.tilePos.x + bData.tilePos.y));
 
             // 重新绑定点击回调
             building->bindClickCallback([this](BaseBuilding* building) {
