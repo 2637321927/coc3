@@ -249,6 +249,8 @@ public:
      void setTroopModeBtnInvisible() {
          _troopModeBtn->setVisible(true);
      }
+     // 摧毁建筑核心函数
+     void destroyBuilding(BaseBuilding* building);
 protected:
     bool level_init();
     ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
@@ -385,8 +387,6 @@ private:
     bool isTileOccupied(Vec2 tilePos);
 	// 处理建筑弹窗按钮点击回调
     void handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type);
-    // 摧毁建筑核心函数
-    void destroyBuilding(BaseBuilding* building);
     // 辅助：释放建筑占用的瓦片
     void releaseBuildingTiles(BaseBuilding* building);
     // 金矿生产控制(如切换到其他场景，战争模式时暂停生产)
