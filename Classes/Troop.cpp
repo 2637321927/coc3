@@ -176,34 +176,76 @@ void BaseTroop::updateAttackCD() {
 
 // ========== 通用：更新移动逻辑 ==========
 void BaseTroop::updateMovement(float dt) {
-    if (_state != TroopState::MOVING ) {
-		CCLOG("NOMOVE1");
-        return;
-    }
-    if (_targetPos.isZero()) {
-        CCLOG("NOMOVE2");
-        return;
-    }
-    //CCLOG("MOVE");
-    // 计算移动方向
-    Vec2 direction = _targetPos - this->getPosition();
-    float distance = direction.length();
-    CCLOG("MOVEsdas2");
-    // 到达目标则停止移动
-    if (distance < _config.attackRange) {
-        setState(TroopState::IDLE);
+    if (_state != TroopState::MOVING) {
+        CCLOG("NOMOVE1");
         return;
     }
 
-    // 归一化方向并移动
-    direction.normalize();
-    Vec2 moveStep = direction * _config.moveSpeed * dt * _mapScale;
-    this->setPosition(this->getPosition() + moveStep);
+    // 如果路径为空，尝试重新计算路径
+    if (_pathPoints.empty()) {
+        // 复用setTargetWorldPosition中的路径计算逻辑
+        if (!_villageScene) {
+            CCLOG("nopath");
+            return;
+        }
+
+        // 1. 坐标转换（通过公有接口）
+        Vec2 startTile = getCurrentTilePos();
+        Vec2 targetTile = _villageScene->screenToIsoTilePublic(_targetPos);
+
+        // 2. 调用 PathFinder 寻路
+        _pathPoints = PathFinder::findPath(
+            startTile,
+            targetTile,
+            _villageScene->getPathLayer(),
+            _villageScene->getMapSize(),
+            _villageScene->getOccupiedTiles()
+        );
+
+        // 3. 初始化路径索引
+        _currentPathIndex = 0;
+        CCLOG("重新计算路径：起点(%.1f,%.1f) 终点(%.1f,%.1f) 路径点数量:%zu",
+            startTile.x, startTile.y, targetTile.x, targetTile.y, _pathPoints.size());
+
+        // 若路径仍为空，停止移动
+        if (_pathPoints.empty()) {
+            setState(TroopState::IDLE);
+            CCLOG("路径为空，停止移动");
+            return;
+        }
+    }
+
+    // 处理路径点移动
+    Vec2 currentTarget = _villageScene->isoTileToContainerPosPublic(_pathPoints[_currentPathIndex]);
+    Vec2 direction = currentTarget - this->getPosition();
+    float distance = direction.length();
+
+    // 到达当前路径点
+    if (distance < _config.moveSpeed * dt * _mapScale) {
+        this->setPosition(currentTarget);
+        _currentPathIndex++;
+
+        // 检查是否到达最终目标
+        if (_currentPathIndex >= _pathPoints.size()) {
+            // 到达终点，切换状态
+            setState(TroopState::IDLE);
+            _pathPoints.clear();
+            CCLOG("到达最终目标");
+            return;
+        }
+    }
+    else {
+        // 向当前路径点移动
+        direction.normalize();
+        Vec2 moveStep = direction * _config.moveSpeed * dt * _mapScale;
+        this->setPosition(this->getPosition() + moveStep);
+    }
 }
 
 // ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);
+    setState(TroopState::MOVING);
     // 根据不同状态处理逻辑
     switch (_state) {
     case TroopState::TRAINING: {
@@ -217,6 +259,7 @@ void BaseTroop::update(float dt) {
     }
     case TroopState::MOVING: {
         // 移动逻辑
+
         updateMovement(dt);
         break;
     }
@@ -279,4 +322,3 @@ void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
             setState(TroopState::MOVING);
         }
     }
-
