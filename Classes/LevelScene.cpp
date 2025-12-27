@@ -19,6 +19,7 @@ Scene* LevelScene::createWithLevel(const std::string& levelPath)
 
 bool LevelScene::init() 
 {
+    if (!VillageScene::init()) return false;
     // 关键：调用父类 VillageScene 的 init()（必须是 public 才能调用）
     if (!VillageScene::init())
     {
@@ -32,7 +33,7 @@ bool LevelScene::init()
 
     auto shopBtn = this->getChildByName("ShopBtn");
     if (shopBtn) shopBtn->setVisible(false);
-
+    this->setTag(100);
     return true;
 }
 

@@ -191,7 +191,7 @@ public:
         }
         return nearestBuilding;
     }
-
+    void VillageScene::init_level_Btns(BaseMode baseMode);
     static VillageScene* getInstance() { // 提供外部访问接口
         auto currentScene = Director::getInstance()->getRunningScene();
         if (!currentScene) return nullptr;
