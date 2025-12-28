@@ -15,7 +15,7 @@ class BaseBuilding;
 class BaseTroop : public cocos2d::Sprite {
 protected:
     BaseTroop() = default;
-    ~BaseTroop() override = default;
+    ~BaseTroop() override;
 
     // 通用辅助方法（子类可调用）
     void initCommonUI();                // 初始化通用UI（血条、等级标签）
@@ -59,6 +59,14 @@ public:
     virtual void die();                 // 死亡（通用逻辑）
     void setState(TroopState state);    // 设置状态（通用）
     TroopState getState() const { return _state; }
+    // 在 public 下添加：
+    // Troop.h -> public 区域
+
+    BaseBuilding* getAttackTarget() const {
+        return _attackTarget;
+    }
+    void setAttackTarget(BaseBuilding* target);
+    void setTargetTilePosition(const cocos2d::Vec2& targetTilePos);
     void setTargetPos(const Vec2& targetPos) {
         _targetPos = targetPos;
         setState(TroopState::MOVING);

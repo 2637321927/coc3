@@ -12,7 +12,7 @@ bool VillageScene::init()
 {
     if (!Scene::init()) return false;
     // 初始化流程
-
+    this->scheduleUpdate();
     _mapContainer = Node::create();
     this->addChild(_mapContainer);
     _uiLayer = ui::Layout::create();
@@ -813,8 +813,8 @@ void VillageScene::createBuildBar() {
 
     // 建筑按钮 - 大本营
      _townHallBtn = MenuItemImage::create(
-        "building\\town_hall_icon.png",
-        "building\\town_hall_icon_selected.png",
+        "building/gold_mine_icon.png",
+        "building/town_hall_icon_selected.png",
         [this](Ref* sender) {
              if (_baseMode == BaseMode::NORMAL && _townHall != nullptr) {
                  return;
@@ -825,6 +825,15 @@ void VillageScene::createBuildBar() {
             _buildPreview->setTexture("building/town_hall_preview.png");
         }
     );
+     if (_townHallBtn == nullptr) {
+         CCLOG("ERROR: Failed to create _townHallBtn! Check image path: building/town_hall_icon.png");
+         // 可以在这里做一些容错处理，比如创建一个纯色块代替，或者直接 return 防止后续崩溃
+     }
+     else {
+         CCLOG("Successfully created _townHallBtn. Size: %f, %f",
+             _townHallBtn->getContentSize().width,
+             _townHallBtn->getContentSize().height);
+     }
 
 
     // 建筑按钮 - 金矿
@@ -1227,11 +1236,11 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 elixirBottle->bindBuildFinishCallback([this, elixirBottle](BaseBuilding* b) {
                     // 升级时增加容量
                     if (elixirBottle->getLevel() > 1) {
-                        this->addGoldStorageCapacity(elixirBottle->getStoragePulse());
+                        this->addElixirStorageCapacity(elixirBottle->getStoragePulse());
                     }
                     // 增加新的容量加成
                     else {
-                        this->addGoldStorageCapacity(elixirBottle->getStorageCapacity());
+                        this->addElixirStorageCapacity(elixirBottle->getStorageCapacity());
                     }
                     });
             }
@@ -1318,10 +1327,36 @@ void VillageScene::addOccupiedTile(const Vec2& tile) {
 // 摧毁建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::destroyBuilding(BaseBuilding* building) {
     if (!building) return; // 空指针防护
-    // 返还建造资源
+    if (!_spawnedTroops.empty()) {
+        for (auto troop : _spawnedTroops) {
+            // 务必判空
+            if (troop && troop->getAttackTarget() == building) {
+                troop->setAttackTarget(nullptr); // 现在这个调用能正确置空了
+                troop->setState(TroopState::IDLE);
+            }
+        }
+    }
+    for (auto troop : _spawnedTroops) {
+        // 假设你在 Troop.h 中有一个 getAttackTarget() 方法，或者 _attackTarget 是 public/friend
+        // 如果没有 getter，你需要去 Troop.h 加一个: BaseBuilding* getAttackTarget() const { return _attackTarget; }
+
+        // 或者是直接判断兵种状态
+        if (troop->getAttackTarget() == building) {
+            // 1. 立即清除兵种的目标引用
+            troop->setAttackTarget(nullptr);
+
+            // 2. 将兵种状态重置为 IDLE (发呆)
+            troop->setState(TroopState::IDLE);
+
+            // 3. 可选：让兵种重新寻找下一个目标 (自动索敌)
+            // troop->findNextTarget(); 
+        }
+    }
     
-    
-    
+    auto it = std::find(_buildings.begin(), _buildings.end(), building);
+    if (it != _buildings.end()) {
+        _buildings.erase(it);
+    }
 
     // 释放建筑占用的瓦片（地图位置）
     releaseBuildingTiles(building);
@@ -1334,10 +1369,7 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
 
     // 从管理列表中移除建筑引用（逻辑层清理）
     // 从总列表移除
-    auto it = std::find(_buildings.begin(), _buildings.end(), building);
-    if (it != _buildings.end()) {
-        _buildings.erase(it);
-    }
+
     // 酚类型列表移除
     if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
         auto it1 = std::find(_elixirCollectors.begin(), _elixirCollectors.end(), dynamic_cast<ElixirCollector*>(building));
@@ -1371,6 +1403,7 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         updateDestroyPercent();
         checkStarUnlock();
     }
+    building->removeFromParentAndCleanup(true);
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
     // 建筑实例会在下次主循环被自动销毁，无需手动delete
@@ -2005,24 +2038,29 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     if (_Mode == Mode::FIGHT) {
         _enemyTroops.push_back(troop);
     }    // 新增的寻路部分
-    addEnemyTroop(troop);
-    // 1. 绑定场景指针（让兵种能访问寻路相关接口）
-    troop->setVillageScene(this);  // 需要在 BaseTroop 中声明该方法
 
-    // 2. 查找最近的敌方建筑作为目标
+    addEnemyTroop(troop);
+    troop->setVillageScene(this);
+
+
     BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
+
     if (targetBuilding) {
-        // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
-       // CCLOG("troop is %s", troop ? "valid" : "null");
-        troop->setTargetWorldPosition(targetBuilding->getTilePos());
-        // CCLOG("YEoS!!!!!!!");
-         //CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
-        //targetBuilding->getPosition().x, targetBuilding->getPosition().y;
+        // 【修改】使用新接口 setAttackTarget
+        // 这个函数内部会自动调用 setTargetTilePosition 进行寻路
+        // 并且会把 _attackTarget 指针赋值给兵种
+        troop->setAttackTarget(targetBuilding);
+
+        CCLOG("生成兵种，锁定目标: %s (%.0f, %.0f)",
+            targetBuilding->getConfig().name.c_str(),
+            targetBuilding->getTilePos().x,
+            targetBuilding->getTilePos().y);
     }
     else {
-        // CCLOG("未找到敌方建筑，兵种进入lazy状态");
+        CCLOG("未找到敌方建筑，兵种待机");
     }
 }
+
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {
     auto it = std::find(_enemyTroops.begin(), _enemyTroops.end(), troop);
     if (it != _enemyTroops.end()) {
@@ -3024,4 +3062,27 @@ void VillageScene::cleanup() {
     _eventDispatcher->removeEventListenersForTarget(this);
     this->removeAllChildrenWithCleanup(true);
     CCLOG("VillageScene 已完全whole清理所有资源");
+}
+// VillageScene.cpp
+
+void VillageScene::update(float dt)
+{
+    // 【新增】每帧清理无效兵种
+    // 如果兵种已经被移除（引用计数为0或已被销毁），需要从列表中剔除
+    // 使用 C++ 标准库的 remove_if 算法
+    if (!_spawnedTroops.empty()) {
+        auto it = std::remove_if(_spawnedTroops.begin(), _spawnedTroops.end(),
+            [](BaseTroop* troop) {
+                // 判断条件：指针为空，或者兵种已经被移出父节点
+                return troop == nullptr || troop->getParent() == nullptr;
+            });
+
+        // 真正的物理删除
+        if (it != _spawnedTroops.end()) {
+            _spawnedTroops.erase(it, _spawnedTroops.end());
+        }
+    }
+
+    // 如果有倒计时或其他逻辑，也可以放在这里
+    // updateCountDown(dt); 
 }

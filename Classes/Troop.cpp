@@ -9,7 +9,10 @@
 #include "PathFinder.h" 
 #include <cmath>
 USING_NS_CC;
-
+BaseTroop::~BaseTroop() {
+    // 安全释放对目标的持有，防止内存泄漏
+    CC_SAFE_RELEASE(_attackTarget);
+}
 // ========== 工厂方法：根据类型创建子类实例 ==========
 BaseTroop* BaseTroop::create(TroopType type, const Vec2& spawnPos, float mapScale) {
     BaseTroop* troop = nullptr;
@@ -176,83 +179,108 @@ void BaseTroop::updateAttackCD() {
         _attackCDTimer += Director::getInstance()->getDeltaTime();
     }
 }
+// Troop.cpp
 
-// 替换 BaseTroop::updateMovement 函数
+// 【新增】实现设置瓦片目标的方法
+void BaseTroop::setTargetTilePosition(const Vec2& targetTilePos) {
+    if (!_villageScene) return;
+
+    // 1. 获取起点（瓦片坐标）
+    Vec2 startTile = getCurrentTilePos();
+
+    // 2. 记录终点（瓦片坐标）
+    _targetPos = targetTilePos;
+
+    // 3. 直接调用 A* 寻路（不做任何坐标转换！）
+    _pathPoints = PathFinder::findPath(
+        startTile,
+        _targetPos, // 终点
+        _villageScene->getPathLayer(),
+        _villageScene->getMapSize(),
+        _villageScene->getOccupiedTiles()
+    );
+
+    _currentPathIndex = 0;
+
+    // Log调试：看看现在能不能算出来路径
+    CCLOG("寻路请求: 起点(%.0f,%.0f) -> 终点(%.0f,%.0f) | 路径点数: %zu",
+        startTile.x, startTile.y, _targetPos.x, _targetPos.y, _pathPoints.size());
+
+    if (!_pathPoints.empty()) {
+        setState(TroopState::MOVING);
+    }
+    else {
+        setState(TroopState::IDLE);
+    }
+}
+
+// 【修改】修正 updateMovement 逻辑
 void BaseTroop::updateMovement(float dt) {
     if (_state != TroopState::MOVING) return;
     if (!_villageScene) return;
 
     // 1. 攻击范围检测
-    // 先将目标瓦片(20, 20) 转为 像素坐标(1000, 500)
+    // _targetPos 现在存的是瓦片坐标，必须转成容器像素坐标才能计算距离
     Vec2 targetPixelPos = _villageScene->isoTileToContainerPosPublic(_targetPos);
-    // 计算当前兵种与目标的像素距离
+
+    // 计算兵种和目标的像素距离
     float distToTarget = this->getPosition().distance(targetPixelPos);
 
-    // 如果已经在射程内，停止移动，切攻击
+    // 判断是否在攻击范围内 (减去30是简单的半径修正，避免兵种完全重叠到建筑中心)
     if (distToTarget <= _attackRange) {
         setState(TroopState::ATTACKING);
         _pathPoints.clear();
         return;
     }
 
-    // 2. 路径计算 (如果是空路径，尝试寻路)
-    if (_pathPoints.empty()) {
-        Vec2 startTile = getCurrentTilePos();
-        Vec2 targetTile = _targetPos; // 【修正】这里不要再调用 screenToIsoTilePublic，直接用 _targetPos
-
-        _pathPoints = PathFinder::findPath(
-            startTile,
-            targetTile,
-            _villageScene->getPathLayer(),
-            _villageScene->getMapSize(),
-            _villageScene->getOccupiedTiles()
-        );
-        _currentPathIndex = 0;
-
-        // 如果还是找不到路（比如完全被围住），停止移动
-        if (_pathPoints.empty()) {
-            // CCLOG("Path not found!");
-            setState(TroopState::IDLE);
-            return;
-        }
-    }
-
-    // 3. 沿路径移动
+    // 2. 沿路径移动
     if (_currentPathIndex < _pathPoints.size()) {
-        // 获取下一个路径点的像素位置
-        Vec2 nextWaypoint = _villageScene->isoTileToContainerPosPublic(_pathPoints[_currentPathIndex]);
+        // 获取下一个路径点（瓦片坐标）
+        Vec2 nextTile = _pathPoints[_currentPathIndex];
+
+        // 将下一个瓦片转为像素坐标
+        Vec2 nextWaypoint = _villageScene->isoTileToContainerPosPublic(nextTile);
 
         Vec2 direction = nextWaypoint - this->getPosition();
         float distToWaypoint = direction.length();
         float moveStep = _config.moveSpeed * dt * _mapScale;
 
         if (distToWaypoint < moveStep) {
-            // 到达节点，直接吸附
+            // 到达当前节点，吸附并前往下一个
             this->setPosition(nextWaypoint);
             _currentPathIndex++;
         }
         else {
-            // 移动一步
+            // 向当前节点移动
             direction.normalize();
             this->setPosition(this->getPosition() + direction * moveStep);
         }
     }
     else {
-        // 路径走完了
-        _pathPoints.clear();
-        // 再次检查是否能攻击，否则待机
-        if (distToTarget <= _attackRange) {
-            setState(TroopState::ATTACKING);
-        }
-        else {
-            setState(TroopState::IDLE);
-        }
+        // 路径走完了（通常意味着到了目标旁边）
+        setState(TroopState::ATTACKING);
     }
 }
 // ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);
-    setState(TroopState::ATTACKING);
+    if (_state == TroopState::ATTACKING && _attackTarget == nullptr) {
+        setState(TroopState::IDLE);
+        return;
+    }
+    if (_state == TroopState::ATTACKING) {
+        if (!_attackTarget) {
+            setState(TroopState::IDLE);
+            return;
+        }
+        // 如果能获取状态，且状态是 DESTROYED，也停止
+        // 注意：如果上面 destroyBuilding 没写好，这里访问 getState() 就会崩
+        if (_attackTarget->getState() == BuildingState::DESTROYED) {
+            setState(TroopState::IDLE);
+            _attackTarget = nullptr;
+            return;
+        }
+    }
     // 根据不同状态处理逻辑
     switch (_state) {
     case TroopState::TRAINING: {
@@ -271,22 +299,39 @@ void BaseTroop::update(float dt) {
         break;
     }
     case TroopState::ATTACKING: {
-        // 攻击冷却与攻击逻辑
+        // 1. 基础判空
+        if (!_attackTarget) {
+            setState(TroopState::IDLE);
+            return;
+        }
+
+        // 2. [关键检查] 检查目标是否已经“死亡”
+        // 如果建筑被 VillageScene::destroyBuilding 移除了，它的 parent 会变成 nullptr
+        // 但因为我们 retain 了它，内存是安全的，这里可以放心访问
+        if (_attackTarget->getParent() == nullptr || _attackTarget->getState() == BuildingState::DESTROYED) {
+            setAttackTarget(nullptr); // 释放引用，此时建筑内存才真正被销毁
+            setState(TroopState::IDLE);
+            return;
+        }
+
         updateAttackCD();
 
-        // 冷却完成且有目标则发起攻击
-        if (_attackCDTimer >= _config.attackSpeed /* && _attackTarget != nullptr*/) {
-            // 调用特有攻击行为
+        // 3. 执行攻击
+        if (_attackCDTimer >= _config.attackSpeed) {
             doSpecialAttack();
 
-            // 触发攻击回调（外部处理伤害结算）
-            if (_attackCallback) {
-                _attackCallback(this, _attackTarget);
-                _attackTarget->takeDamage(this->_attackPower);
+            // 造成伤害
+            // 即使这一击导致建筑死亡，由于我们 retain 了，下面的代码依然安全
+            _attackTarget->takeDamage(this->_attackPower);
+
+            // 再次检查目标状态（防止刚才那一下把它打死了）
+            if (_attackTarget && (_attackTarget->getParent() == nullptr || _attackTarget->getState() == BuildingState::DESTROYED)) {
+                setAttackTarget(nullptr);
+                setState(TroopState::IDLE);
+                return;
             }
 
-            // 重置冷却
-            _attackCDTimer = 0.0f;
+            _attackCDTimer = 0.1f;
         }
         break;
     }
@@ -294,7 +339,6 @@ void BaseTroop::update(float dt) {
         break;
     }
 }
-
 // ========== 寻路逻辑 ========== 
 // 获取当前瓦片坐标（使用公有接口）
 Vec2 BaseTroop::getCurrentTilePos() const {
@@ -303,32 +347,55 @@ Vec2 BaseTroop::getCurrentTilePos() const {
     return _villageScene->screenToIsoTilePublic(this->convertToWorldSpace(Vec2::ZERO));
 }
 
-// 设置目标并寻路（使用公有接口）
 void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
-    CCLOG("setTargetWorldPosition entered"); // 入口日志
-    if (!_villageScene) {
-        return;  // 确保场景指针有效 
-    }
-    CCLOG("targetPos(%.1f,%.1f)",targetPos.x, targetPos.y);
-        // 1. 坐标转换（通过公有接口）
-        Vec2 startTile = getCurrentTilePos();
-        Vec2 targetTile = targetPos;
-        CCLOG("startTile(%.1f,%.1f),targetTile(%.1f,%.1f)", startTile.x, startTile.y,targetTile.x, targetTile.y);
-        // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
-        _pathPoints = PathFinder::findPath(
-            startTile,
-            targetTile,
-            _villageScene->getPathLayer(),        // 公有接口获取路径层
-            _villageScene->getMapSize(),          // 公有接口获取地图尺寸
-            _villageScene->getOccupiedTiles()     // 公有接口获取占用瓦片
-        );
+    if (!_villageScene) return;
 
-        // 3. 初始化路径索引
-        _currentPathIndex = 0;
-        _targetPos = targetPos;
-        CCLOG("Troop：(%.1f,%.1f)(%.1f,%.1f),%z",
-            startTile.x, startTile.y, targetTile.x, targetTile.y, _pathPoints.size());
-        if (!_pathPoints.empty()) {
-            setState(TroopState::MOVING);
-        }
+    // 转换：因为 targetPos 可能是屏幕触摸点（世界坐标）
+    // 而兵种是在 _mapContainer 里的，计算距离最好统一到 mapContainer 坐标系
+    // 这里假设 targetPos 已经是 mapContainer 坐标（因为它是从 Building->getPosition() 获取的）
+    _targetPos = targetPos;
+
+    Vec2 startTile = getCurrentTilePos();
+    Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
+
+    _pathPoints = PathFinder::findPath(
+        startTile,
+        targetTile,
+        _villageScene->getPathLayer(),
+        _villageScene->getMapSize(),
+        _villageScene->getOccupiedTiles()
+    );
+
+    _currentPathIndex = 0;
+
+    // 只有找到路了才切状态，或者没找到路但是已经在射程内了
+    if (!_pathPoints.empty()) {
+        setState(TroopState::MOVING);
     }
+    else {
+        // 如果找不到路，但就在旁边，可能直接判定攻击？
+        // 暂时先 IDLE
+        setState(TroopState::IDLE);
+    }
+}
+
+void BaseTroop::setAttackTarget(BaseBuilding* target) {
+    // 1. 如果目标没变，直接返回
+    if (_attackTarget == target) return;
+
+    // 2. 释放旧目标（如果存在，引用计数-1）
+    // 如果旧目标引用计数降为0，它会在此时被销毁，这是安全的
+    CC_SAFE_RELEASE(_attackTarget);
+
+    // 3. 设置新目标
+    _attackTarget = target;
+
+    // 4. 持有新目标（引用计数+1）
+    // 关键：这保证了只要 _attackTarget 不为空，由于兵种“抓”着它，它绝不会在别处被彻底删除
+    CC_SAFE_RETAIN(_attackTarget);
+
+    // 5. 只有目标非空时才寻路
+    if (_attackTarget) {
+        setTargetTilePosition(_attackTarget->getTilePos());
+    }
+}
