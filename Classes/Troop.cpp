@@ -177,26 +177,29 @@ void BaseTroop::updateAttackCD() {
     }
 }
 
-// ========== 通用：更新移动逻辑 ==========
+// 替换 BaseTroop::updateMovement 函数
 void BaseTroop::updateMovement(float dt) {
-  
-    if (_state != TroopState::MOVING) {
-        CCLOG("NOMOVE1");
+    if (_state != TroopState::MOVING) return;
+    if (!_villageScene) return;
+
+    // 1. 攻击范围检测
+    // 先将目标瓦片(20, 20) 转为 像素坐标(1000, 500)
+    Vec2 targetPixelPos = _villageScene->isoTileToContainerPosPublic(_targetPos);
+    // 计算当前兵种与目标的像素距离
+    float distToTarget = this->getPosition().distance(targetPixelPos);
+
+    // 如果已经在射程内，停止移动，切攻击
+    if (distToTarget <= _attackRange) {
+        setState(TroopState::ATTACKING);
+        _pathPoints.clear();
         return;
     }
-    // 如果路径为空，尝试重新计算路径
-    if (_pathPoints.empty()) {
-        // 复用setTargetWorldPosition中的路径计算逻辑
-        if (!_villageScene) {
-            CCLOG("nopath");
-            return;
-        }
-        auto villageScene=VillageScene::getInstance();
-        // 1. 坐标转换（通过公有接口）
-        Vec2 startTile = getCurrentTilePos();
-        Vec2 targetTile = _villageScene->screenToIsoTilePublic(_targetPos);
 
-        // 2. 调用 PathFinder 寻路
+    // 2. 路径计算 (如果是空路径，尝试寻路)
+    if (_pathPoints.empty()) {
+        Vec2 startTile = getCurrentTilePos();
+        Vec2 targetTile = _targetPos; // 【修正】这里不要再调用 screenToIsoTilePublic，直接用 _targetPos
+
         _pathPoints = PathFinder::findPath(
             startTile,
             targetTile,
@@ -204,55 +207,48 @@ void BaseTroop::updateMovement(float dt) {
             _villageScene->getMapSize(),
             _villageScene->getOccupiedTiles()
         );
-
-        // 3. 初始化路径索引
         _currentPathIndex = 0;
-        CCLOG("重新计算路径：起点(%.1f,%.1f) 终点(%.1f,%.1f) 路径点数量:%zu",
-            startTile.x, startTile.y, targetTile.x, targetTile.y, _pathPoints.size());
 
-        // 若路径仍为空，停止移动
+        // 如果还是找不到路（比如完全被围住），停止移动
         if (_pathPoints.empty()) {
+            // CCLOG("Path not found!");
             setState(TroopState::IDLE);
-            CCLOG("路径为空，停止移动");
             return;
-        }
-        float distance = this->getPosition().distance(convertToWorldSpace(targetTile));
-        if (distance <= this->_attackRange)
-        {
-            // 进入攻击状态
-            setState(TroopState::ATTACKING);
         }
     }
 
-    // 处理路径点移动
-    Vec2 currentTarget = _villageScene->isoTileToContainerPosPublic(_pathPoints[_currentPathIndex]);
-    Vec2 direction = currentTarget - this->getPosition();
-    float distance = direction.length();
+    // 3. 沿路径移动
+    if (_currentPathIndex < _pathPoints.size()) {
+        // 获取下一个路径点的像素位置
+        Vec2 nextWaypoint = _villageScene->isoTileToContainerPosPublic(_pathPoints[_currentPathIndex]);
 
-    // 到达当前路径点
-    if (distance < _config.moveSpeed * dt * _mapScale) {
-        this->setPosition(currentTarget);
-        _currentPathIndex++;
+        Vec2 direction = nextWaypoint - this->getPosition();
+        float distToWaypoint = direction.length();
+        float moveStep = _config.moveSpeed * dt * _mapScale;
 
-        // 检查是否到达最终目标
-        if (_currentPathIndex >= _pathPoints.size()) {
-            // 到达终点，切换状态
-            setState(TroopState::IDLE);
-            _pathPoints.clear();
-            CCLOG("到达最终目标");
-            return;
+        if (distToWaypoint < moveStep) {
+            // 到达节点，直接吸附
+            this->setPosition(nextWaypoint);
+            _currentPathIndex++;
+        }
+        else {
+            // 移动一步
+            direction.normalize();
+            this->setPosition(this->getPosition() + direction * moveStep);
         }
     }
     else {
-
-        // 向当前路径点移动
-        direction.normalize();
-        Vec2 moveStep = direction * _config.moveSpeed * dt * _mapScale;
-        this->setPosition(this->getPosition() + moveStep);
-   
+        // 路径走完了
+        _pathPoints.clear();
+        // 再次检查是否能攻击，否则待机
+        if (distToTarget <= _attackRange) {
+            setState(TroopState::ATTACKING);
+        }
+        else {
+            setState(TroopState::IDLE);
+        }
     }
 }
-
 // ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);

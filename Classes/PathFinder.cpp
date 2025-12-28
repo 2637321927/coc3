@@ -13,35 +13,32 @@ std::vector<Vec2> PathFinder::findPath(
 
     std::vector<Vec2> path;
 
-    // 检查起点和终点是否有效
-    if (!isTilePassable(startPos, pathLayer, mapSize, occupiedTiles) ||
-        !isTilePassable(targetPos, pathLayer, mapSize, occupiedTiles)) {
-        return path;
+    // 1. 简单的起点/终点校验 (注意：如果终点是建筑，它是被占用的，所以这里不能简单判断终点是否Passable)
+    if (!isTilePassable(startPos, pathLayer, mapSize, occupiedTiles)) {
+        // 如果出生点就被卡住，暂时返回空，或者允许走出
+        // return path; 
     }
 
-    // 如果起点就是终点，直接返回
     if (startPos.equals(targetPos)) {
         path.push_back(startPos);
         return path;
     }
 
-    // 初始化开放列表和关闭列表
+    // A* 初始化
     auto comparator = [](Node* a, Node* b) { return a->fCost() > b->fCost(); };
     std::priority_queue<Node*, std::vector<Node*>, decltype(comparator)> openList(comparator);
     std::unordered_map<int, Node*> allNodes;
 
-    // 起点哈希值计算 (x * 10000 + y 确保唯一性)
     int startKey = static_cast<int>(startPos.x * 10000 + startPos.y);
     Node* startNode = new Node(startPos);
     openList.push(startNode);
     allNodes[startKey] = startNode;
 
     while (!openList.empty()) {
-        // 获取fCost最小的节点
         Node* currentNode = openList.top();
         openList.pop();
 
-        // 如果到达目标位置，回溯构建路径
+        // 找到终点
         if (currentNode->tilePos.equals(targetPos)) {
             Node* temp = currentNode;
             while (temp) {
@@ -52,36 +49,36 @@ std::vector<Vec2> PathFinder::findPath(
             break;
         }
 
-        // 处理邻居节点
+        // 遍历邻居
         std::vector<Vec2> neighbors = getNeighbors(currentNode->tilePos);
         for (const Vec2& neighborPos : neighbors) {
-            // 检查邻居是否可通过
+
+            // 【关键修复】障碍物判断逻辑
+            // 如果邻居是不可通行的...
             if (!isTilePassable(neighborPos, pathLayer, mapSize, occupiedTiles)) {
-                continue;
+                // ...但如果这个邻居恰好是我们的攻击目标(targetPos)，允许进入！
+                // 否则跳过
+                if (!neighborPos.equals(targetPos)) {
+                    continue;
+                }
             }
 
-            // 计算代价
             float newGCost = currentNode->gCost + manhattanDistance(currentNode->tilePos, neighborPos);
             int neighborKey = static_cast<int>(neighborPos.x * 10000 + neighborPos.y);
 
-            // 检查邻居是否已在列表中
             if (allNodes.find(neighborKey) == allNodes.end()) {
-                // 新节点
                 Node* neighborNode = new Node(neighborPos);
                 neighborNode->gCost = newGCost;
                 neighborNode->hCost = manhattanDistance(neighborPos, targetPos);
                 neighborNode->parent = currentNode;
-
                 openList.push(neighborNode);
                 allNodes[neighborKey] = neighborNode;
             }
             else {
-                // 已存在的节点，检查是否有更优路径
                 Node* existingNode = allNodes[neighborKey];
                 if (newGCost < existingNode->gCost) {
                     existingNode->gCost = newGCost;
                     existingNode->parent = currentNode;
-                    // 重新加入优先队列（因为优先级已改变）
                     openList.push(existingNode);
                 }
             }
@@ -102,39 +99,38 @@ bool PathFinder::isTilePassable(
     const Size& mapSize,
     const std::vector<Vec2>& occupiedTiles) {
 
-    // 检查是否在地图范围内
+    // 1. 越界检查
     if (tilePos.x < 0 || tilePos.x >= mapSize.width ||
         tilePos.y < 0 || tilePos.y >= mapSize.height) {
         return false;
     }
 
-    // 检查是否是路径层允许通过的瓦片
-    if (pathLayer && !pathLayer->getTileAt(tilePos)) {
+    // 2. 路径层检查 (如果需要)
+    /*if (pathLayer && !pathLayer->getTileAt(tilePos)) {
         return false;
-    }
+    }*/
 
-    // 检查是否被建筑占用
-    /*for (const Vec2& occupied : occupiedTiles) {
+    // 3. 占用检查 (取消注释，启用障碍物)
+    for (const Vec2& occupied : occupiedTiles) {
         if (occupied.equals(tilePos)) {
             return false;
         }
-    }*/
+    }
 
     return true;
 }
 
+// getNeighbors 保持原样...
 std::vector<Vec2> PathFinder::getNeighbors(const Vec2& tilePos) {
     std::vector<Vec2> neighbors;
-
-    // 8个方向的邻居（上下左右及四个对角线）
     neighbors.emplace_back(tilePos.x + 1, tilePos.y);
     neighbors.emplace_back(tilePos.x - 1, tilePos.y);
     neighbors.emplace_back(tilePos.x, tilePos.y + 1);
     neighbors.emplace_back(tilePos.x, tilePos.y - 1);
+    // 对角线移动（可选，如果不想让兵种穿墙角，可以注释掉下面4行）
     neighbors.emplace_back(tilePos.x + 1, tilePos.y + 1);
     neighbors.emplace_back(tilePos.x - 1, tilePos.y - 1);
     neighbors.emplace_back(tilePos.x + 1, tilePos.y - 1);
     neighbors.emplace_back(tilePos.x - 1, tilePos.y + 1);
-
     return neighbors;
 }
