@@ -111,70 +111,7 @@ bool BaseBuilding::loadBuildingSprite() {
 
     return true;
 }
-/*bool BaseBuilding::checkUpgradeCondition(int& outErrCode) {
-    if (!canUpgrade()) {
-        outErrCode = 1;
-        return false;
-    }
-    if (_state == BuildingState::UPGRADING) {
-        outErrCode = 3;
-        return false;
-    }
-    // 获取下一等级配置
-    auto nextLvlConfig = getNextLevelConfig();
-    // 校验资源（需从VillageScene获取当前金币/圣水）
-    VillageScene* scene = VillageScene::getInstance();
-    if (scene->getGold() < nextLvlConfig.goldCost || scene->getElixir() < nextLvlConfig.elixirCost) {
-        outErrCode = 2;
-        return false;
-    }
-    outErrCode = 0;
-    return true;
-}*/
 
-// 开始升级
-void BaseBuilding::startUpgrade() {
-    /*int errCode = 0;
-    if (!checkUpgradeCondition(errCode)) {
-        // 提示错误（比如通过VillageScene的showText）
-        VillageScene* scene = VillageScene::getInstance();
-        if (errCode == 1) scene->showText("已达到最大等级！");
-        else if (errCode == 2) scene->showText("资源不足！");
-        else if (errCode == 3) scene->showText("建筑正在升级中！");
-        return;
-    }*/
-
-    // 扣除资源
-    VillageScene* scene = VillageScene::getInstance();
-
-    // 设置升级状态
-    _state = BuildingState::UPGRADING;
-
-    // 启动升级倒计时（每帧更新剩余时间）
-    this->schedule([this](float dt) {
-        _upgradeRemainingTime -= dt;
-        if (_upgradeRemainingTime <= 0) {
-            finishUpgrade();
-            this->unschedule("upgrade_timer");
-        }
-        }, "upgrade_timer");
-}
-
-// 升级完成
-void BaseBuilding::finishUpgrade() {
-    // 提升等级
-    _currentLevel += 1;
-    // 恢复闲置状态
-    _state = BuildingState::IDLE;
-    // 刷新属性（生命值/产量/容量等）
-    refreshBuildingAttributes();
-    // 刷新图片
-    updateBuildingSprite();
-    // 移除升级特效
-    // 回调通知场景（比如兵营升级后更新人口容量）
-    // 提示升级完成
-    VillageScene::getInstance()->showText("建筑升级成功！");
-}
 
 // 更新建筑精灵图片
 void BaseBuilding::updateBuildingSprite() {
@@ -183,7 +120,7 @@ void BaseBuilding::updateBuildingSprite() {
 
 // 刷新建筑属性
 void BaseBuilding::refreshBuildingAttributes() {
-
+    _config = getBuildingConfigByType(_config.type, _currentLevel);
 }
 
 
@@ -218,12 +155,26 @@ void BaseBuilding::initCommonUI() {
     this->addChild(_progressBar, 1);
 
     // 2. 等级标签
-    auto levelLabel = Label::createWithTTF("Lv" + std::to_string(_config.level), "fonts/Marker Felt.ttf", 16);
-    if (levelLabel) {
+    _levelLabel = Label::createWithTTF("Lv" + std::to_string(_currentLevel), "fonts/Marker Felt.ttf", 16);
+    if (_levelLabel) {
         // 标签位置：建筑右上角（基于精灵尺寸）
-        levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
-        levelLabel->setColor(Color3B::YELLOW);
-        this->addChild(levelLabel, 1);
+        _levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
+        _levelLabel->setColor(Color3B::YELLOW);
+        this->addChild(_levelLabel, 1);
+    }
+}
+void BaseBuilding::updateLevelLabel() {
+    if (_levelLabel) {
+        _levelLabel->setString("Lv" + std::to_string(_currentLevel));
+        return;
+    }
+    else {
+        _levelLabel = Label::createWithTTF("Lv" + std::to_string(_currentLevel), "fonts/Marker Felt.ttf", 16);
+        if (_levelLabel) {
+            _levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
+            _levelLabel->setColor(Color3B::YELLOW);
+            this->addChild(_levelLabel, 1);
+        }
     }
 }
 void BaseBuilding::takeDamage(int damage) {
@@ -291,25 +242,47 @@ void BaseBuilding::finishBuild() {
 	//依赖于帧更新执行本职工作的建筑不停止帧更新
     if(_config.type!=BuildingType::TRAINING_CAMP&& _config.type != BuildingType::CANNON&&_config.type != BuildingType::ARROW_TOWER)
     this->unscheduleUpdate();
+
     if (_buildFinishCallback) {
         _buildFinishCallback(this);
     }
 }
-// 通用：绑定回调
-void BaseBuilding::bindBuildFinishCallback(const std::function<void(BaseBuilding*)>& callback) {
-    _buildFinishCallback = callback;
-}
-// 通用：开始升级
-/*void BaseBuilding::startUpgrade() {
+// 开始升级
+void BaseBuilding::startUpgrade() {
     setState(BuildingState::UPGRADING);
     _progressTimer = 0.0f;
     _progressBar->setVisible(true);
     _progressBar->setPercentage(0);
+
+    // 启动升级倒计时（每帧更新剩余时间）
     this->scheduleUpdate();
+}
+
+// 升级完成
+void BaseBuilding::finishUpgrade() {
+    // 提升等级
+    _currentLevel += 1;
+    // 恢复闲置状态
+    // 刷新属性（生命值/产量/容量等）
+    refreshBuildingAttributes();
+    // 刷新图片
+    updateBuildingSprite();
+    updateLevelLabel();
+    // 提示升级完成
+    setState(BuildingState::IDLE);
+    doSpecialAction(); // 执行特有行为
+    if (_config.type != BuildingType::TRAINING_CAMP && _config.type != BuildingType::CANNON && _config.type != BuildingType::ARROW_TOWER)
+        this->unscheduleUpdate();
+    _progressBar->setVisible(false);
     if (_buildFinishCallback) {
         _buildFinishCallback(this);
     }
-}*/
+}
+
+// 通用：绑定回调
+void BaseBuilding::bindBuildFinishCallback(const std::function<void(BaseBuilding*)>& callback) {
+    _buildFinishCallback = callback;
+}
 
 // 通用：摧毁建筑
 void BaseBuilding::destroy() {
@@ -357,12 +330,12 @@ void BaseBuilding::update(float dt) {
     //TODO:升级要有升级时间
     progress = clampf(progress, 0.0f, 1.0f);
     _progressBar->setPercentage(progress * 100);
-    if (_immediatelyBuild) {
+    if (immediatelyBuild) {
         progress = 1.0f; 
         _progressBar->setPercentage(progress * 100);
     }
     if (progress >= 1.0f) {
-        _state == BuildingState::BUILDING ? finishBuild() : finishBuild();
+        _state == BuildingState::BUILDING ? finishBuild() : finishUpgrade();
     }
 }
 
@@ -404,8 +377,7 @@ void GoldMine::doSpecialAction() {
 }
 // 金币生产具体逻辑
 void GoldMine::produceGold(float dt) {
-    // 升级后提升产量（可根据config.level动态调整）
-    _goldPerInterval = 10 * getConfig().level;
+    _goldPerInterval = 10 * _currentLevel;
 	_goldStored += _goldPerInterval;
 }
 // 收集金币逻辑
@@ -461,7 +433,7 @@ void ElixirCollector::doSpecialAction() {
 // 圣水生产具体逻辑
 void ElixirCollector::produceElixir(float dt) {
 	// 升级后提升产量（可根据config.level动态调整）
-	_elixirPerInterval = 10 * getConfig().level;
+	_elixirPerInterval = 10 * _currentLevel;
 	_elixirStored += _elixirPerInterval;
 }
 // 收集圣水逻辑
@@ -663,7 +635,7 @@ void TrainingCamp::doSpecialAction() {
 // 训练营特殊描述
 std::string TrainingCamp::getSpecialDesc() {
     return StringUtils::format("训练士兵的建筑，等级%d，训练速度提升%d%%",
-        _config.level, (int)((_config.level - 1) * 10));
+        _currentLevel, (int)((_currentLevel - 1) * 10));
 }
 
 // 重写销毁逻辑
@@ -778,15 +750,10 @@ void BaseAttackBuilding::update(float dt) {
 // 目标检测逻辑
 // 在 Building.cpp 中找到这个函数
 BaseTroop* BaseAttackBuilding::findTargetInRange() {
-    // 【修复开始】增加安全检查
     auto villageScene = VillageScene::getInstance();
     if (!villageScene) {
-        // 如果场景还没准备好，或者 Tag 没设置对，直接返回 nullptr，防止崩溃
         return nullptr;
     }
-    // 【修复结束】
-
-    // 原有逻辑
     std::vector<BaseTroop*> allEnemies = villageScene->getAllEnemyTroops();
     if (allEnemies.empty()) {
         return nullptr;
@@ -883,8 +850,8 @@ bool Cannon::init(const Vec2& tilePos, float mapScale) {
     // 初始化攻击属性（复用 BaseAttackBuilding 的接口）
     float range = 100 ;
     float damage = 100;
-    float cooldown = 2.0f ;
-    cooldown = std::max(cooldown, 1.0f); // 最低冷却1秒
+    float cooldown = 1.0f ;
+    //cooldown = std::max(cooldown, 1.0f); // 最低冷却1秒
     initAttackProps(range, damage, cooldown, "effect/cannon_ball.png");
 
 
@@ -916,7 +883,7 @@ void Cannon::attackTarget() {
 // 特殊描述（和训练营格式一致）
 std::string Cannon::getSpecialDesc() {
     return StringUtils::format("近战攻击建筑，等级%d，攻击范围%.0f像素，伤害%.0f，攻速%.1f秒/次",
-        _config.level, _attackRange, _attackDamage, _attackCooldown);
+        _currentLevel, _attackRange, _attackDamage, _attackCooldown);
 }
 void Cannon::doSpecialAction() {};
 
@@ -931,11 +898,10 @@ ArrowTower* ArrowTower::create(const Vec2& tilePos, float mapScale) {
 }
 
 bool ArrowTower::init(const Vec2& tilePos, float mapScale) {
-    // 1. 基础建筑属性初始化
+    // 基础建筑属性初始化
     BuildingConfig config=getBuildingConfigByType(BuildingType::ARROW_TOWER);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-
-    // 2. 攻击属性初始化
+    //攻击属性初始化
     float range = 150;
     float damage = 30;
     float cooldown = 0.8f;
@@ -969,6 +935,6 @@ void ArrowTower::attackTarget() {
 
 std::string ArrowTower::getSpecialDesc() {
     return StringUtils::format("远程攻击建筑，等级%d，攻击范围%.0f像素，伤害%.0f，攻速%.1f秒/次",
-        _config.level, _attackRange, _attackDamage, _attackCooldown);
+        _currentLevel, _attackRange, _attackDamage, _attackCooldown);
 }
 void ArrowTower::doSpecialAction() {};

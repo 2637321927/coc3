@@ -1001,17 +1001,39 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
     switch (type) {
     case BuildingPopup::ButtonType::INFO:
         // 显示建筑信息（示例：打印日志/弹出信息框）
-        log("建筑信息：类型=%d，等级=%d，血量=%d，位置=(%f,%f)",
+        /*log("建筑信息：类型=%d，等级=%d，血量=%d，位置=(%f,%f)",
             (int)building->getType(),
-            building->getConfig().level,
+            building->_currentLevel,
             building->getConfig().hp,
             building->getTilePos().x,
-            building->getTilePos().y);
+            building->getTilePos().y);*/
         break;
 
     case BuildingPopup::ButtonType::UPGRADE:
         // 建筑升级逻辑（调用BaseBuilding的升级方法）
         if (building->getState() == BuildingState::IDLE) { // 仅闲置状态可升级
+            if (_baseMode == BaseMode::NORMAL) {
+                if ((building->getLevel() + 1) * 2 < _townHall->getLevel()) {
+                    showText("Not Enough TownHallLevel");
+                    return;
+                }
+                if (_gold <= getGoldCost(building->getType(), building->getLevel() + 1) && _elixir <= getElixirCost(building->getType(), building->getLevel() + 1)) {
+                    showText("Not Enough Money And Elixir");
+                    return;
+                }
+                else if (_gold <= getGoldCost(building->getType(), building->getLevel() + 1)) {
+                    showText("Not Enough Money");
+                    return;
+                }
+                else if (_elixir <= getElixirCost(building->getType(), building->getLevel() + 1)) {
+                    showText("Not Enough Elixir");
+                    return;
+                }
+                else {
+                    spendGold(getGoldCost(building->getType(), building->getLevel() + 1));
+                    spendElixir(getElixirCost(building->getType(), building->getLevel() + 1));
+                }
+            }
             building->startUpgrade();
             CCLOG("建筑开始升级！");
         }
@@ -1091,7 +1113,7 @@ void VillageScene::moveBuilding(BaseBuilding* building, Vec2 tilePos) {
 }
 // 放置建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
-    if (_baseMode == BaseMode::NORMAL) {
+    if (_baseMode == BaseMode::NORMAL&& type != BuildingType::TOWN_HALL) {
 		if (_gold <= getGoldCost(type)&&_elixir<=getElixirCost(type)) {
 			showText("Not Enough Money And Elixir");
 			return;
@@ -1110,6 +1132,16 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
 		}
     }
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
+    if (_baseMode == BaseMode::NORMAL&& type== BuildingType::TOWN_HALL) {
+        if (!_townHall) {
+            _townHall = building;
+            building->setBuildTime(0.1f);
+        }
+        else {
+            showText("To Many TownHall!!!");
+            return;
+        }
+    }
 	//创造模式立即建造完成
     if (_baseMode == BaseMode::CREATING) {
         building->buildImmediately();
@@ -2205,7 +2237,10 @@ SaveData::Village VillageScene::packSaveData() {
         bData.tilePos = building->getTilePos();
         bData.state = building->getState();
         bData.level = building->getLevel();
+        bData.immediatelyBuild = building->immediatelyBuild;
+        bData.progressTimer = building->getProgressTimer();
         saveData.buildings.push_back(bData);
+        
         CCLOG("tile.x: %f, tile.y: %f", bData.tilePos.x, bData.tilePos.y);
     }
     return saveData;
@@ -2275,7 +2310,10 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
             //TODO:恢复建造中的建筑有问题，需要额外处理建造进度
             building->setState(bData.state);    // 需给BaseBuilding添加setState方法
             building->setLevel(bData.level);    // 需给BaseBuilding添加setLevel方法
-
+            if (bData.immediatelyBuild) {
+                building->buildImmediately();
+            }
+            building->setProgressTimer(bData.progressTimer);
             // 复用placeBuilding中的坐标/锚点/ZOrder逻辑
             auto config = building->getConfig();
             CCLOG("tile.x: %f, tile.y: %f", bData.tilePos.x, bData.tilePos.y);

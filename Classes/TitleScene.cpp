@@ -130,6 +130,7 @@ void  TitleScene::onNormalGameClick(Ref* pSender)
 		CCLOG("VillageScene 创建f失败！");
 		return;
 	}
+
 	CCLOG("VillageScene 创建s成功，准备切换");
 	Director::getInstance()->pushScene(villageScene);//将新场景压入栈顶，旧场景暂停保留；
 	//TransitionFade* transition = TransitionFade::create(0.5f, villageScene);

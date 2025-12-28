@@ -6,18 +6,7 @@
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
 #include "EnumType.h" 
-#include <unordered_set>
-// 自定义Vec2哈希函数，用于unordered_map/set
-struct Vec2Hash {
-    size_t operator()(const Vec2& v) const {
-        // 优化哈希：避免x/y相同导致哈希碰撞（如(1,2)和(2,1)）
-        return std::hash<int>()(static_cast<int>(v.x * 1000)) ^
-            (std::hash<int>()(static_cast<int>(v.y * 1000)) << 1);
-    }
-};
-using TileKey = uint32_t; // 足够存储 100*100=10000 的键
 
-TileKey tileToKey(const Vec2& tilePos);
 using namespace cocos2d;
 extern std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig;
 std::vector<std::string> split(const std::string& s, const std::string& delim);
@@ -37,14 +26,15 @@ namespace SaveData {
         cocos2d::Vec2 tilePos;      // 建筑所在格子坐标
         BuildingState state;        // 建筑状态（IDLE/BUILDING等）
         int level = 1;              // 建筑等级（如果有升级逻辑）
-
+        bool immediatelyBuild;       //是否立即建造完成
+        float progressTimer;         //进度
         // 序列化：将数据转为字符串（方便存储）
         std::string toString() const {
             std::stringstream ss;
             ss << (int)type << ","
                 << tilePos.x << "," << tilePos.y << ","
-                << (int)state << ","
-                << level;
+                << (int)state << "," << level<<","
+                << immediatelyBuild<<","<< progressTimer;
             return ss.str();
         }
 
@@ -58,6 +48,8 @@ namespace SaveData {
                 data.tilePos.y = std::stof(parts[2]);
                 data.state = (BuildingState)std::stoi(parts[3]);
                 data.level = std::stoi(parts[4]);
+                data.immediatelyBuild = std::stoi(parts[5]);
+                data.progressTimer = std::stof(parts[6]);
             }
             return data;
         }
@@ -267,6 +259,8 @@ public:
     void destroyBuilding(BaseBuilding* building);
     // 显示无法放置提示
     void VillageScene::showCannotPlaceTip(Vec2 pos);
+    // 放置建筑
+    
     void VillageScene::showText(std::string string, Vec2 pos = Vec2(1000, 1000), float duringTime = 2.0f);
     void setGold(int gold);
     void setElixir(int elixir);
@@ -329,6 +323,7 @@ private:
     std::vector<BaseBuilding*> _buildings;
     // 按类型拆分存储（便于快速查找,资源类一键停止/开启）
     std::vector<GoldMine*> _goldMines;
+    BaseBuilding* _townHall;
     //TODO:实现一些特殊建筑子列便于兵种寻找
     std::vector<ElixirCollector*> _elixirCollectors;
     // 缩放相关
@@ -349,6 +344,7 @@ private:
     ui::Layout* _trainingPopup = nullptr; // 训练弹窗根节点
     TrainingCamp* _currentCamp = nullptr; // 当前关联的训练营
     const int MAX_QUEUE_SIZE = 5; // 最大训练队列数
+    
     
     // -------------------------- 兵种相关成员变量 --------------------------
     bool _isTroopBarShow = false;// 兵种栏是否显示
@@ -427,8 +423,7 @@ private:
     void initBuildModeBtn();
     // 检测瓦片是否可放置建筑
     bool checkCanPlace(Vec2 tilePos, BuildingType type);
-    // 放置建筑
-    void placeBuilding(Vec2 tilePos, BuildingType type);
+
 	void moveBuilding(BaseBuilding* building, Vec2 newTilePos);
 	// 切换建筑栏显示/隐藏
     void VillageScene::toggleBuildBar();
@@ -436,6 +431,8 @@ private:
     void createBuildBar();  
     // 隐藏建筑栏
     void hideBuildBar();  
+    //放置建筑
+    void placeBuilding(Vec2 tilePos, BuildingType type);
 	// 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
 	// 处理建筑弹窗按钮点击回调

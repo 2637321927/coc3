@@ -52,14 +52,6 @@
         TRAINING,     // 训练中
         UNKNOWN
     };
-    struct BuildingLevelConfig {
-        int level;          // 等级
-        int goldCost;       // 升级金币消耗
-        int elixirCost;     // 升级圣水消耗
-        float buildTime;    // 升级耗时（秒）
-        int hp;             // 该等级生命值
-        std::string spritePath; // 该等级的建筑图片路径
-    };
     struct BuildingConfig {
         int id;                     // 唯一ID
         BuildingType type;          // 建筑类型
@@ -70,8 +62,7 @@
         int tileHeight;             // 占用瓦片高
         std::unordered_map<std::string, int> cost; // 建造消耗（金币/圣水）
         float buildTime;            // 建造时长（秒）
-        int level = 1;              // 初始等级
-        std::map<int, BuildingLevelConfig> levelConfigs;
+ 
     };
     struct TroopConfig {
         int id;                     // 唯一ID
@@ -90,6 +81,6 @@
         int unlockCampLevel = 1;        // 解锁所需兵营等级
     };
     const BuildingConfig& getBuildingConfigByType(BuildingType type, int level = 1);
-    int getGoldCost(BuildingType type);
-    int getElixirCost(BuildingType type);
+    int getGoldCost(BuildingType type,int level=1);
+    int getElixirCost(BuildingType type,int lrvel=1);
 #endif // __ENUM_TYPE_H__#pragma once

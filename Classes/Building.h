@@ -30,18 +30,23 @@ public:
     virtual void startUpgrade();        // 开始升级（通用逻辑）
     virtual void destroy();             // 摧毁建筑（通用逻辑）
     virtual void takeDamage(int damage); // 受到伤害（通用逻辑）
+    virtual void updateBuildingSprite(); // 更新建筑精灵图片（等级变化时调用）
+    virtual void refreshBuildingAttributes();    // 刷新建筑属性（生命值/产量/容量等）
     //virtual bool checkUpgradeCondition(int& outErrCode); // 检查升级条件（通用）
-    int getLevel() const { return _config.level; }
+    int getLevel() const { return _currentLevel; }
     // 设置等级（内部调用，用于加载存档/升级完成）
     void setLevel(int level){
-		_currentLevel = level;
+        _currentLevel = level;
+        updateBuildingSprite();
+        updateLevelLabel();
+        refreshBuildingAttributes();
+
 	}
     // 升级前置校验（资源是否足够、是否在升级中）
     //bool checkUpgradeCondition(int& outErrCode); // outErrCode：1=等级已满，2=资源不足，3=升级中
     // 开始升级（扣除资源，设置升级状态，启动倒计时）
     // 升级完成（更新等级、属性、图片，恢复状态）
     void finishUpgrade();
-
     void setState(BuildingState state); // 设置状态（通用）
     BuildingState getState() const { return _state; }
     // ========== 通用属性接口（所有建筑都有） ==========
@@ -54,12 +59,14 @@ public:
         // 语义：返回建筑的第一个瓦片坐标（通常是起始/左下角瓦片）
         return _tilePos[0];
     }
-        bool canUpgrade() const;
     std::vector<Vec2> getTilePositions() const { return _tilePos; }
    // int getLevel() const { return _config.level; }
-	void buildImmediately() { _immediatelyBuild = 1; }
+	void buildImmediately() { immediatelyBuild = 1; }
     const BuildingConfig& getConfig() const { return _config; }
+    void setBuildTime(float time) { _config.buildTime = time; }
     void syncScale(float mapScale);     // 同步地图缩放（通用）
+    void setProgressTimer(float progressTimer) {_progressTimer = progressTimer;}
+    float getProgressTimer() { return _progressTimer; }
     // ========== 交互接口（通用） ==========
     void bindClickCallback(const std::function<void(BaseBuilding*)>& callback);
     std::function<void(BaseBuilding*)> _buildFinishCallback;
@@ -70,18 +77,16 @@ public:
 
     // ========== 生命周期（通用） ==========
     virtual void update(float dt) override; // 帧更新（处理进度）
-    // 更新建筑精灵图片（等级变化时调用）
-    virtual void updateBuildingSprite();
-    // 刷新建筑属性（生命值/产量/容量等）
-    virtual void refreshBuildingAttributes();
+    bool immediatelyBuild = 0; // 是否立即建造完成
 protected:
     BaseBuilding() = default;
     ~BaseBuilding() override = default;
-
+    Label* _levelLabel;
     // 通用辅助方法（子类可调用）
     void initCommonUI();                // 初始化通用UI（进度条、等级标签）
 	void initTouchListener(); // 初始化触摸监听器
     void updateProgress();              // 更新建造/升级进度
+    void updateLevelLabel();          
     // 点击回调函数（参数为当前建筑指针）
     std::function<void(BaseBuilding*)> _clickCallback;
     // 触摸事件监听器
@@ -99,7 +104,6 @@ protected:
     ProgressTimer* _progressBar = nullptr; // 通用进度条
     ProgressTimer* _hpBar = nullptr; // 通用血条
 	Sprite*  _buildingSprite;        // 建筑图片精灵
-	bool _immediatelyBuild = 0; // 是否立即建造完成
 };
 class GoldMine : public BaseBuilding {
 public:
@@ -273,7 +277,6 @@ public:
 
     // 初始化攻击属性（子类 init 中调用）
     void initAttackProps(float range, float damage, float cooldown, const std::string& effectPath = "");
-
     // 重写 update 逻辑（攻击核心）
     virtual void update(float dt) override;
 
