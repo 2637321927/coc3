@@ -43,9 +43,9 @@ bool VillageScene::init()
     mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
-	if (_baseMode == BaseMode::FIGHT) {
+    if (_baseMode == BaseMode::FIGHT) {
         loadGame("fight.txt");
-	}
+    }
     return true;
 }
 //设置瓦片颜色（放置预览）
@@ -58,8 +58,8 @@ void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type) 
         return;
     }
     // 获取瓦片对应的精灵（TMXLayer本质是SpriteBatchNode，每个瓦片是Sprite）
-    for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
-        for (int j = tilePos.y;j <= tilePos.y + config.tileWidth - 1;j++) {
+    for (int i = tilePos.x; i <= tilePos.x + config.tileHeight - 1; i++) {
+        for (int j = tilePos.y; j <= tilePos.y + config.tileWidth - 1; j++) {
             Sprite* tileSprite = _bgLayer->getTileAt(Vec2(i, j));
             if (!tileSprite) { // 空瓦片（无精灵）
                 return;
@@ -83,7 +83,7 @@ void VillageScene::restoreLastTileColor() {
     if (!_hasLastTile) {
         return;
     }
-    for (int i = 0;i < _lastTilePos.size();i++) {
+    for (int i = 0; i < _lastTilePos.size(); i++) {
         Sprite* lastTileSprite = _bgLayer->getTileAt(_lastTilePos[i]);
         if (lastTileSprite) {
             lastTileSprite->setColor(_originalTileColor); // 恢复原始颜色
@@ -122,7 +122,7 @@ void VillageScene::onMouseDown(Event* event)
         // 记录容器的位置
         _mapOriginPos = _mapContainer->getPosition();
         // 只有建筑栏显示且处于建造模式时，才处理放置逻辑
-        if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING&&! _isLastMouseLeftButtonDown) {
+        if (_isBuildBarShow && _Mode == Mode::PLACE_BUILDING && !_isLastMouseLeftButtonDown) {
             Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
             Vec2 tilePos = screenToIsoTile(currentPos);
             tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
@@ -137,7 +137,7 @@ void VillageScene::onMouseDown(Event* event)
             }
         }
         // 兵种放置逻辑
-        else if (_isTroopBarShow && _Mode == Mode::SPAWN_TROOP&& _isLastMouseLeftButtonDown) {
+        else if (_isTroopBarShow && _Mode == Mode::SPAWN_TROOP && _isLastMouseLeftButtonDown) {
             Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
             spawnTroop(currentPos, _selectedTroopType);
             // 可选：放置后不退出模式，继续生成同类型兵种
@@ -156,7 +156,7 @@ void VillageScene::onMouseDown(Event* event)
                     _selectedBuildingType = building->getType();
                     _buildPreview->setTexture(building->getConfig().imgPath);
                     _buildPreview->setVisible(true);
-					building->setVisible(false);
+                    building->setVisible(false);
                     _isAnyBuildSelected = true;
                     // 释放该建筑占用的瓦片（预览时不占用）
                     releaseBuildingTiles(building);
@@ -165,21 +165,21 @@ void VillageScene::onMouseDown(Event* event)
             }
         }
         else if (_Mode == Mode::MOVE && _isAnyBuildSelected && _isLastMouseLeftButtonDown) {
-			Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
-			Vec2 tilePos = screenToIsoTile(currentPos);
-			tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
-			if (checkCanPlace(tilePos, _selectedBuildingType)) {
-                
-				_isAnyBuildSelected = false;
-				_buildPreview->setVisible(false);
-				isoTileToContainerPos(tilePos);
-				moveBuilding(_movingBuilding, tilePos);
+            Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
+            Vec2 tilePos = screenToIsoTile(currentPos);
+            tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
+            if (checkCanPlace(tilePos, _selectedBuildingType)) {
+
+                _isAnyBuildSelected = false;
+                _buildPreview->setVisible(false);
+                isoTileToContainerPos(tilePos);
+                moveBuilding(_movingBuilding, tilePos);
                 _movingBuilding->setVisible(true);
-				_Mode = Mode::NONE;
-			}
-			else {
-				showCannotPlaceTip(currentPos);
-			}
+                _Mode = Mode::NONE;
+            }
+            else {
+                showCannotPlaceTip(currentPos);
+            }
         }
         _isLastMouseLeftButtonDown = true;
     }
@@ -190,7 +190,7 @@ void VillageScene::onMouseDown(Event* event)
                 _buildPreview->setVisible(false);
             }
             _Mode = Mode::NONE;
-			_isContinuousPlace = false;//自动退出连续放置
+            _isContinuousPlace = false;//自动退出连续放置
         }
         _isLastMouseLeftButtonDown = false;
     }
@@ -230,7 +230,7 @@ void VillageScene::onMouseMove(Event* event)
     }
     else {
         // 建造预览跟随（磁吸效果）
-        if ((_Mode == Mode::PLACE_BUILDING||_Mode==Mode::MOVE) && _buildPreview->isVisible()) {
+        if ((_Mode == Mode::PLACE_BUILDING || _Mode == Mode::MOVE) && _buildPreview->isVisible()) {
             Vec2 tilePos = screenToIsoTile(currentMousePos);
             Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
             _buildPreview->setPosition(containerLocalPos);
@@ -244,7 +244,7 @@ void VillageScene::onMouseMove(Event* event)
             setTileColor(tilePos, checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED, _selectedBuildingType); // 黄色高亮，可改为Color3B(255,0,0,180)（半透红）
             //TODO：越界会报错，需要修复
 
-			_lastTile = tilePos;
+            _lastTile = tilePos;
             _hasLastTile = true;
             _buildPreview->setColor(checkCanPlace(tilePos, _selectedBuildingType) ? Color3B::GREEN : Color3B::RED);
         }
@@ -277,7 +277,7 @@ void VillageScene::showCannotPlaceTip(Vec2 pos) {
         nullptr
     ));
 }
-void VillageScene::showText(std::string string,Vec2 pos,float duringTime) {
+void VillageScene::showText(std::string string, Vec2 pos, float duringTime) {
     auto tip = Label::createWithTTF(string, "fonts/Marker Felt.ttf", 20);
     tip->setColor(Color3B::RED);
     tip->setPosition(pos + Vec2(0, 30));
@@ -346,7 +346,7 @@ Scene* VillageScene::createScene(BaseMode mode)
     VillageScene* layer = new (std::nothrow) VillageScene();
     if (layer) {
         // 3. 关键：先设置 BaseMode（此时未调用 init()，参数有效）
-            layer->setBaseMode(mode); // 设置模式
+        layer->setBaseMode(mode); // 设置模式
 
         // 4. 再手动调用 init()（此时 _baseMode 已赋值，init 中可识别模式）
         if (layer->init()) {
@@ -429,11 +429,11 @@ void VillageScene::initBtns(BaseMode baseMode) {
     _backBtn->setScale(0.8f);
     _backBtn->setPosition(Vec2(origin.x + 50, origin.y + visibleSize.height - 50)); // 右上角
 
-	if (baseMode == BaseMode::FIGHT) {
+    if (baseMode == BaseMode::FIGHT) {
         _backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：战斗
             this->backfromFight();
             });
-	}
+    }
     else {
         _backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：销毁当前场景，返回主菜单
             this->destroyScene();
@@ -442,7 +442,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
 
 
     // 兵种模式开关按钮（在建筑按钮左侧）
-   _troopModeBtn = ui::Button::create(
+    _troopModeBtn = ui::Button::create(
         "ui/troop_mode_btn_normal.png",  // 正常状态图片
         "ui/troop_mode_btn_selected.png"// 按下状态图片
     );
@@ -452,12 +452,12 @@ void VillageScene::initBtns(BaseMode baseMode) {
     _troopModeBtn->addClickEventListener([this](Ref* sender) {
         this->toggleTroopBar(); // 点击切换兵种栏
         });
-	if (_baseMode == BaseMode::FIGHT) {
-		_troopModeBtn->setVisible(false);
-	}
+    if (_baseMode == BaseMode::FIGHT) {
+        _troopModeBtn->setVisible(false);
+    }
     // 创建建筑模式开关按钮（右上角悬浮）
     if (baseMode != BaseMode::FIGHT) {
-         _buildModeBtn = ui::Button::create(
+        _buildModeBtn = ui::Button::create(
             "ui/build_mode_btn_normal.png",  // 正常状态图片
             "ui/build_mode_btn_selected.png"// 按下状态图片
         );
@@ -501,14 +501,14 @@ void VillageScene::initBtns(BaseMode baseMode) {
 
     if (baseMode != BaseMode::FIGHT) {
         // 创建存档按钮
-         _loadBtn = ui::Button::create(
+        _loadBtn = ui::Button::create(
             "ui/btn_normal.png",
             "ui/btn_pressed.png",
             "ui/btn_disabled.png"
         );
         _uiLayer->addChild(_loadBtn, 200);
         // 创建存档按钮
-         _saveBtn = ui::Button::create(
+        _saveBtn = ui::Button::create(
             "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
             "ui/btn_pressed.png",  // 按下状态图片
             "ui/btn_disabled.png"  // 禁用状态图片（可选）
@@ -537,7 +537,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
         _moveBtn->setContentSize(Size(120, 60));
         _moveBtn->setPosition(Vec2(_loadBtn->getPositionX(), _loadBtn->getPositionY() - 80));
         _moveBtn->addClickEventListener([this](Ref* sender) {
-			_Mode = Mode::MOVE;
+            _Mode = Mode::MOVE;
             });
         auto moveText = ui::Text::create("move", "fonts/Marker Felt.ttf", 24);
         moveText->setColor(Color3B::GREEN);
@@ -546,7 +546,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
     }
 
     if (baseMode != BaseMode::FIGHT) {
-         _fightBtn = ui::Button::create(
+        _fightBtn = ui::Button::create(
             "ui/fight_btn_normal.png",  // 正常状态图片
             "ui/fight_btn_selected.png"// 按下状态图片
         );
@@ -558,7 +558,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
             });
     }
     if (baseMode == BaseMode::FIGHT) {
-        _fightStartBtn = ui::Button::create("ui/fight_start_btn.png"); 
+        _fightStartBtn = ui::Button::create("ui/fight_start_btn.png");
         _uiLayer->addChild(_fightStartBtn, 200);
         _fightStartBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100));
         _fightStartBtn->addClickEventListener([this](Ref* sender) {
@@ -705,8 +705,8 @@ Vec2 VillageScene::isoTileToContainerPos(Vec2 tilePos) {
     CCLOG("basePos.x: %f, basePos.y: %f", basePos.x, basePos.y);
     // 2. 计算中心点偏移：向上移动半个瓦片高度
     // Cocos2d-x 坐标系 Y 轴向上，所以是 + height/2
-    Vec2 localCenter = basePos + Vec2(_tileSize.width /2.0f
-		, _tileSize.height / 2.0f
+    Vec2 localCenter = basePos + Vec2(_tileSize.width / 2.0f
+        , _tileSize.height / 2.0f
     );
     CCLOG("localCenter.x: %f, basePos.y: %f", localCenter.x, localCenter.y);
     // 3. 将 Layer 内部坐标转换为容器 (_mapContainer) 的坐标
@@ -842,8 +842,8 @@ bool VillageScene::checkCanPlace(Vec2 tilePos, BuildingType type)
     ValueMap tileProps = _tileMap->getPropertiesForGID(tileGID).asValueMap();
     //多格建筑判断
     bool isOccupied = 0;
-    for (int i = tilePos.x;i <= tilePos.x + config.tileHeight - 1;i++) {
-        for (int j = tilePos.y;j <= tilePos.y + config.tileWidth - 1;j++) {
+    for (int i = tilePos.x; i <= tilePos.x + config.tileHeight - 1; i++) {
+        for (int j = tilePos.y; j <= tilePos.y + config.tileWidth - 1; j++) {
             if (isTileOccupied(Vec2(i, j))) {
                 isOccupied = 1;
             }
@@ -981,7 +981,7 @@ void VillageScene::createBuildBar() {
         "ui/cancel_place_btn.png",
         "ui/cancel_place_btn_selected.png",
         [this](Ref* sender) {
-			_isContinuousPlace = !_isContinuousPlace; // 切换状态
+            _isContinuousPlace = !_isContinuousPlace; // 切换状态
         }
     );
     // 排列按钮
@@ -1092,25 +1092,25 @@ void VillageScene::moveBuilding(BaseBuilding* building, Vec2 tilePos) {
 // 放置建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
     if (_baseMode == BaseMode::NORMAL) {
-		if (_gold <= getGoldCost(type)&&_elixir<=getElixirCost(type)) {
-			showText("Not Enough Money And Elixir");
-			return;
-		}
+        if (_gold <= getGoldCost(type) && _elixir <= getElixirCost(type)) {
+            showText("Not Enough Money And Elixir");
+            return;
+        }
         else if (_gold <= getGoldCost(type)) {
-			showText("Not Enough Money");
-			return;
-		}
+            showText("Not Enough Money");
+            return;
+        }
         else if (_elixir <= getElixirCost(type)) {
             showText("Not Enough Elixir");
             return;
         }
-		else{
+        else {
             spendGold(getGoldCost(type));
             spendElixir(getElixirCost(type));
-		}
+        }
     }
     auto building = BaseBuilding::create(type, tilePos, 1.0f);
-	//创造模式立即建造完成
+    //创造模式立即建造完成
     if (_baseMode == BaseMode::CREATING) {
         building->buildImmediately();
     }
@@ -1179,7 +1179,7 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         // 记录该建筑占用的所有瓦片
         for (int x = 0; x < config.tileWidth; ++x) {
             for (int y = 0; y < config.tileHeight; ++y) {
-				addOccupiedTile(Vec2(tilePos.x + x, tilePos.y + y));
+                addOccupiedTile(Vec2(tilePos.x + x, tilePos.y + y));
             }
         }
         // 计算建筑占用瓦片范围的中心点（瓦片坐标）
@@ -1205,10 +1205,10 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         building->setAnchorPoint(Vec2(0.5f, 0.5f));
         building->setPosition(containerLocalPos);
         _mapContainer->addChild(building);
-		// 越在右，越在下的建筑层级越高
+        // 越在右，越在下的建筑层级越高
         building->setLocalZOrder(1000 + (tilePos.x + tilePos.y));
         // 通用逻辑：添加到场景 + 绑定点击回调
-        if (building&&_baseMode!=BaseMode::FIGHT) {
+        if (building && _baseMode != BaseMode::FIGHT) {
             // 统一绑定点击回调（弹窗逻辑）
             building->bindClickCallback([this](BaseBuilding* building) {
                 if (_Mode != Mode::NONE) {
@@ -1223,7 +1223,7 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 });
         }
 
-		// 1. 播放建造音效
+        // 1. 播放建造音效
         // 2. 延迟0.5秒切换回NONE模式(放置点击触碰到其他建筑会触发弹窗)
         if (!_isContinuousPlace) {
             _Mode = Mode::PROTECT;
@@ -1232,14 +1232,14 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 }, 0.1f, "delay_switch_to_none_mode"); // 0.1秒延迟，定时器标签用于防重复
         }
         else {
-			_buildPreview->setVisible(true);
+            _buildPreview->setVisible(true);
         }
 
     }
 
 }
 void VillageScene::addOccupiedTiles(const std::vector<Vec2>& tiles) {
-    for (auto tile:tiles) {
+    for (auto tile : tiles) {
         _occupiedTiles.push_back(Vec2(tile.x, tile.y));
         int tileX = static_cast<int>(tile.x);
         int tileY = static_cast<int>(tile.y);
@@ -1247,11 +1247,11 @@ void VillageScene::addOccupiedTiles(const std::vector<Vec2>& tiles) {
     }
 }
 void VillageScene::addOccupiedTile(const Vec2& tile) {
-            _occupiedTiles.push_back(Vec2(tile.x,tile.y));
-            int tileX = static_cast<int>(tile.x);
-            int tileY = static_cast<int>(tile.y);
-            _tileOccupiedGrid[tileX][tileY] = true;
- 
+    _occupiedTiles.push_back(Vec2(tile.x, tile.y));
+    int tileX = static_cast<int>(tile.x);
+    int tileY = static_cast<int>(tile.y);
+    _tileOccupiedGrid[tileX][tileY] = true;
+
 }
 // 摧毁建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::destroyBuilding(BaseBuilding* building) {
@@ -1339,9 +1339,9 @@ void VillageScene::releaseBuildingTiles(BaseBuilding* building) {
             auto tileIt = std::find(_occupiedTiles.begin(), _occupiedTiles.end(), tile);
             if (tileIt != _occupiedTiles.end()) {
                 _occupiedTiles.erase(tileIt);
-				int tileX = static_cast<int>(tile.x);
-				int tileY = static_cast<int>(tile.y);
-				_tileOccupiedGrid[tileX][tileY] = false;
+                int tileX = static_cast<int>(tile.x);
+                int tileY = static_cast<int>(tile.y);
+                _tileOccupiedGrid[tileX][tileY] = false;
             }
         }
     }
@@ -1962,12 +1962,12 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
         // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
        // CCLOG("troop is %s", troop ? "valid" : "null");
         troop->setTargetWorldPosition(targetBuilding->getPosition());
-       // CCLOG("YEoS!!!!!!!");
-        //CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
-            targetBuilding->getPosition().x, targetBuilding->getPosition().y;
+        // CCLOG("YEoS!!!!!!!");
+         //CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
+        targetBuilding->getPosition().x, targetBuilding->getPosition().y;
     }
     else {
-       // CCLOG("未找到敌方建筑，兵种进入lazy状态");
+        // CCLOG("未找到敌方建筑，兵种进入lazy状态");
     }
 }
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {
@@ -2196,7 +2196,7 @@ SaveData::Village VillageScene::packSaveData() {
     saveData.occupiedTiles = _occupiedTiles;
     saveData.gold = _gold;
     saveData.elixir = _elixir;
-	CCLOG("Packing save data: gold=%d, elixir=%d, buildings=%zu",
+    CCLOG("Packing save data: gold=%d, elixir=%d, buildings=%zu",
         saveData.gold, saveData.elixir, _buildings.size());
     // 填充所有建筑数据
     for (const auto& building : _buildings) {
@@ -2262,7 +2262,7 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     _Mode = saveData.currentMode;
     // 恢复已占用格子
     //_occupiedTiles = saveData.occupiedTiles;
-	addOccupiedTiles(saveData.occupiedTiles);
+    addOccupiedTiles(saveData.occupiedTiles);
     // 恢复资源数值
     setGold(saveData.gold);
     setElixir(saveData.elixir);
@@ -2332,19 +2332,41 @@ bool VillageScene::saveGame(const std::string& savePath) {
 }
 
 bool VillageScene::loadGame(const std::string& savePath) {
-    // 获取文件完整路径
-    std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;// cocos2d::FileUtils::getInstance()->getWritablePath() + 
-    // 检查文件是否存在
-    //if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
-      //  CCLOG("存档文件不存在：%s", fullPath.c_str());
-       // return false;
-   // }
-    // 读取文件内容
-    //std::string saveStr = fullPath;
-   std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
-    // 反序列化数据
+    auto fileUtils = cocos2d::FileUtils::getInstance();
+    std::string fullPath;
+
+    // 1. 尝试拼接“可写路径”（优先查找用户存档）
+    std::string writablePath = fileUtils->getWritablePath() + savePath;
+
+    if (fileUtils->isFileExist(writablePath)) {
+        // 如果在可写目录找到了（说明是玩家存的档），就用这个路径
+        fullPath = writablePath;
+        CCLOG("Loading from WritablePath: %s", fullPath.c_str());
+    }
+    else {
+        // 2. 如果可写目录没有，尝试在“资源目录”（预设关卡）查找
+        // fullPathForFilename 会自动在 Resources 目录下搜索
+        fullPath = fileUtils->fullPathForFilename(savePath);
+
+        if (fullPath.empty() || !fileUtils->isFileExist(fullPath)) {
+            CCLOG("Error: File not found in both WritablePath and Resources: %s", savePath.c_str());
+            return false;
+        }
+        CCLOG("Loading from Resources: %s", fullPath.c_str());
+    }
+
+    // 3. 读取内容
+    std::string saveStr = fileUtils->getStringFromFile(fullPath);
+
+    // 4. 反序列化
+    if (saveStr.empty()) {
+        CCLOG("Error: File content is empty!");
+        return false;
+    }
+
     SaveData::Village saveData = SaveData::Village::fromString(saveStr);
-    // 恢复场景数据
+
+    // 5. 恢复场景数据
     unpackSaveData(saveData);
 
     CCLOG("读档成功：恢复了 %d 栋建筑", (int)saveData.buildings.size());
@@ -2637,7 +2659,7 @@ bool VillageScene::level_init()
     initMap();
     init_level_Btns(BaseMode::FIGHT);
     go_back_Btn();
-    
+
 
     initTroopPreview();
     //initSaveLoadButtons();
@@ -2763,7 +2785,7 @@ void VillageScene::gotoFight() {
     Director::getInstance()->pushScene(fightScene);
 }
 void VillageScene::backfromFight() {
-	Director::getInstance()->popScene();
+    Director::getInstance()->popScene();
 }
 void VillageScene::beginFight() {
     // 创建倒计时显示标签（用于展示剩余时间）
@@ -2772,7 +2794,7 @@ void VillageScene::beginFight() {
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
     _countDownLabel = Label::createWithSystemFont("2:30", "Arial", 36);
     _countDownLabel->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 100)); // 调整显示位置
-    _uiLayer->addChild(_countDownLabel,200);
+    _uiLayer->addChild(_countDownLabel, 200);
     // 初始化计时变量
     _totalTime = 150.0f; // 2分30秒 = 150秒
     _remainingTime = _totalTime;
@@ -2784,7 +2806,7 @@ void VillageScene::updateCountDown(float dt)
     CCLOG("%f", _remainingTime);
     // 扣除流逝的时间（dt是定时器两次回调的实际间隔）
     _remainingTime -= dt;
-    _countDownLabel->setColor(_remainingTime>=50.0f ? Color3B::GREEN : Color3B::RED);
+    _countDownLabel->setColor(_remainingTime >= 50.0f ? Color3B::GREEN : Color3B::RED);
     // 处理时间小于0的情况（避免负数）
     if (_remainingTime <= 0)
     {
@@ -2813,8 +2835,8 @@ void VillageScene::initStarRatingUI() {
     _destroyedBuildingCount = 0;
     destroyPercent = 0.0f;
     currentStars = 0;
-    _starTargetPos = Vec2(origin.x+visibleSize.width - 150,
-        origin.y+visibleSize.height - 150); // 星级最终位置
+    _starTargetPos = Vec2(origin.x + visibleSize.width - 150,
+        origin.y + visibleSize.height - 150); // 星级最终位置
 
     // 1. 创建百分比显示标签
     percentLabel = Label::createWithTTF("0%", "fonts/Marker Felt.ttf", 32);
@@ -2844,7 +2866,7 @@ void VillageScene::updateDestroyPercent() {
     // 计算百分比（防止超过100%）
     destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
     // 更新标签显示
-   percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));
+    percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));
 }
 
 // 检查星级解锁逻辑
@@ -2909,7 +2931,7 @@ void VillageScene::destroyScene() {
     if (titleSceneLayer) {
         Scene* titleSceneContainer = dynamic_cast<Scene*>(titleSceneLayer->getParent());
         if (titleSceneContainer) {
-            Director::getInstance()->replaceScene(TransitionFade::create(0.5f, titleSceneContainer, Color3B::BLACK)) ;
+            Director::getInstance()->replaceScene(TransitionFade::create(0.5f, titleSceneContainer, Color3B::BLACK));
         }
     }
 }
@@ -2926,7 +2948,7 @@ void VillageScene::cleanup() {
     _buildings.clear();
     _goldMines.clear();
     _elixirCollectors.clear();
-	_spawnedTroops.clear();
+    _spawnedTroops.clear();
     _enemyTroops.clear();
     _eventDispatcher->removeEventListenersForTarget(this);
     this->removeAllChildrenWithCleanup(true);

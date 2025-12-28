@@ -2,24 +2,34 @@
 #include "cocos2d.h"
 USING_NS_CC;
 
-// 实现create方法（核心：初始化炸弹人配置）
+/**
+ * 创建炸弹人实例 (工厂方法).
+ * 初始化炸弹人的特有配置（低血量、极高对墙伤害、自爆特性）并创建对象.
+ * * @param spawnPos 出生位置坐标.
+ * @param mapScale 地图缩放比例.
+ * @return 创建成功的 BomberTroop 对象指针，失败返回 nullptr.
+ */
 BomberTroop* BomberTroop::create(const Vec2& spawnPos, float mapScale) {
     auto troop = new (std::nothrow) BomberTroop();
     if (troop) {
         TroopConfig config;
-        config.id = 1004;                  // 炸弹人唯一ID（区别于其他兵种）
-        config.type = TroopType::BOMBER;   // 兵种类型为炸弹人
-        config.name = "Bomber";            // 兵种名称
-        config.imgPath = "troops/bomber.png"; // 炸弹人纹理路径（替换为你的实际资源）
-        config.hp = 100;                   // 极低血量（核心特征：脆皮，一碰就炸）
-        config.attackPower = 500;          // 超高范围伤害（只对城墙生效）
-        config.attackRange = 80.0f;        // 攻击范围（自爆范围）
-        config.attackSpeed = 0.0f;         // 无攻速（自爆一次就消失）
-        config.moveSpeed = 90.0f;          // 移动速度中等（向城墙冲锋）
-        config.elixirCost = 100; // 训练成本（圣水100）
-        config.trainingTime = 5.0f;        // 训练时长（5秒）
-        config.level = 1;                  // 初始等级
-        config.spaceCost = 2;              // 占用人口（2人口）
+        config.id = 1004;               // 炸弹人唯一ID
+        config.type = TroopType::BOMBER;// 兵种类型
+        config.name = "Bomber";         // 兵种名称
+        config.imgPath = "troops/bomber.png"; // 纹理路径
+
+        // --- 属性配置 ---
+        config.hp = 100;                // 极低血量（核心特征：脆皮，一碰就炸）
+        config.attackPower = 500;       // 超高范围伤害（主要针对城墙）
+        config.attackRange = 80.0f;     // 攻击范围（自爆范围）
+        config.attackSpeed = 0.0f;      // 无攻速（一次性攻击）
+        config.moveSpeed = 90.0f;       // 移动速度中等
+
+        // --- 训练消耗 ---
+        config.elixirCost = 100;        // 训练成本（圣水100）
+        config.trainingTime = 5.0f;     // 训练时长
+        config.level = 1;               // 初始等级
+        config.spaceCost = 2;           // 占用人口（2单位）
 
         // 调用初始化方法
         if (troop->init(config, spawnPos, mapScale)) {
@@ -27,23 +37,33 @@ BomberTroop* BomberTroop::create(const Vec2& spawnPos, float mapScale) {
             return troop;
         }
     }
-    delete troop;
+    CC_SAFE_DELETE(troop);
     return nullptr;
 }
 
-// 重写初始化方法（可扩展炸弹人特有初始化）
+/**
+ * 初始化炸弹人.
+ * 调用父类通用初始化逻辑，并设置特有的视觉缩放.
+ * * @param config 兵种配置结构体.
+ * @param spawnPos 出生位置.
+ * @param mapScale 地图缩放比例.
+ * @return 初始化成功返回 true.
+ */
 bool BomberTroop::init(const TroopConfig& config, const Vec2& spawnPos, float mapScale) {
     // 调用父类通用初始化（血条、等级标签、状态等）
     if (!BaseTroop::init(config, spawnPos, mapScale)) {
         return false;
     }
 
-    // 炸弹人特有初始化
+    // 炸弹人特有初始化：体型稍小
     this->setScale(mapScale * 0.8f);
     return true;
 }
 
-// 重写特有攻击行为（炸弹人：自爆攻击，范围伤害，攻击后自身消失）
+/**
+ * 执行炸弹人特有攻击行为（自爆）.
+ * 包含三个阶段：快速闪烁预热 -> 放大变色爆炸 -> 自身销毁.
+ */
 void BomberTroop::doSpecialAttack() {
     if (_attackTarget == nullptr) return;
 
@@ -56,10 +76,10 @@ void BomberTroop::doSpecialAttack() {
 
     // 3. 爆炸后消失+回调（炸弹人自爆后死亡）
     auto explode = Sequence::create(
-        blink,                                  // 预热闪烁
+        blink,                                   // 预热闪烁
         Spawn::create(scaleUp, tintRed, nullptr),// 爆炸放大+变色
         CallFunc::create([=]() {
-            // 自爆后触发死亡逻辑（直接调用die，无需等血量）
+            // 自爆后触发死亡逻辑（直接调用die，无需等血量扣减）
             this->die();
             }),
         nullptr
@@ -69,7 +89,10 @@ void BomberTroop::doSpecialAttack() {
     this->runAction(explode);
 }
 
-// 重写特有描述（体现炸弹人自爆+拆墙特征）
+/**
+ * 获取炸弹人特有描述.
+ * * @return 描述字符串 (强调自爆和对墙伤害).
+ */
 std::string BomberTroop::getSpecialDesc() {
     return "自爆型单位，血量极低但对城墙造成超高范围伤害，攻击后自身消失，优先攻击城墙建筑";
 }
