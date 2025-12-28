@@ -2194,20 +2194,41 @@ bool VillageScene::saveGame(const std::string& savePath) {
 }
 
 bool VillageScene::loadGame(const std::string& savePath) {
-    // 获取文件完整路径
-    std::string fullPath = cocos2d::FileUtils::getInstance()->getWritablePath() + savePath;// cocos2d::FileUtils::getInstance()->getWritablePath() + 
-    // 检查文件是否存在
-    //if (!cocos2d::FileUtils::getInstance()->isFileExist(fullPath)) {
-      //  CCLOG("存档文件不存在：%s", fullPath.c_str());
-       // return false;
-   // }
-    // 读取文件内容
-    //std::string saveStr = fullPath;
-   std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
-    // 反序列化数据
+    auto fileUtils = cocos2d::FileUtils::getInstance();
+    std::string fullPath;
+
+    // 1. 先尝试在“可写路径”（用户存档）中查找完整路径
+    std::string writablePath = fileUtils->getWritablePath() + savePath;
+
+    if (fileUtils->isFileExist(writablePath)) {
+        // 如果在可写目录找到了（说明是玩家存的档），就用这个路径
+        fullPath = writablePath;
+        CCLOG("Loading from WritablePath: %s", fullPath.c_str());
+    }
+    else {
+        // 2. 如果可写目录没有，尝试在“资源目录”（预设关卡）查找
+        // fullPathForFilename 会自动在 Resources 目录下搜索
+        fullPath = fileUtils->fullPathForFilename(savePath);
+
+        if (fullPath.empty() || !fileUtils->isFileExist(fullPath)) {
+            CCLOG("Error: File not found in both WritablePath and Resources: %s", savePath.c_str());
+            return false;
+        }
+        CCLOG("Loading from Resources: %s", fullPath.c_str());
+    }
+
+    // 3. 读取内容
+    std::string saveStr = fileUtils->getStringFromFile(fullPath);
+
+    // 4. 反序列化
+    if (saveStr.empty()) {
+        CCLOG("Error: File content is empty!");
+        return false;
+    }
+
     SaveData::Village saveData = SaveData::Village::fromString(saveStr);
-    // 恢复场景数据
     unpackSaveData(saveData);
+
     CCLOG("读档成功：恢复了 %d 栋建筑", (int)saveData.buildings.size());
     return true;
 }
