@@ -6,6 +6,7 @@
 #include "BuildingPopup.h"
 #include "ui/CocosGUI.h" 
 #include "EnumType.h" 
+#include <unordered_set>
 
 using namespace cocos2d;
 extern std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig;
@@ -14,8 +15,9 @@ enum class Mode {
     NONE,       // 无建造模式
     PLACE_BUILDING,  // 放置建筑模式
     SPAWN_TROOP,    // 放置兵种模式
-	FIGHT,     // 战斗模式（预留）
-	MOVE  	// 移动建筑模式
+    FIGHT,     // 战斗模式（预留）
+    MOVE, 	// 移动建筑模式
+    PROTECT // 保护模式(过渡模式，放置误触)
 };
 //存档相关
 namespace SaveData {
@@ -32,15 +34,15 @@ namespace SaveData {
             std::stringstream ss;
             ss << (int)type << ","
                 << tilePos.x << "," << tilePos.y << ","
-                << (int)state << "," << level<<","
-                << immediatelyBuild<<","<< progressTimer;
+                << (int)state << "," << level << ","
+                << immediatelyBuild << "," << progressTimer;
             return ss.str();
         }
 
         // 反序列化：从字符串恢复数据
         static Building fromString(const std::string& str) {
             Building data;
-			std::vector<std::string> parts = split(str, ","); // 按逗号分割
+            std::vector<std::string> parts = split(str, ","); // 按逗号分割
             if (parts.size() >= 5) {
                 data.type = (BuildingType)std::stoi(parts[0]);
                 data.tilePos.x = std::stof(parts[1]);
@@ -60,8 +62,8 @@ namespace SaveData {
         cocos2d::Vec2 mapSize;                 // 地图尺寸（可选）
         std::vector<Vec2> occupiedTiles; // 已占用格子（可选，可通过建筑数据推导）
         Mode currentMode = Mode::NONE;         // 当前模式（可选）
-		int gold; 						   // 金币
-		int elixir;					   // 圣水
+        int gold; 						   // 金币
+        int elixir;					   // 圣水
         // 序列化整个村庄数据
         std::string toString() const {
             std::stringstream ss;
@@ -74,7 +76,7 @@ namespace SaveData {
                 ss << tile.x << "," << tile.y << ";";
             }
             if (occupiedTiles.empty()) {
-				ss << ','; // 结尾加分号
+                ss << ','; // 结尾加分号
             }
             ss << "\n";
             ss << gold << "," << elixir << "\n";
@@ -193,8 +195,6 @@ public:
                 nearestBuilding = building;
             }
         }
-        CCLOG("building(%.1f,%.1f)",
-            nearestBuilding->getTilePos().x, nearestBuilding->getTilePos().y);
         return nearestBuilding;
     }
     void VillageScene::init_level_Btns(BaseMode baseMode);
@@ -207,13 +207,13 @@ public:
             return dynamic_cast<VillageScene*>(currentScene->getChildByTag(100));
         }
         auto scene_25 = dynamic_cast<VillageScene*>(currentScene->getChildByTag(25));
-		if (scene_25 && scene_25->isRunning()) {
-			return dynamic_cast<VillageScene*>(currentScene->getChildByTag(25));
-		}
+        if (scene_25 && scene_25->isRunning()) {
+            return dynamic_cast<VillageScene*>(currentScene->getChildByTag(25));
+        }
         return nullptr;
     }
     // Cocos2d-x 标准创建方法（必须）
-    static cocos2d::Scene* createScene(BaseMode baseMode=BaseMode::CREATING);
+    static cocos2d::Scene* createScene(BaseMode baseMode = BaseMode::CREATING);
     // 初始化方法
     virtual bool init();
     // CREATE_FUNC 宏：自动生成 create() 方法
@@ -222,7 +222,7 @@ public:
     bool saveGame(const std::string& savePath = "village_save.txt");
     // 读档（从本地文件恢复）
     bool loadGame(const std::string& savePath);
-    bool VillageScene::loadGame2(const std::string& savePath = "village_save.txt"); 
+    bool VillageScene::loadGame2(const std::string& savePath = "village_save.txt");
     // 按钮点击回调
     void onSaveBtnClicked(cocos2d::Ref* sender);
     void onLoadBtnClicked(cocos2d::Ref* sender);
@@ -233,7 +233,7 @@ public:
     // 训练营弹窗相关
     void showTrainingCampPopup(TrainingCamp* camp); // 显示训练弹窗
     void hideTrainingCampPopup(); // 隐藏训练弹窗
-	//获取敌军接口（用于给攻击建筑）
+    //获取敌军接口（用于给攻击建筑）
     std::vector<BaseTroop*>& getAllEnemyTroops() {
         if (_enemyTroops.capacity() > 10000 || _enemyTroops.size() > 10000) {
             CCLOGERROR("敌方士兵列表异常，长度：%zu，容量：%zu", _enemyTroops.size(), _enemyTroops.capacity());
@@ -242,7 +242,7 @@ public:
         }
         return _enemyTroops;
     }
-	//移除敌军军队指针（用于敌军士兵死亡后移除）
+    //移除敌军军队指针（用于敌军士兵死亡后移除）
     void removeEnemyTroop(BaseTroop* troop);
     // 添加/移除敌方兵种
     void addEnemyTroop(BaseTroop* troop) {
@@ -261,36 +261,65 @@ public:
     // 显示无法放置提示
     void VillageScene::showCannotPlaceTip(Vec2 pos);
     // 放置建筑
-    
+
     void VillageScene::showText(std::string string, Vec2 pos = Vec2(1000, 1000), float duringTime = 2.0f);
-
-
-    // 摧毁建筑核心函数
-    void destroyBuilding(BaseBuilding* building);
+    void setGold(int gold);
+    void setElixir(int elixir);
+    bool addGold(int amount);
+    bool spendGold(int amount);
+    bool addElixir(int amount);
+    bool spendElixir(int amount);
+    void showResourceShortageTip(const std::string& message);
+    void addGoldStorageCapacity(int bonus);
+    void addElixirStorageCapacity(int bonus);
+    int getGold() const { return _gold; }
+    int getElixir() const { return _elixir; }
 protected:
     bool level_init();
     ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
 private:
     BaseMode _baseMode; // 所有模式管理器
-	//static VillageScene* _instance;// 单例实例指针
+    //static VillageScene* _instance;// 单例实例指针
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
     TMXTiledMap* _tileMap;       // 等轴测地图对象
     Size _tileSize;              // 单个瓦片尺寸
     Size _mapSize;               // 地图总瓦片数（宽×高）
     TMXLayer* _placeLayer;       // 可放置建筑的图层（对应Tiled的place_layer）
-     TMXLayer* _pathLayer;      // 后续可启用：可通行图层（暂注释）
-	 TMXLayer* _bgLayer;      // 背景图层（对应Tiled的bg_layer）
-	 Node* _mapContainer;	  // 地图容器节点（用于整体缩放/拖拽）
-     Mode _Mode = Mode::NONE;  // 当前模式
-	 Mode _lastMode = Mode::NONE; // 上一次模式（用于切换回原模式）
-     Sprite* _mousePosSprite;//测试用，显示鼠标位置
+    TMXLayer* _pathLayer;      // 后续可启用：可通行图层（暂注释）
+    TMXLayer* _bgLayer;      // 背景图层（对应Tiled的bg_layer）
+    Node* _mapContainer;	  // 地图容器节点（用于整体缩放/拖拽）
+    Mode _Mode = Mode::NONE;  // 当前模式
+    Mode _lastMode = Mode::NONE; // 上一次模式（用于切换回原模式）
+    Sprite* _mousePosSprite;//测试用，显示鼠标位置
     // 建筑放置相关
     Sprite* _buildPreview;       // 建筑放置预览图
     BuildingType _selectedBuildingType;      // 选中的建筑类型
     std::vector<Vec2> _occupiedTiles;        // 已占用的瓦片
+    Vec2 _lastTile; 		   // 上一次鼠标所在瓦片
+    bool _isContinuousPlace = false; // 是否连续放置建筑
+    BaseBuilding* _movingBuilding;
+    // 定义场景最大瓦片数（根据你的游戏场景调整，比如50x50、100x100，固定不变）
+    static const int MAX_TILE_X = 400;  // 瓦片x轴最大索引（0 ~ 49）
+    static const int MAX_TILE_Y = 400;  // 瓦片y轴最大索引（0 ~ 49）
+
+    // 核心：二维布尔数组，标记瓦片是否被占用（全局初始化默认false，未占用）
+    bool _tileOccupiedGrid[MAX_TILE_X][MAX_TILE_Y] = { false };
+    // 获取建筑所有占用的格子
+    std::vector<Vec2> getBuildingAllTiles(BaseBuilding* building) {
+        std::vector<Vec2> tiles;
+        if (!building) return tiles;
+        for (int x = 0; x < building->getConfig().tileWidth; x++) {
+            for (int y = 0; y < building->getConfig().tileHeight; y++) {
+                Vec2 tile = building->getTilePos() + Vec2(x, y);
+                tiles.push_back(tile);
+            }
+        }
+        return tiles;
+    }
     bool _isBuildBarShow = false; // 建筑栏是否显示
     Layer* _buildBarLayer = nullptr; // 建筑栏容器层
+    bool _isAnyBuildSelected = false; // 是否有建筑被选中（移动）
     // 存储所有建筑（基类指针，兼容所有建筑类型）
     std::vector<BaseBuilding*> _buildings;
     // 按类型拆分存储（便于快速查找,资源类一键停止/开启）
@@ -306,34 +335,35 @@ private:
     bool _isDragging = false;    // 是否正在拖拽
     Vec2 _lastMousePos;          // 上一帧鼠标位置
     Vec2 _mapOriginPos;          // 地图初始位置（用于计算偏移）
-	// 瓦片高亮相关
-	bool _isLastMouseLeftButtonDown = false; // 上一帧鼠标左键状态
+    // 瓦片高亮相关
+    bool _isLastMouseLeftButtonDown = false; // 上一帧鼠标左键状态
     std::vector<Vec2> _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
+
     // 训练营相关
     ui::Layout* _trainingPopup = nullptr; // 训练弹窗根节点
     TrainingCamp* _currentCamp = nullptr; // 当前关联的训练营
     const int MAX_QUEUE_SIZE = 5; // 最大训练队列数
-    
-    
+
+
     // -------------------------- 兵种相关成员变量 --------------------------
     bool _isTroopBarShow = false;// 兵种栏是否显示
     Sprite* _troopPreview;               // 兵种放置预览图
     TroopType _selectedTroopType = TroopType::UNKNOWN; // 选中的兵种类型
     std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期，不一定是敌军）
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
-	std::vector<BaseTroop*> _enemyTroops; // 敌方兵种列表(预留，用于战斗模式)
+    std::vector<BaseTroop*> _enemyTroops; // 敌方兵种列表(预留，用于战斗模式)
     //资源相关
     int _gold;
     int _elixir;
-    int _maxGold;
-	int _maxElixir;
-	int _maxPopulation=0; //人口总数(兵营）
-	int _population = 0; //当前人口数
+    int _maxGold = 10000;
+    int _maxElixir = 10000;
+    int _maxPopulation = 0; //人口总数(兵营）
+    int _population = 0; //当前人口数
     std::unordered_map<TroopType, int> _troopStorage;// 兵营存储的兵种信息：兵种类型 -> 数量
-	std::unordered_map<TroopType, int> _troopLevel; // 兵种等级信息：兵种类型 -> 等级
-	int _builder;    //建造者数量
+    std::unordered_map<TroopType, int> _troopLevel; // 兵种等级信息：兵种类型 -> 等级
+    int _builder;    //建造者数量
     cocos2d::Label* _goldLabel;      // 金币显示标签
     cocos2d::Label* _elixirLabel;    // 圣水显示标签
     cocos2d::Sprite* _goldIcon;      // 金币图标
@@ -354,6 +384,8 @@ private:
     ui::Button* _levelSelectBtn;
     ui::Button* _fightBtn;
     ui::Button* _fightStartBtn;
+    ui::Button* _collectAllBtn;
+    ui::Button* _moveBtn;
     Label* _countDownLabel;
     // 星级评定相关成员变量
     float destroyPercent; // 建筑摧毁百分比
@@ -368,58 +400,57 @@ private:
     void onMouseDown(Event* event);
     void onMouseMove(Event* event);
     void onMouseUp(Event* event);
-    
-	// 鼠标移动时高亮瓦片(测试坐标转换函数是否正确)
-	void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type);//测试用
+
+    // 鼠标移动时高亮瓦片(测试坐标转换函数是否正确)
+    void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type);//测试用
     void restoreLastTileColor();
     // 限制地图拖动范围
     void clampMapPosition();
     // 初始化地图
     void initMap();
-	void initBtns(BaseMode baseMode=BaseMode::CREATING); //初始化一切按钮
+    void initBtns(BaseMode baseMode = BaseMode::CREATING); //初始化一切按钮
     // 初始化建筑预览（暂时屏蔽）
     void initBuildPreview();
     void initFightScene();
-	// 显示无法放置提示
-    void VillageScene::showCannotPlaceTip(Vec2 pos);
     // 初始化触摸事件（暂时屏蔽）(手机版用，如时间不够则放弃）
     void initTouchEvent();
     // 坐标转换：屏幕坐标 → 等轴测瓦片坐标
     Vec2 screenToIsoTile(Vec2 screenPos);
     // 坐标转换：等轴测瓦片坐标 → 屏幕坐标
     Vec2 isoTileToScreen(Vec2 tilePos);
-	// 坐标转换：瓦片坐标 → 容器坐标
+    // 坐标转换：瓦片坐标 → 容器坐标
     Vec2 isoTileToContainerPos(Vec2 tilePos);
-	// 初始化建筑放置按钮
+    // 初始化建筑放置按钮
     void initBuildModeBtn();
     // 检测瓦片是否可放置建筑
     bool checkCanPlace(Vec2 tilePos, BuildingType type);
 
-	void moveBuilding(BaseBuilding* building, Vec2 newTilePos);
-
-	// 切换建筑栏显示/隐藏
+    void moveBuilding(BaseBuilding* building, Vec2 newTilePos);
+    // 切换建筑栏显示/隐藏
     void VillageScene::toggleBuildBar();
     // 创建建筑栏（仅第一次调用时创建）
-    void createBuildBar();  
+    void createBuildBar();
     // 隐藏建筑栏
-    void hideBuildBar();  
+    void hideBuildBar();
     //放置建筑
     void placeBuilding(Vec2 tilePos, BuildingType type);
-	// 检测瓦片是否被占用
+    // 检测瓦片是否被占用
     bool isTileOccupied(Vec2 tilePos);
-	// 处理建筑弹窗按钮点击回调
+    // 处理建筑弹窗按钮点击回调
     void handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type);
     // 辅助：释放建筑占用的瓦片
     void releaseBuildingTiles(BaseBuilding* building);
+    void addOccupiedTiles(const std::vector<Vec2>& tiles);
+    void addOccupiedTile(const Vec2& tile);
     // 金矿生产控制(如切换到其他场景，战争模式时暂停生产)
     // 暂停所有金矿生产
     void pauseAllGoldMines();
     // 恢复所有金矿生产
     void resumeAllGoldMines();
-	//一键收集所有资源建筑的资源
-    void collectOneNote();
+    //一键收集所有资源建筑的资源
+    void collectAllResources();
     //训练营相关
-    
+
     // 弹窗UI初始化
     void initTrainingPopupUI();
     // 初始化可训练兵种按钮
@@ -463,15 +494,6 @@ private:
     void onTroopAttack(BaseTroop* troop, BaseBuilding* target);
     //资源管控
     void initResourceBar();
-    void setGold(int gold);
-    void setElixir(int elixir);
-    bool addGold(int amount);
-    bool spendGold(int amount);
-    bool addElixir(int amount);
-    bool spendElixir(int amount);
-    void showResourceShortageTip(const std::string& message);
-	void addGoldStorageCapacity(int bonus);
-	void addElixirStorageCapacity(int bonus);
     // 关卡选择相关
     cocos2d::Layer* _levelSelectLayer;
     bool _isLevelSelectShow;
@@ -501,16 +523,16 @@ private:
     void flyStarToTarget(int starIndex); // 星级飞行动画
     void updateStarDisplay(); // 更新星级显示状态
     // -------------------------- 整体控制--------------------------
-	void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
-	void destroyScene(); // 销毁场景，释放资源
-	void onExit(); // 重写退出方法，清理资源
-	void cleanup(); // 重写清理方法，释放资源
+    void hideModeBtn();//TODO: 隐藏模式切换按钮，每次切换模式时调用，防止模式重叠，或者，另外一个思路，在按钮上加限制，只有主模式才能按按钮
+    void destroyScene(); // 销毁场景，释放资源
+    void onExit(); // 重写退出方法，清理资源
+    void cleanup(); // 重写清理方法，释放资源
     //存档相关
     // 辅助：将当前场景数据转为存档结构
     SaveData::Village packSaveData();
     // 辅助：从存档结构恢复场景数据
     void unpackSaveData(const SaveData::Village& saveData);
     void initSaveLoadButtons(); // 辅助：创建UI按钮（新增）
-  
+
 };
 #endif // __VILLAGE_SCENE_H__
