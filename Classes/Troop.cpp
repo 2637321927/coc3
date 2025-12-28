@@ -7,16 +7,10 @@
 #include "cocos2d.h"
 #include "VillageScene.h"
 #include "PathFinder.h" 
+#include <cmath>
 USING_NS_CC;
 
-/**
- * 工厂方法：根据类型创建子类实例.
- * 使用 switch-case 结构分发创建逻辑，新增兵种时需在此处添加 case.
- * * @param type 兵种类型枚举.
- * @param spawnPos 出生位置坐标.
- * @param mapScale 地图缩放比例.
- * @return 创建成功的 BaseTroop 子类实例指针，失败返回 nullptr.
- */
+// ========== 工厂方法：根据类型创建子类实例 ==========
 BaseTroop* BaseTroop::create(TroopType type, const Vec2& spawnPos, float mapScale) {
     BaseTroop* troop = nullptr;
     // 按类型创建子类（后续新增兵种只需加case，无需改基类）
@@ -39,14 +33,7 @@ BaseTroop* BaseTroop::create(TroopType type, const Vec2& spawnPos, float mapScal
     return troop;
 }
 
-/**
- * 通用初始化.
- * 初始化精灵纹理、基础属性、UI组件和状态.
- * * @param config 兵种配置数据.
- * @param spawnPos 出生坐标.
- * @param mapScale 地图缩放.
- * @return 初始化成功返回 true.
- */
+// ========== 通用初始化 ==========
 bool BaseTroop::init(const TroopConfig& config, const Vec2& spawnPos, float mapScale) {
     if (!Sprite::initWithFile(config.imgPath)) {
         return false;
@@ -56,6 +43,8 @@ bool BaseTroop::init(const TroopConfig& config, const Vec2& spawnPos, float mapS
     _config = config;
     _spawnPos = spawnPos;
     _mapScale = mapScale;
+    _attackRange = config.attackRange;
+    _attackPower = config.attackPower;
     _currentHp = config.hp; // 初始化当前血量为满值
     this->setScale(mapScale);
     this->setPosition(spawnPos);
@@ -69,10 +58,7 @@ bool BaseTroop::init(const TroopConfig& config, const Vec2& spawnPos, float mapS
     return true;
 }
 
-/**
- * 初始化通用UI组件.
- * 创建并添加血条和等级标签.
- */
+// ========== 初始化通用UI（血条、等级标签） ==========
 void BaseTroop::initCommonUI() {
     // 血量条（通用）
     _hpBar = ProgressTimer::create(Sprite::create("ui/hp_bar.png"));
@@ -91,30 +77,20 @@ void BaseTroop::initCommonUI() {
     this->addChild(levelLabel, 1);
 }
 
-/**
- * 开始训练.
- * 切换状态为 TRAINING 并重置计时器.
- */
+// ========== 通用状态管理：开始训练 ==========
 void BaseTroop::startTrain() {
     setState(TroopState::TRAINING);
     _trainingTimer = 0.0f;
     this->scheduleUpdate();
 }
 
-/**
- * 完成训练.
- * 切换状态为 IDLE 并停止 update.
- */
+// ========== 通用状态管理：完成训练 ==========
 void BaseTroop::finishTrain() {
     setState(TroopState::IDLE);
     this->unscheduleUpdate();
 }
 
-/**
- * 开始攻击指定目标.
- * 切换状态为 ATTACKING 并锁定目标.
- * * @param target 目标建筑指针.
- */
+// ========== 通用状态管理：开始攻击 ==========
 void BaseTroop::startAttack(BaseBuilding* target) {
     if (_state == TroopState::DEAD) return; // 死亡状态无法攻击
 
@@ -124,11 +100,7 @@ void BaseTroop::startAttack(BaseBuilding* target) {
     this->scheduleUpdate();
 }
 
-/**
- * 受到伤害处理.
- * 扣减血量，更新血条，并在血量归零时触发死亡.
- * * @param damage 伤害数值.
- */
+// ========== 通用状态管理：受到伤害 ==========
 void BaseTroop::takeDamage(int damage) {
     if (_state == TroopState::DEAD) return; // 死亡状态不受伤害
 
@@ -145,33 +117,23 @@ void BaseTroop::takeDamage(int damage) {
     }
 }
 
-/**
- * 死亡处理.
- * 切换状态为 DEAD，播放消失动画并通知场景移除自身.
- */
+// ========== 通用状态管理：死亡 ==========
 void BaseTroop::die() {
     setState(TroopState::DEAD);
     this->setOpacity(100); // 半透明表示死亡
     _hpBar->setVisible(false); // 隐藏血条
     this->unscheduleUpdate();
-
-    // 通知场景移除引用
     auto villageScene = VillageScene::getInstance();
     if (villageScene) {
         villageScene->removeEnemyTroop(this);
     }
-
-    // 死亡动画（渐隐后移除）
+    // 死亡动画（可在子类中重写增强）
     auto fadeOut = FadeOut::create(1.0f);
     auto remove = RemoveSelf::create();
     this->runAction(Sequence::create(fadeOut, remove, nullptr));
 }
 
-/**
- * 设置兵种状态.
- * 改变内部状态标记，并根据状态调整视觉效果（如颜色）.
- * * @param state 目标状态枚举.
- */
+// ========== 通用状态管理：设置状态 ==========
 void BaseTroop::setState(TroopState state) {
     _state = state;
     // 不同状态的视觉表现
@@ -196,50 +158,37 @@ void BaseTroop::setState(TroopState state) {
     }
 }
 
-/**
- * 同步地图缩放.
- * 调整自身及子节点（血条）的缩放比例以匹配地图.
- * * @param mapScale 新的缩放比例.
- */
+// ========== 通用：同步地图缩放 ==========
 void BaseTroop::syncScale(float mapScale) {
     _mapScale = mapScale;
     this->setScale(mapScale);
     if (_hpBar) _hpBar->setScale(0.8f * mapScale);
 }
 
-/**
- * 绑定攻击回调函数.
- * 用于在攻击发生时通知外部（如场景层）进行伤害结算.
- * * @param callback 回调函数对象.
- */
+// ========== 通用：绑定攻击回调 ==========
 void BaseTroop::bindAttackCallback(const std::function<void(BaseTroop*, BaseBuilding*)>& callback) {
     _attackCallback = callback;
 }
 
-/**
- * 更新攻击冷却时间.
- * 每帧调用，累加冷却计时器.
- */
+// ========== 通用：更新攻击冷却 ==========
 void BaseTroop::updateAttackCD() {
     if (_attackCDTimer < _config.attackSpeed) {
         _attackCDTimer += Director::getInstance()->getDeltaTime();
     }
 }
 
-/**
- * 更新移动逻辑.
- * 处理沿寻路路径点的移动，包含到达检测和路径重算.
- * * @param dt 两帧间隔时间.
- */
+// ========== 通用：更新移动逻辑 ==========
 void BaseTroop::updateMovement(float dt) {
     if (_state != TroopState::MOVING) {
+        CCLOG("NOMOVE1");
         return;
     }
 
     // 如果路径为空，尝试重新计算路径
     if (_pathPoints.empty()) {
-        // 复用 setTargetWorldPosition 中的路径计算逻辑
+        // 复用setTargetWorldPosition中的路径计算逻辑
         if (!_villageScene) {
+            CCLOG("nopath");
             return;
         }
 
@@ -266,6 +215,12 @@ void BaseTroop::updateMovement(float dt) {
             setState(TroopState::IDLE);
             CCLOG("路径为空，停止移动");
             return;
+        }
+        float distance = this->getPosition().distance(convertToWorldSpace(targetTile));
+        if (distance <= this->_attackRange)
+        {
+            // 进入攻击状态
+            setState(TroopState::ATTACKING);
         }
     }
 
@@ -296,17 +251,10 @@ void BaseTroop::updateMovement(float dt) {
     }
 }
 
-/**
- * 帧更新函数.
- * 根据当前状态分发逻辑（移动、攻击、训练）.
- * * @param dt 时间间隔.
- */
+// ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);
-
-    // 强制设为移动状态（注意：这里逻辑可能有问题，通常应该由状态机控制，建议检查）
     setState(TroopState::MOVING);
-
     // 根据不同状态处理逻辑
     switch (_state) {
     case TroopState::TRAINING: {
@@ -320,6 +268,7 @@ void BaseTroop::update(float dt) {
     }
     case TroopState::MOVING: {
         // 移动逻辑
+
         updateMovement(dt);
         break;
     }
@@ -335,6 +284,7 @@ void BaseTroop::update(float dt) {
             // 触发攻击回调（外部处理伤害结算）
             if (_attackCallback) {
                 _attackCallback(this, _attackTarget);
+                _attackTarget->takeDamage(this->_attackPower);
             }
 
             // 重置冷却
@@ -347,48 +297,40 @@ void BaseTroop::update(float dt) {
     }
 }
 
-/**
- * 获取当前所在的瓦片坐标.
- * 调用场景的坐标转换接口.
- * * @return 瓦片逻辑坐标.
- */
+// ========== 寻路逻辑 ========== 
+// 获取当前瓦片坐标（使用公有接口）
 Vec2 BaseTroop::getCurrentTilePos() const {
     if (!_villageScene) return Vec2::ZERO;
     // 调用 VillageScene 提供的公有转换接口
     return _villageScene->screenToIsoTilePublic(this->convertToWorldSpace(Vec2::ZERO));
 }
 
-/**
- * 设置世界坐标目标并开始寻路.
- * 触发 A* 寻路计算，生成路径点列表.
- * * @param targetPos 目标点的世界坐标.
- */
+// 设置目标并寻路（使用公有接口）
 void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
     CCLOG("setTargetWorldPosition entered"); // 入口日志
     if (!_villageScene) {
         return;  // 确保场景指针有效 
     }
+    CCLOG("targetPos(%.1f,%.1f)",targetPos.x, targetPos.y);
+        // 1. 坐标转换（通过公有接口）
+        Vec2 startTile = getCurrentTilePos();
+        Vec2 targetTile = targetPos;
+        CCLOG("startTile(%.1f,%.1f),targetTile(%.1f,%.1f)", startTile.x, startTile.y,targetTile.x, targetTile.y);
+        // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
+        _pathPoints = PathFinder::findPath(
+            startTile,
+            targetTile,
+            _villageScene->getPathLayer(),        // 公有接口获取路径层
+            _villageScene->getMapSize(),          // 公有接口获取地图尺寸
+            _villageScene->getOccupiedTiles()     // 公有接口获取占用瓦片
+        );
 
-    // 1. 坐标转换（通过公有接口）
-    Vec2 startTile = getCurrentTilePos();
-    Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
-
-    // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
-    _pathPoints = PathFinder::findPath(
-        startTile,
-        targetTile,
-        _villageScene->getPathLayer(),        // 公有接口获取路径层
-        _villageScene->getMapSize(),          // 公有接口获取地图尺寸
-        _villageScene->getOccupiedTiles()     // 公有接口获取占用瓦片
-    );
-
-    // 3. 初始化路径索引
-    _currentPathIndex = 0;
-    _targetPos = targetPos;
-    CCLOG("Troop寻路结果：起点(%.1f,%.1f) -> 终点(%.1f,%.1f), 路径节点数:%zu",
-        startTile.x, startTile.y, targetTile.x, targetTile.y, _pathPoints.size());
-
-    if (!_pathPoints.empty()) {
-        setState(TroopState::MOVING);
+        // 3. 初始化路径索引
+        _currentPathIndex = 0;
+        _targetPos = targetPos;
+        CCLOG("Troop：(%.1f,%.1f)(%.1f,%.1f),%z",
+            startTile.x, startTile.y, targetTile.x, targetTile.y, _pathPoints.size());
+        if (!_pathPoints.empty()) {
+            setState(TroopState::MOVING);
+        }
     }
-}
