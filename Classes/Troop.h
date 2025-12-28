@@ -33,6 +33,8 @@ protected:
     float _attackCDTimer = 0.0f;        // 攻击冷却计时器
     int _currentHp;                     // 当前生命值
     cocos2d::ProgressTimer* _hpBar = nullptr; // 通用血条
+    float _attackRange;
+    float _attackPower;
 
     // 寻路相关成员
     std::vector<Vec2> _pathPoints;      // 路径点列表（瓦片坐标）
@@ -68,6 +70,8 @@ public:
     const TroopConfig& getConfig() const { return _config; }
     int getCurrentHp() const { return _currentHp; }
     void syncScale(float mapScale);     // 同步地图缩放（通用）
+    float getAttackRange() const { return _attackRange; }
+    float getAttackPower() const { return _attackPower; }
 
     // ========== 交互接口（通用） ==========
     void bindAttackCallback(const std::function<void(BaseTroop*, BaseBuilding*)>& callback);

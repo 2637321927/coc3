@@ -114,11 +114,11 @@ bool PathFinder::isTilePassable(
     }
 
     // 检查是否被建筑占用
-    for (const Vec2& occupied : occupiedTiles) {
+    /*for (const Vec2& occupied : occupiedTiles) {
         if (occupied.equals(tilePos)) {
             return false;
         }
-    }
+    }*/
 
     return true;
 }

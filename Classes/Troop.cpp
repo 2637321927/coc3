@@ -7,6 +7,7 @@
 #include "cocos2d.h"
 #include "VillageScene.h"
 #include "PathFinder.h" 
+#include <cmath>
 USING_NS_CC;
 
 // ========== 工厂方法：根据类型创建子类实例 ==========
@@ -42,6 +43,8 @@ bool BaseTroop::init(const TroopConfig& config, const Vec2& spawnPos, float mapS
     _config = config;
     _spawnPos = spawnPos;
     _mapScale = mapScale;
+    _attackRange = config.attackRange;
+    _attackPower = config.attackPower;
     _currentHp = config.hp; // 初始化当前血量为满值
     this->setScale(mapScale);
     this->setPosition(spawnPos);
@@ -213,6 +216,12 @@ void BaseTroop::updateMovement(float dt) {
             CCLOG("路径为空，停止移动");
             return;
         }
+        float distance = this->getPosition().distance(convertToWorldSpace(targetTile));
+        if (distance <= this->_attackRange)
+        {
+            // 进入攻击状态
+            setState(TroopState::ATTACKING);
+        }
     }
 
     // 处理路径点移动
@@ -275,6 +284,7 @@ void BaseTroop::update(float dt) {
             // 触发攻击回调（外部处理伤害结算）
             if (_attackCallback) {
                 _attackCallback(this, _attackTarget);
+                _attackTarget->takeDamage(this->_attackPower);
             }
 
             // 重置冷却
@@ -301,9 +311,11 @@ void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
     if (!_villageScene) {
         return;  // 确保场景指针有效 
     }
+    CCLOG("targetPos(%.1f,%.1f)",targetPos.x, targetPos.y);
         // 1. 坐标转换（通过公有接口）
         Vec2 startTile = getCurrentTilePos();
-        Vec2 targetTile = _villageScene->screenToIsoTilePublic(targetPos);
+        Vec2 targetTile = targetPos;
+        CCLOG("startTile(%.1f,%.1f),targetTile(%.1f,%.1f)", startTile.x, startTile.y,targetTile.x, targetTile.y);
         // 2. 调用 PathFinder 寻路（通过公有接口获取地图数据）
         _pathPoints = PathFinder::findPath(
             startTile,

@@ -1,5 +1,13 @@
 #include "BuildingPopup.h"
 #include "VillageScene.h"
+
+/**
+ * 创建弹窗实例 (工厂方法).
+ * 初始化弹窗并绑定目标建筑和回调函数.
+ * * @param building 目标建筑指针.
+ * @param btnCallback 按钮点击回调函数.
+ * @return 创建成功的 BuildingPopup 对象指针，失败返回 nullptr.
+ */
 BuildingPopup* BuildingPopup::create(BaseBuilding* building,
     const std::function<void(ButtonType)>& btnCallback) {
     auto popup = new (std::nothrow) BuildingPopup();
@@ -11,6 +19,13 @@ BuildingPopup* BuildingPopup::create(BaseBuilding* building,
     return nullptr;
 }
 
+/**
+ * 初始化弹窗.
+ * 设置背景颜色、触摸监听和按钮布局.
+ * * @param building 目标建筑.
+ * @param btnCallback 回调函数.
+ * @return 初始化成功返回 true.
+ */
 bool BuildingPopup::init(BaseBuilding* building,
     const std::function<void(ButtonType)>& btnCallback) {
     if (!LayerColor::initWithColor(Color4B(0, 0, 0, 180))) { // 半透明黑色背景
@@ -19,7 +34,7 @@ bool BuildingPopup::init(BaseBuilding* building,
 
     _targetBuilding = building;
     _btnCallback = btnCallback;
-    _targetBuilding->retain(); // 防止建筑被提前释放
+    _targetBuilding->retain(); // 防止建筑被提前释放 (注意：建议在onExit或析构中release)
 
     // 弹窗大小（适配屏幕）
     Size winSize = Director::getInstance()->getWinSize();
@@ -28,13 +43,13 @@ bool BuildingPopup::init(BaseBuilding* building,
 
     // 点击背景关闭
     auto listener = EventListenerTouchOneByOne::create();
-    listener->setSwallowTouches(true);
-    listener->onTouchBegan = [](Touch* touch, Event* event) { 
+    listener->setSwallowTouches(true); // 吞噬触摸，防止穿透到下层地图
+    listener->onTouchBegan = [](Touch* touch, Event* event) {
         return true;
-     };
-	listener->onTouchEnded = [this](Touch* touch, Event* event) {
-		 this->removeFromParentAndCleanup(true);
-	};
+        };
+    listener->onTouchEnded = [this](Touch* touch, Event* event) {
+        this->removeFromParentAndCleanup(true);
+        };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
     // 生成按钮
@@ -42,10 +57,17 @@ bool BuildingPopup::init(BaseBuilding* building,
 
     return true;
 }
-//要新加一个模式，以便在进行建筑操作的时候鼠标不会影响其他地方
+
+/**
+ * 创建功能按钮.
+ * 根据建筑类型和状态，计算按钮位置并添加到弹窗中.
+ * TODO: 要新加一个模式，以便在进行建筑操作的时候鼠标不会影响其他地方.
+ */
 void BuildingPopup::createButtons() {
     if (!_targetBuilding) return; // 空指针防护
+
     // ========== 步骤1：获取建筑的屏幕坐标（核心修改） ==========
+
     // 1.1 获取建筑在世界坐标系中的位置（相对于屏幕）
     Vec2 buildingWorldPos = _targetBuilding->convertToWorldSpaceAR(Vec2::ZERO);
     // 1.2 转换为弹窗节点的本地坐标（如果弹窗是全屏节点，可直接用worldPos）
@@ -73,7 +95,7 @@ void BuildingPopup::createButtons() {
             btnCount = 3; // 兵营3个按钮
         }
         else if (_targetBuilding->getType() == BuildingType::TRAINING_CAMP) {
-            btnCount = 4; // 训练营5个按钮
+            btnCount = 4; // 训练营4个按钮
         }
         else if (_targetBuilding->getType() == BuildingType::CANNON) {
             btnCount = 3; // 加农炮3个按钮
@@ -95,8 +117,9 @@ void BuildingPopup::createButtons() {
         }
     }
     else {
-		btnCount = 2; // 非闲置状态仅信息和摧毁按钮
+        btnCount = 2; // 非闲置状态仅信息和摧毁按钮
     }
+
     // 按钮总宽度 = 按钮数*宽度 + (按钮数-1)*间距
     float totalWidth = btnCount * btnWidth + (btnCount - 1) * spacing;
     // 按钮组起始X（相对于建筑居中）
@@ -138,33 +161,39 @@ void BuildingPopup::createButtons() {
         }
     }
     else if (_targetBuilding->getType() == BuildingType::TRAINING_CAMP) {
-        //  训练营按钮（5个，居中）
-		//TODO: 加入预览当前部队按钮
+        // 训练营按钮（4个，居中）
+        // TODO: 加入预览当前部队按钮
         if (_targetBuilding->getState() == BuildingState::IDLE) {
             createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
             createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
             createButton("ui/btn_train.png", ButtonType::TRAINING, Vec2(startX + 2 * (btnWidth + spacing), startY));
             createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 3 * (btnWidth + spacing), startY));
         }
-		else {
-			createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
-			createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + btnWidth + spacing, startY));
-		}
+        else {
+            createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+            createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + btnWidth + spacing, startY));
+        }
     }
-    else  {
-		//  标准3按钮布局（信息/升级/摧毁）
+    else {
+        // 标准3按钮布局（信息/升级/摧毁）
         if (_targetBuilding->getState() == BuildingState::IDLE) {
             createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
             createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
             createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + 2 * (btnWidth + spacing), startY));
         }
-		else {
-			createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
-			createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + btnWidth + spacing, startY));
-		}
+        else {
+            createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
+            createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + btnWidth + spacing, startY));
+        }
     }
 }
 
+/**
+ * 创建单个按钮.
+ * * @param imgPath 按钮图片路径.
+ * @param type 按钮功能类型.
+ * @param pos 按钮位置坐标.
+ */
 void BuildingPopup::createButton(const std::string& imgPath, ButtonType type, const Vec2& pos) {
     // 创建按钮（图片形式）
     auto btn = MenuItemImage::create(

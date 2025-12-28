@@ -5,7 +5,8 @@
 #include <unordered_map>
 #include <functional>
 #include "ui/CocosGUI.h" 
-#include "EnumType.h" 
+
+#include "Troop.h"
 USING_NS_CC;
 // Ç°ÖÃÉùÃ÷
 class VillageScene;
