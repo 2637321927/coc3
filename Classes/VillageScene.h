@@ -263,24 +263,8 @@ public:
     // 放置建筑
     
     void VillageScene::showText(std::string string, Vec2 pos = Vec2(1000, 1000), float duringTime = 2.0f);
-    void setGold(int gold);
-    void setElixir(int elixir);
-    bool addGold(int amount);
-    bool spendGold(int amount);
-    bool addElixir(int amount);
-    bool spendElixir(int amount);
-    void showResourceShortageTip(const std::string& message);
-    void addGoldStorageCapacity(int bonus);
-    void addElixirStorageCapacity(int bonus);
-	int getGold() const { return _gold; }
-	int getElixir() const { return _elixir; }
-    void setBaseMode(const BaseMode& baseMode) {
-        _baseMode = baseMode;
-    }
-    BaseMode getBaseMode() const { return _baseMode; }
-    void setTroopModeBtnInvisible() {
-        _troopModeBtn->setVisible(true);
-    }
+
+
     // 摧毁建筑核心函数
     void destroyBuilding(BaseBuilding* building);
 protected:
@@ -398,7 +382,6 @@ private:
     void initFightScene();
 	// 显示无法放置提示
     void VillageScene::showCannotPlaceTip(Vec2 pos);
-    void VillageScene::showText(std::string string, Vec2 pos=Vec2(1000,1000), float duringTime = 2.0f);
     // 初始化触摸事件（暂时屏蔽）(手机版用，如时间不够则放弃）
     void initTouchEvent();
     // 坐标转换：屏幕坐标 → 等轴测瓦片坐标
@@ -413,8 +396,7 @@ private:
     bool checkCanPlace(Vec2 tilePos, BuildingType type);
 
 	void moveBuilding(BaseBuilding* building, Vec2 newTilePos);
-    // 放置建筑
-    void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type);
+
 	// 切换建筑栏显示/隐藏
     void VillageScene::toggleBuildBar();
     // 创建建筑栏（仅第一次调用时创建）

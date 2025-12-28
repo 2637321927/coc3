@@ -1,5 +1,6 @@
-#ifndef __ENUM_TYPE_H__
-#define __ENUM_TYPE_H__
+#ifndef __ENUM_TYPE_H__  
+#define __ENUM_TYPE_H__  
+
 
 #include <string>
 #include <unordered_map>
@@ -45,58 +46,6 @@ enum class BuildingType {
     ELIXIR_BOTTLE,    ///< 圣水瓶 (存储圣水)
     UNKNOWN           ///< 未知/无效类型
 };
-
-    // 建筑状态枚举
-    enum class BuildingState {
-        IDLE,        // 正常
-        BUILDING,    // 建造中
-        ATTACKING,      // 攻击中
-        UPGRADING,   // 升级中
-        DESTROYED,   // 摧毁
-        TRAINING,    // 训练中（仅训练营）
-        UNKNOWN
-    };
-    // 兵种状态枚举
-    enum class TroopState {
-        IDLE,         // 闲置
-        MOVING,       // 移动中
-        ATTACKING,    // 攻击中
-        DEAD,         // 死亡
-        TRAINING,     // 训练中
-        UNKNOWN
-    };
-    struct BuildingConfig {
-        int id;                     // 唯一ID
-        BuildingType type;          // 建筑类型
-        std::string name;           // 名称
-        std::string imgPath;        // 纹理路径
-        int hp;                     // 生命值
-        int tileWidth;              // 占用瓦片宽
-        int tileHeight;             // 占用瓦片高
-        std::unordered_map<std::string, int> cost; // 建造消耗（金币/圣水）
-        float buildTime;            // 建造时长（秒）
- 
-    };
-    struct TroopConfig {
-        int id;                     // 唯一ID
-        TroopType type;             // 兵种类型
-        std::string name;           // 名称
-        std::string imgPath;        // 纹理路径
-        int hp;                     // 生命值
-        int attackPower;            // 攻击力
-        float attackRange;          // 攻击范围（像素）
-        float attackSpeed;          // 攻击速度（攻击间隔，秒/次）
-        float moveSpeed;            // 移动速度（像素/秒）
-        int elixirCost; // 训练消耗（圣水）
-        float trainingTime;         // 训练时长（秒）
-        int level = 1;              // 初始等级
-        int spaceCost;              // 占用人口空间
-        int unlockCampLevel = 1;        // 解锁所需兵营等级
-    };
-    const BuildingConfig& getBuildingConfigByType(BuildingType type, int level = 1);
-    int getGoldCost(BuildingType type,int level=1);
-    int getElixirCost(BuildingType type,int level=1);
-#endif // __ENUM_TYPE_H__#pragma once
 /**
  * 建筑状态枚举.
  * 定义建筑当前的生命周期状态.
@@ -151,8 +100,6 @@ struct BuildingConfig {
     int tileHeight;                                 ///< 占用地图瓦片高度
     std::unordered_map<std::string, int> cost;      ///< 建造消耗 (key:"gold"/"elixir")
     float buildTime;                                ///< 初始建造时长 (秒)
-    int level = 1;                                  ///< 初始等级
-    std::map<int, BuildingLevelConfig> levelConfigs;///< 各等级详细配置表
 };
 
 /**
@@ -189,13 +136,12 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type, int level = 1);
  * * @param type 建筑类型.
  * @return 金币数量.
  */
-int getGoldCost(BuildingType type);
+int getGoldCost(BuildingType type,int level=1);
 
 /**
  * 获取建筑建造的圣水消耗.
  * * @param type 建筑类型.
  * @return 圣水数量.
  */
-int getElixirCost(BuildingType type);
-
+int getElixirCost(BuildingType type, int level=1);
 #endif // __ENUM_TYPE_H__
