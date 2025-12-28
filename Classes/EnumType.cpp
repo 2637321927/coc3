@@ -216,7 +216,7 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type, int level)
             2,
             2,
             { {"gold", 2000 + level * 500}, {"elixir", 0} },
-            40.0f + level * 5
+            10.0f + level * 5
         };
         break;
     case(BuildingType::ELIXIR_BOTTLE):
@@ -229,7 +229,7 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type, int level)
             2,
             2,
             { {"gold", 0}, {"elixir", 2000 + level * 500} },
-            40.0f + level * 5
+            10.0f + level * 5
         };
         break;
     default:

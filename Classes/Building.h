@@ -123,9 +123,13 @@ public:
     int collectGold();
     void produceGold(float dt);
     void destroy() override;
+    void upGrade() {
+        _goldPerInterval += 100;
+        _produceInterval -= 0.1f;
+    }
 private:
     float _goldTimer = 0.0f;    // 金币生产计时器
-    int _goldPerInterval = 10;  // 每次生产金币数量
+    int _goldPerInterval = 100;  // 每次生产金币数量
     float _produceInterval = 2.0f; // 生产间隔（秒）
     int _goldStored = 0;      // 已生产但未收集的金币数量
 };
@@ -141,9 +145,13 @@ public:
     int collectElixir();
     void produceElixir(float dt);
     void destroy() override;
+    void upGrade() {
+        _elixirPerInterval += 100;
+        _produceInterval -= 0.1f;
+    }
 private:
     float _elixirTimer = 0.0f;    // 圣水生产计时器
-    int _elixirPerInterval = 10;  // 每次生产圣水数量
+    int _elixirPerInterval = 100;  // 每次生产圣水数量
     float _produceInterval = 2.0f; // 生产间隔（秒）
     int _elixirStored = 0;      // 已生产但未收集的圣水数量
 };
@@ -201,6 +209,10 @@ public:
     int getTroopSpace()const { return _maxTroopSpace; }; // 获取容量
     int getPulseSpace()const { return _pulseSpace; }; // 获取升级后新增容量
     //应重写升级函数，升级后增加总容量
+    void upGrade() {
+        _maxTroopSpace += 20;
+        _pulseSpace = 20;
+    }
 private:
     int _maxTroopSpace; // 总容量
     int _pulseSpace; // 升级增加的容量
@@ -216,9 +228,25 @@ public:
     virtual void doSpecialAction() override; // 升级解锁逻辑
     virtual std::string getSpecialDesc() override { return "村庄的核心建筑"; }
     std::vector<BuildingType>
-        getCanPlaceBuilding() const { return _canPlaceBuilding; }
+        getCanPlaceBuilding() const { 
+        std::vector<BuildingType> canPlaceBuilding;
+        if (_currentLevel == 1) {
+            canPlaceBuilding.push_back(BuildingType::GOLD_MINE);
+            canPlaceBuilding.push_back(BuildingType::ELIXIR_BOTTLE);
+            canPlaceBuilding.push_back(BuildingType::ELIXIR_COLLECTOR);
+            canPlaceBuilding.push_back(BuildingType::VAULT);
+            canPlaceBuilding.push_back(BuildingType::BARRACKS);
+            canPlaceBuilding.push_back(BuildingType::TRAINING_CAMP);
+            canPlaceBuilding.push_back(BuildingType::CANNON);
+            canPlaceBuilding.push_back(BuildingType::WALL);
+        }
+        if (_currentLevel == 2) {
+            canPlaceBuilding.push_back(BuildingType::ARROW_TOWER);
+        }
+        return canPlaceBuilding;
+    }
 private:
-    std::vector<BuildingType> _canPlaceBuilding; // 可解锁建筑列表
+
 };
 // ========== 城墙 ==========
 class Wall : public BaseBuilding {
@@ -240,6 +268,10 @@ public:
     std::string getSpecialDesc() override { return "用于储存金币的建筑"; }
     int getStorageCapacity() const { return _storageCapacity; }
     int getStoragePulse() const { return _storagePulse; }
+    void upGrade() {
+        _storageCapacity += 10000;
+        _storagePulse = 10000;
+    }
 private:
     int _storageCapacity = 10000; // 储存容量
     int _storagePulse; // 升级增加的容量
@@ -255,6 +287,10 @@ public:
     std::string getSpecialDesc() override { return "用于储存圣水的建筑"; }
     int getStorageCapacity() const { return _storageCapacity; }
     int getStoragePulse() const { return _storagePulse; }
+    void upGrade() {
+        _storageCapacity += 10000;
+        _storagePulse = 10000;
+    }
 private:
     int _storageCapacity = 10000; // 储存容量
     //每次升级同样增加储存容量，给village增加升级容量，摧毁时village调用储存容量减少
@@ -307,6 +343,11 @@ public:
     void doSpecialAction();
     // 特殊描述（重写）
     std::string getSpecialDesc();
+    void upGrade() {
+        _attackRange += 8;
+        _attackCooldown -= 0.02;
+        _attackDamage += 75;
+    }
 };
 class ArrowTower : public BaseAttackBuilding {
 public:
@@ -315,6 +356,11 @@ public:
     void doSpecialAction();
     void attackTarget();
     std::string getSpecialDesc();
+    void upGrade() {
+        _attackRange +=  10;
+        _attackCooldown -= 0.02;
+        _attackDamage += 50;
+    }
 };
 
 #endif // __BUILDING_H__

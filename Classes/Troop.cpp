@@ -179,6 +179,7 @@ void BaseTroop::updateAttackCD() {
 
 // ========== 通用：更新移动逻辑 ==========
 void BaseTroop::updateMovement(float dt) {
+  
     if (_state != TroopState::MOVING) {
         CCLOG("NOMOVE1");
         return;
@@ -243,10 +244,12 @@ void BaseTroop::updateMovement(float dt) {
         }
     }
     else {
+
         // 向当前路径点移动
         direction.normalize();
         Vec2 moveStep = direction * _config.moveSpeed * dt * _mapScale;
         this->setPosition(this->getPosition() + moveStep);
+   
     }
 }
 
@@ -267,7 +270,7 @@ void BaseTroop::update(float dt) {
     }
     case TroopState::MOVING: {
         // 移动逻辑
-
+        
         updateMovement(dt);
         break;
     }

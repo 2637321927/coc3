@@ -296,12 +296,27 @@ private:
     Mode _Mode = Mode::NONE;  // 当前模式
     Mode _lastMode = Mode::NONE; // 上一次模式（用于切换回原模式）
     Sprite* _mousePosSprite;//测试用，显示鼠标位置
+    int _maxLevel = 1;
     // 建筑放置相关
     Sprite* _buildPreview;       // 建筑放置预览图
     BuildingType _selectedBuildingType;      // 选中的建筑类型
     std::vector<Vec2> _occupiedTiles;        // 已占用的瓦片
     Vec2 _lastTile; 		   // 上一次鼠标所在瓦片
     bool _isContinuousPlace = false; // 是否连续放置建筑
+    // 建筑栏背景
+    Sprite* _barBg;
+    // 建筑按钮 
+    MenuItemImage* _townHallBtn;
+    MenuItemImage* _goldMineBtn;
+    MenuItemImage* _elixirCollectorBtn;
+    MenuItemImage* _barracksBtn;
+    MenuItemImage* _trainingCampBtn;
+    MenuItemImage* _cannonBtn;
+    MenuItemImage* _arrowTowerBtn;
+    MenuItemImage* _wallBtn;
+    MenuItemImage* _elixirBottleBtn;
+    MenuItemImage* _vaultBtn;
+    MenuItemImage* _cancelPlaceBtn;
     BaseBuilding* _movingBuilding;
     // 定义场景最大瓦片数（根据你的游戏场景调整，比如50x50、100x100，固定不变）
     static const int MAX_TILE_X = 400;  // 瓦片x轴最大索引（0 ~ 49）
@@ -436,6 +451,8 @@ private:
     void VillageScene::toggleBuildBar();
     // 创建建筑栏（仅第一次调用时创建）
     void createBuildBar();
+    //根据大本营等级判断能放置的建筑
+    void checkCanGetBuilding();
     // 隐藏建筑栏
     void hideBuildBar();
     //放置建筑

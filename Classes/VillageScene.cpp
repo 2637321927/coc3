@@ -879,17 +879,19 @@ void VillageScene::createBuildBar() {
     this->addChild(_buildBarLayer, 99); // 层级低于开关按钮，高于地图
 
     // 建筑栏背景
-    auto barBg = Sprite::create("ui/build_bar_bg.png");
-    barBg->setPosition(Vec2(visibleSize.width / 2, 50));
-    barBg->setScaleX(visibleSize.width / barBg->getContentSize().width * 0.8f);
-    _buildBarLayer->addChild(barBg);
+     _barBg = Sprite::create("ui/build_bar_bg.png");
+    _barBg->setPosition(Vec2(visibleSize.width / 2, 50));
+    _barBg->setScaleX(visibleSize.width / _barBg->getContentSize().width * 0.8f);
+    _buildBarLayer->addChild(_barBg);
 
     // 建筑按钮 - 大本营
-    auto townHallBtn = MenuItemImage::create(
+     _townHallBtn = MenuItemImage::create(
         "building\\town_hall_icon.png",
         "building\\town_hall_icon_selected.png",
         [this](Ref* sender) {
-
+             if (_baseMode == BaseMode::NORMAL && _townHall != nullptr) {
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::TOWN_HALL;
             _buildPreview->setVisible(true);
@@ -899,10 +901,14 @@ void VillageScene::createBuildBar() {
 
 
     // 建筑按钮 - 金矿
-    auto goldMineBtn = MenuItemImage::create(
+     _goldMineBtn = MenuItemImage::create(
         "building/gold_mine_icon.png",
         "building/gold_mine_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall==nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::GOLD_MINE;
             _buildPreview->setVisible(true);
@@ -910,10 +916,14 @@ void VillageScene::createBuildBar() {
         }
     );
     // 建筑按钮 - 圣水收集器
-    auto elixirCollectorBtn = MenuItemImage::create(
+     _elixirCollectorBtn = MenuItemImage::create(
         "building/elixir_collector_icon.png",
         "building/elixir_collector_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::ELIXIR_COLLECTOR;
             _buildPreview->setVisible(true);
@@ -921,10 +931,14 @@ void VillageScene::createBuildBar() {
         }
     );
     // 建筑按钮 - 军营
-    auto barracksBtn = MenuItemImage::create(
+     _barracksBtn = MenuItemImage::create(
         "building/barracks_icon.png",
         "building/barracks_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::BARRACKS;
             _buildPreview->setVisible(true);
@@ -932,60 +946,84 @@ void VillageScene::createBuildBar() {
         }
     );
     // 建筑按钮 - 训练营
-    auto trainingCampBtn = MenuItemImage::create(
+    _trainingCampBtn = MenuItemImage::create(
         "building/training_camp_icon.png",
         "building/training_camp_icon_selected.png",
         [this](Ref* sender) {
+            if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                showText("Not Enough TownHallLevel");
+                return;
+            }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::TRAINING_CAMP;
             _buildPreview->setVisible(true);
             _buildPreview->setTexture("building/training_camp_preview.png");
         }
     );
-    auto cannonBtn = MenuItemImage::create(
+     _cannonBtn = MenuItemImage::create(
         "building/cannon_icon.png",
         "building/cannon_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::CANNON;
             _buildPreview->setVisible(true);
             _buildPreview->setTexture("building/cannon_preview.png");
         }
     );
-    auto arrowTowerBtn = MenuItemImage::create(
+     _arrowTowerBtn = MenuItemImage::create(
         "building/arrow_tower_icon.png",
         "building/arrow_tower_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL &&( _townHall==nullptr|| _townHall->getLevel()<2)) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::ARROW_TOWER;
             _buildPreview->setVisible(true);
             _buildPreview->setTexture("building/arrow_tower_preview.png");
         }
     );
-    auto wallBtn = MenuItemImage::create(
+     _wallBtn = MenuItemImage::create(
         "building/wall_icon.png",
         "building/wall_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::WALL;
             _buildPreview->setVisible(true);
             _buildPreview->setTexture("building/wall_preview.png");
         }
     );
-    auto elixirBottleBtn = MenuItemImage::create(
+     _elixirBottleBtn = MenuItemImage::create(
         "building/elixir_bottle_icon.png",
         "building/elixir_bottle_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::ELIXIR_BOTTLE;
             _buildPreview->setVisible(true);
             _buildPreview->setTexture("building/elixir_bottle_preview.png");
         }
     );
-    auto vaultBtn = MenuItemImage::create(
+     _vaultBtn = MenuItemImage::create(
         "building/vault_icon.png",
         "building/vault_icon_selected.png",
         [this](Ref* sender) {
+             if (_baseMode == BaseMode::NORMAL && _townHall == nullptr) {
+                 showText("Not Enough TownHallLevel");
+                 return;
+             }
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::VAULT;
             _buildPreview->setVisible(true);
@@ -993,7 +1031,7 @@ void VillageScene::createBuildBar() {
         }
     );
     // 连续放置按钮（仅退出当前建造模式，不隐藏建筑栏）
-    auto cancelPlaceBtn = MenuItemImage::create(
+     _cancelPlaceBtn = MenuItemImage::create(
         "ui/cancel_place_btn.png",
         "ui/cancel_place_btn_selected.png",
         [this](Ref* sender) {
@@ -1001,10 +1039,40 @@ void VillageScene::createBuildBar() {
         }
     );
     // 排列按钮
-    auto menu = Menu::create(townHallBtn, goldMineBtn, elixirCollectorBtn, barracksBtn, trainingCampBtn, cannonBtn, arrowTowerBtn, wallBtn, elixirBottleBtn, vaultBtn, cancelPlaceBtn, nullptr);
+    auto menu = Menu::create(_townHallBtn, _goldMineBtn, _elixirCollectorBtn, _barracksBtn, _trainingCampBtn, _cannonBtn, _arrowTowerBtn, _wallBtn, _elixirBottleBtn, _vaultBtn, _cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
     _buildBarLayer->addChild(menu);
+    if (_baseMode == BaseMode::NORMAL) {
+        checkCanGetBuilding();
+    }
+}
+void VillageScene::checkCanGetBuilding() {
+    if (!_townHall) {
+         _goldMineBtn->setColor(Color3B::GRAY);
+         _elixirCollectorBtn->setColor(Color3B::GRAY);
+         _barracksBtn->setColor(Color3B::GRAY);
+         _trainingCampBtn->setColor(Color3B::GRAY);
+         _cannonBtn->setColor(Color3B::GRAY);
+         _wallBtn->setColor(Color3B::GRAY);
+         _elixirBottleBtn->setColor(Color3B::GRAY);
+         _vaultBtn->setColor(Color3B::GRAY);
+         _arrowTowerBtn->setColor(Color3B::GRAY);
+    }
+    else if(_townHall->getLevel() == 1) {
+        _townHallBtn->setColor(Color3B::GRAY);
+        _goldMineBtn->setColor(Color3B::WHITE);
+        _elixirCollectorBtn->setColor(Color3B::WHITE);
+        _barracksBtn->setColor(Color3B::WHITE);
+        _trainingCampBtn->setColor(Color3B::WHITE);
+        _cannonBtn->setColor(Color3B::WHITE);
+        _wallBtn->setColor(Color3B::WHITE);
+        _elixirBottleBtn->setColor(Color3B::WHITE);
+        _vaultBtn->setColor(Color3B::WHITE);
+    }
+    else if (_townHall->getLevel() == 2) {
+        _arrowTowerBtn->setColor(Color3B::WHITE);
+    }
 }
 // 隐藏建筑栏
 void VillageScene::hideBuildBar() {
@@ -1029,7 +1097,7 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
         // 建筑升级逻辑（调用BaseBuilding的升级方法）
         if (building->getState() == BuildingState::IDLE) { // 仅闲置状态可升级
             if (_baseMode == BaseMode::NORMAL) {
-                if ((building->getLevel() + 1) * 2 < _townHall->getLevel()) {
+                if ((building->getLevel()) <=_maxLevel) {
                     showText("Not Enough TownHallLevel");
                     return;
                 }
@@ -1080,7 +1148,12 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
 
     case BuildingPopup::ButtonType::DESTROY:
         // 摧毁建筑
-        destroyBuilding(building);
+        if (_baseMode == BaseMode::NORMAL&& building->getConfig().type==BuildingType::TOWN_HALL) {
+            showText("you can not destroy your town hall!!!");
+        }
+        else {
+            destroyBuilding(building);
+        }
         break;
     case BuildingPopup::ButtonType::TRAINING:
         if (building->getType() == BuildingType::TRAINING_CAMP) {
@@ -1169,7 +1242,20 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
         _buildings.push_back(building);
         // 按类型加入细分列表
         //TODO: 哥布林攻击金矿，炸弹人攻击城墙等逻辑需要用到这些列表
-        if (type == BuildingType::GOLD_MINE) {
+        if (type == BuildingType::TOWN_HALL) {
+            if (_baseMode == BaseMode::NORMAL) {
+                _townHall = building;
+            }
+            auto townHall = dynamic_cast<TownHall*>(building);
+            if (townHall) {
+                // 绑定建造/升级完成回调
+                townHall->bindBuildFinishCallback([this, townHall](BaseBuilding* b) {
+                    checkCanGetBuilding();
+                    _maxLevel = townHall->getLevel() * 2;
+                    });
+            }
+        }
+        else if (type == BuildingType::GOLD_MINE) {
             _goldMines.push_back(dynamic_cast<GoldMine*>(building));
         }
         else if (type == BuildingType::ELIXIR_COLLECTOR) {
@@ -1306,22 +1392,9 @@ void VillageScene::addOccupiedTile(const Vec2& tile) {
 void VillageScene::destroyBuilding(BaseBuilding* building) {
     if (!building) return; // 空指针防护
     // 返还建造资源
-    /*
-        auto& cost = building->getConfig().cost;
-        // 示例：返还80%建造资源（可自定义比例）
-        for (auto& [resType, resValue] : cost) {
-            int returnValue = resValue * 0.8f;
-            if (resType == "gold") {
-                _playerGold += returnValue;
-            }
-            else if (resType == "elixir") {
-                _playerElixir += returnValue;
-            }
-
-        // 刷新资源UI（需自行实现，如更新金币标签）
-        // updateResourceUI();
-    }
-    */
+    
+    
+    
 
     // 释放建筑占用的瓦片（地图位置）
     releaseBuildingTiles(building);
@@ -2049,13 +2122,11 @@ void VillageScene::onTroopAttack(BaseTroop* troop, BaseBuilding* target) {
 // 初始化资源显示条
 void VillageScene::initResourceBar() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
-
+    _gold = 10000;
+    _elixir = 10000;
     // 创建资源显示层
 
     // 初始化资源数值（可以从存档或服务器获取）
-    _gold = 1000;      // 示例：初始金币
-    _elixir = 500;     // 示例：初始圣水
-
     // 金币显示
     // 金币图标
     _goldIcon = Sprite::create("ui/icon_gold.png");
@@ -2066,8 +2137,14 @@ void VillageScene::initResourceBar() {
     }
 
     // 金币标签
-    _goldLabel = Label::createWithTTF(StringUtils::format("%d", _gold),
-        "fonts/Marker Felt.ttf", 24);
+    if (_baseMode == BaseMode::NORMAL) {
+        _goldLabel = Label::createWithTTF(StringUtils::format("%d/%d", _gold, _maxGold),
+            "fonts/Marker Felt.ttf", 24);
+    }
+    else {
+        _goldLabel = Label::createWithTTF(StringUtils::format("%d", _gold),
+            "fonts/Marker Felt.ttf", 24);
+    }
     if (_goldLabel) {
         _goldLabel->setAnchorPoint(Vec2(0, 0.5f));
         _goldLabel->setPosition(Vec2(90, visibleSize.height - 30));
@@ -2081,16 +2158,23 @@ void VillageScene::initResourceBar() {
     _elixirIcon = Sprite::create("ui/icon_elixir.png");
     if (_elixirIcon) {
         _elixirIcon->setScale(0.8f);
-        _elixirIcon->setPosition(Vec2(200, visibleSize.height - 30));
+        _elixirIcon->setPosition(Vec2(280, visibleSize.height - 30));
         _uiLayer->addChild(_elixirIcon, 1);
     }
 
     // 圣水标签
-    _elixirLabel = Label::createWithTTF(StringUtils::format("%d", _elixir),
-        "fonts/Marker Felt.ttf", 24);
+    if (_baseMode == BaseMode::NORMAL) {
+        _elixirLabel = Label::createWithTTF(StringUtils::format("%d/%d", _elixir,_maxElixir),
+            "fonts/Marker Felt.ttf", 24);
+    }
+    else {
+        _elixirLabel = Label::createWithTTF(StringUtils::format("%d", _elixir),
+            "fonts/Marker Felt.ttf", 24);
+    }
+
     if (_elixirLabel) {
         _elixirLabel->setAnchorPoint(Vec2(0, 0.5f));
-        _elixirLabel->setPosition(Vec2(220, visibleSize.height - 30));
+        _elixirLabel->setPosition(Vec2(300, visibleSize.height - 30));
         _elixirLabel->setColor(Color3B::MAGENTA); // 紫色表示圣水
         _elixirLabel->enableOutline(Color4B::BLACK, 2);
         _uiLayer->addChild(_elixirLabel, 1);
@@ -2104,29 +2188,29 @@ void VillageScene::initResourceBar() {
         "ui/btn_add_selected.png",
         [this](Ref* sender) {
             // 点击增加金币按钮，可以打开商店或直接增加（测试用）
-            this->addGold(100);
+            this->addGold(1000);
         }
     );
-    addGoldBtn->setScale(0.6f);
-    addGoldBtn->setPosition(Vec2(290, visibleSize.height - 30));
+    addGoldBtn->setScale(2.0f);
+    addGoldBtn->setPosition(Vec2(450, visibleSize.height - 30));
 
     auto addElixirBtn = MenuItemImage::create(
         "ui/btn_add_elixir.png",
         "ui/btn_add_selected.png",
         [this](Ref* sender) {
             // 点击增加圣水按钮
-            this->addElixir(100);
+            this->addElixir(1000);
         }
     );
-    addElixirBtn->setScale(0.6f);
-    addElixirBtn->setPosition(Vec2(330, visibleSize.height - 30));
+    addElixirBtn->setScale(2.0f);
+    addElixirBtn->setPosition(Vec2(500, visibleSize.height - 30));
 
     auto menu = Menu::create(addGoldBtn, addElixirBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
     _uiLayer->addChild(menu, 2);
 }
 
-// 更新金币数量
+// 更新金币数量/容量
 void VillageScene::setGold(int gold) {
     _gold = gold;
     if (_goldLabel) {
@@ -2134,9 +2218,13 @@ void VillageScene::setGold(int gold) {
         auto fadeOut = FadeOut::create(0.2f);
         auto fadeIn = FadeIn::create(0.2f);
         auto updateText = CallFunc::create([this]() {
-            _goldLabel->setString(StringUtils::format("%d", _gold));
+            if (_baseMode == BaseMode::NORMAL) {
+                _goldLabel->setString(StringUtils::format("%d/%d", _gold,_maxGold));
+            }
+            else {
+                _goldLabel->setString(StringUtils::format("%d", _gold));
+            }
             });
-
         _goldLabel->runAction(Sequence::create(
             fadeOut,
             updateText,
@@ -2153,16 +2241,32 @@ void VillageScene::setGold(int gold) {
 void VillageScene::setElixir(int elixir) {
     _elixir = elixir;
     if (_elixirLabel) {
-        _elixirLabel->setString(StringUtils::format("%d", _elixir));
-
+        auto fadeOut = FadeOut::create(0.2f);
+        auto fadeIn = FadeIn::create(0.2f);
+        auto updateText = CallFunc::create([this]() {
+            if (_baseMode == BaseMode::NORMAL) {
+                _elixirLabel->setString(StringUtils::format("%d/%d", _elixir, _maxElixir));
+            }
+            else {
+                _elixirLabel->setString(StringUtils::format("%d", _elixir));
+            }});
+            _elixirLabel->runAction(Sequence::create(
+                fadeOut,
+                updateText,
+                fadeIn,
+                nullptr
+            ));
         // 如果需要动画效果，可以像setGold那样实现
     }
 }
 
 // 增加金币（带数量检查）
 bool VillageScene::addGold(int amount) {
-    if (amount <= 0) return false;
-
+    if (_baseMode == BaseMode::NORMAL&& _gold + amount>_maxGold) {
+        showText("gold max!");
+        _gold = _maxGold;
+        return true;
+    }
     int newGold = _gold + amount;
     // 可以设置金币上限
     int maxGold = 999999; // 最大金币数
@@ -2176,7 +2280,7 @@ bool VillageScene::addGold(int amount) {
 bool VillageScene::spendGold(int amount) {
     if (amount <= 0 || _gold < amount) {
         // 金币不足的提示
-        showResourceShortageTip("金币不足!");
+        showResourceShortageTip("金币不足");
         return false;
     }
 
@@ -2186,7 +2290,11 @@ bool VillageScene::spendGold(int amount) {
 
 // 增加圣水
 bool VillageScene::addElixir(int amount) {
-    if (amount <= 0) return false;
+    if (_baseMode == BaseMode::NORMAL && _elixir + amount > _maxElixir) {
+        showText("elixir max!");
+        _elixir = _maxElixir;
+        return true;
+    }
 
     int newElixir = _elixir + amount;
     int maxElixir = 999999;
@@ -2209,9 +2317,11 @@ bool VillageScene::spendElixir(int amount) {
 // 仓库容量
 void VillageScene::addGoldStorageCapacity(int bonus) {
     _maxGold += bonus;
+    setGold(_gold);
 }
 void VillageScene::addElixirStorageCapacity(int bonus) {
     _maxElixir += bonus;
+    setElixir(_elixir);
 }
 // 部队容量相关方法
 void VillageScene::addTroopCapacity(int bonus) {
