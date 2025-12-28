@@ -277,6 +277,8 @@ public:
     void showResourceShortageTip(const std::string& message);
     void addGoldStorageCapacity(int bonus);
     void addElixirStorageCapacity(int bonus);
+	int getGold() const { return _gold; }
+	int getElixir() const { return _elixir; }
 protected:
     bool level_init();
     ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
