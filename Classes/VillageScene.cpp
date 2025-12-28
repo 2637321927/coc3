@@ -2346,6 +2346,7 @@ bool VillageScene::loadGame(const std::string& savePath) {
     SaveData::Village saveData = SaveData::Village::fromString(saveStr);
     // 恢复场景数据
     unpackSaveData(saveData);
+
     CCLOG("读档成功：恢复了 %d 栋建筑", (int)saveData.buildings.size());
     return true;
 }
