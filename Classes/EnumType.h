@@ -2,6 +2,7 @@
 #define __ENUM_TYPE_H__
 #include <string>
 #include <unordered_map>
+#include <map>
     enum class BaseMode {
         NORMAL,   //普通
         CREATING, //创造
@@ -51,6 +52,14 @@
         TRAINING,     // 训练中
         UNKNOWN
     };
+    struct BuildingLevelConfig {
+        int level;          // 等级
+        int goldCost;       // 升级金币消耗
+        int elixirCost;     // 升级圣水消耗
+        float buildTime;    // 升级耗时（秒）
+        int hp;             // 该等级生命值
+        std::string spritePath; // 该等级的建筑图片路径
+    };
     struct BuildingConfig {
         int id;                     // 唯一ID
         BuildingType type;          // 建筑类型
@@ -62,6 +71,7 @@
         std::unordered_map<std::string, int> cost; // 建造消耗（金币/圣水）
         float buildTime;            // 建造时长（秒）
         int level = 1;              // 初始等级
+        std::map<int, BuildingLevelConfig> levelConfigs;
     };
     struct TroopConfig {
         int id;                     // 唯一ID

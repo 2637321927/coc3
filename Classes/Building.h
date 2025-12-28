@@ -32,10 +32,17 @@ public:
     virtual void takeDamage(int damage); // 受到伤害（通用逻辑）
     void setState(BuildingState state); // 设置状态（通用）
     BuildingState getState() const { return _state; }
-
     // ========== 通用属性接口（所有建筑都有） ==========
     BuildingType getType() const { return _config.type; }
-    Vec2 getTilePos() const { return _tilePos; }
+    Vec2 getTilePos() const {  
+        if (_tilePos.empty()) {
+            CCLOG("empty:_tilePos ！");
+            return Vec2::ZERO; // 返回一个默认值，避免崩溃
+        }
+        // 语义：返回建筑的第一个瓦片坐标（通常是起始/左下角瓦片）
+        return _tilePos[0];
+    }
+    std::vector<Vec2> getTilePositions() const { return _tilePos; }
     int getLevel() const { return _config.level; }
 	void buildImmediately() { _immediatelyBuild = 1; }
     const BuildingConfig& getConfig() const { return _config; }
@@ -68,7 +75,7 @@ protected:
     BuildingConfig _config;             // 通用配置
 	//需要在public加一些接口供外部访问
 	BuildingState _state = BuildingState::UNKNOWN;  // 当前状态
-    Vec2 _tilePos;             // 瓦片坐标(左上角)
+    std::vector<Vec2> _tilePos;             // 占用的瓦片坐标(左上角)
 	int _currentHp;          // 当前生命值
     float _mapScale = 1.0f;             // 地图缩放比例
     float _progressTimer = 0.0f;        // 进度计时器
@@ -182,6 +189,10 @@ public:
     // 实现基类虚函数
     virtual void doSpecialAction() override; // 升级解锁逻辑
     virtual std::string getSpecialDesc() override { return "村庄的核心建筑"; }
+    std::vector<BuildingType> 
+        getCanPlaceBuilding() const { return _canPlaceBuilding; }
+private:
+	std::vector<BuildingType> _canPlaceBuilding; // 可解锁建筑列表
 };
 // ========== 城墙 ==========
 class Wall : public BaseBuilding {

@@ -70,17 +70,24 @@ void TitleScene::initButtons()
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
 
     // ========== 1. 开始游戏按钮 ==========
-    Sprite* startBtnNormal = Sprite::create("btn_start_normal.png"); // 常态图
-    Sprite* startBtnPressed = Sprite::create("btn_start_pressed.png"); // 按下图
+    Sprite* creatingModeBtnNormal = Sprite::create("btn_start_normal.png"); // 常态图
+    Sprite* creatingModeBtnPressed = Sprite::create("btn_start_pressed.png"); // 按下图
+    Sprite* normalModeBtnNormal = Sprite::create("btn_start_normal.png"); // 常态图
+    Sprite* normalModeBtnPressed = Sprite::create("btn_start_pressed.png"); // 按下图
     MenuItemSprite* startMenuItem = MenuItemSprite::create(
-        startBtnNormal,
-        startBtnPressed,
-        CC_CALLBACK_1(TitleScene::onStartGameClick, this)
-        
+        creatingModeBtnNormal,
+        creatingModeBtnPressed,
+        CC_CALLBACK_1(TitleScene::onCreateGameClick, this)
     );
- 
+    MenuItemSprite* normalMenuItem = MenuItemSprite::create(
+        normalModeBtnNormal,
+        normalModeBtnPressed,
+        CC_CALLBACK_1(TitleScene::onNormalGameClick, this)
+    );
     // 按钮位置（屏幕中偏下，可自定义）
     startMenuItem->setPosition(origin.x + visibleSize.width / 2,
+        origin.y + visibleSize.height / 2 - 50);
+    normalMenuItem->setPosition(origin.x + visibleSize.width / 2+100,
         origin.y + visibleSize.height / 2 - 50);
 
     /*// ========== 2. 关卡选择按钮（预留） ==========
@@ -109,20 +116,34 @@ void TitleScene::initButtons()
 
         // 创建菜单（Cocos2d-x中按钮必须放在Menu里才能响应触摸）
        // Menu* menu = Menu::create(startMenuItem, levelMenuItem, settingMenuItem, nullptr);
-    Menu* menu = Menu::create(startMenuItem, nullptr);
+    Menu* menu = Menu::create(startMenuItem, normalMenuItem,nullptr);
     menu->setPosition(Vec2::ZERO); // Menu本身位置归零，按钮用自身position定位
     this->addChild(menu, 1); // 层级1：按钮（在背景上层）
 
 }
-
+void  TitleScene::onNormalGameClick(Ref* pSender)
+{
+	// 创建目标场景（之前写的VillageScene）
+	Scene* villageScene = VillageScene::createScene(BaseMode::NORMAL);
+	//场景切换（加淡入淡出动画，提升体验）
+	if (!villageScene) {
+		CCLOG("VillageScene 创建f失败！");
+		return;
+	}
+	CCLOG("VillageScene 创建s成功，准备切换");
+	Director::getInstance()->pushScene(villageScene);//将新场景压入栈顶，旧场景暂停保留；
+	//TransitionFade* transition = TransitionFade::create(0.5f, villageScene);
+	//Director::getInstance()->replaceScene(transition);
+   // 切换场景（使用过渡动画，可选）
+}
 // 开始游戏按钮回调（跳转到主村庄场景）
-void TitleScene::onStartGameClick(Ref* pSender)
+void TitleScene::onCreateGameClick(Ref* pSender)
 {
     /* // 可选：播放点击音效
      SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
      */
      // 创建目标场景（之前写的VillageScene）
-      Scene* villageScene = VillageScene::createScene(BaseMode::NORMAL);
+      Scene* villageScene = VillageScene::createScene(BaseMode::CREATING);
      //场景切换（加淡入淡出动画，提升体验）
       if (!villageScene) {
           CCLOG("VillageScene 创建f失败！");
