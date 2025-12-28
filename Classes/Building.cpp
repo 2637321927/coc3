@@ -17,30 +17,30 @@ BaseBuilding* BaseBuilding::create(BuildingType type, const Vec2& tilePos, float
     case BuildingType::TOWN_HALL:
         building = TownHall::create(tilePos, mapScale);
         break;
-	case BuildingType::ELIXIR_COLLECTOR:
-		building = ElixirCollector::create(tilePos, mapScale);
-		break;
+    case BuildingType::ELIXIR_COLLECTOR:
+        building = ElixirCollector::create(tilePos, mapScale);
+        break;
     case BuildingType::BARRACKS:
         building = Barracks::create(tilePos, mapScale);
         break;
     case BuildingType::TRAINING_CAMP:
         building = TrainingCamp::create(tilePos, mapScale);
         break;
-	case BuildingType::CANNON:
-		building = Cannon::create(tilePos, mapScale);
-		break;
-	case BuildingType::ARROW_TOWER:
-		building = ArrowTower::create(tilePos, mapScale);
-		break;
-	case BuildingType::VAULT:
-		building = Vault::create(tilePos, mapScale);
-		break;
-	case BuildingType::WALL:
-		building = Wall::create(tilePos, mapScale);
-		break;
+    case BuildingType::CANNON:
+        building = Cannon::create(tilePos, mapScale);
+        break;
+    case BuildingType::ARROW_TOWER:
+        building = ArrowTower::create(tilePos, mapScale);
+        break;
+    case BuildingType::VAULT:
+        building = Vault::create(tilePos, mapScale);
+        break;
+    case BuildingType::WALL:
+        building = Wall::create(tilePos, mapScale);
+        break;
     case BuildingType::ELIXIR_BOTTLE:
-		building = ElixirBottle::create(tilePos, mapScale);
-		break;
+        building = ElixirBottle::create(tilePos, mapScale);
+        break;
     default:
         break;
     }
@@ -55,14 +55,14 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     // 保存核心配置
     _config = config;
     //_tilePos = tilePos;
-	for (int x = 0;x < config.tileWidth;x++) {
-		for (int y = 0;y < config.tileHeight;y++) {
-			_tilePos.push_back(Vec2(tilePos.x + x, tilePos.y + y));
-		}
-	}
+    for (int x = 0;x < config.tileWidth;x++) {
+        for (int y = 0;y < config.tileHeight;y++) {
+            _tilePos.push_back(Vec2(tilePos.x + x, tilePos.y + y));
+        }
+    }
     _mapScale = mapScale;
-	_currentHp = config.hp; // 初始化当前血量为满值
-	CCLOG("tile.x: %f, tile.y: %f", tilePos.x, tilePos.y);
+    _currentHp = config.hp; // 初始化当前血量为满值
+    CCLOG("tile.x: %f, tile.y: %f", tilePos.x, tilePos.y);
     // 加载建筑图片（仅创建一次Sprite子节点，避免重复）
     if (!loadBuildingSprite()) {
         return false;
@@ -79,7 +79,7 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
     startBuild();
     this->scheduleUpdate();
     // setState(BuildingState::IDLE);
-	doSpecialAction(); 
+    doSpecialAction();
     return true;
 }
 bool BaseBuilding::loadBuildingSprite() {
@@ -103,7 +103,7 @@ bool BaseBuilding::loadBuildingSprite() {
     // 设置精灵锚点和位置（居中在BaseBuilding节点）
     _buildingSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
     _buildingSprite->setPosition(Vec2::ZERO); // Node默认锚点是(0,0)，精灵居中则设为(0,0
-   // _buildingSprite->setContentSize(Size(64*_config.tileWidth,32*_config.tileHeight));//统一设置尺寸TODO：后续调试
+    // _buildingSprite->setContentSize(Size(64*_config.tileWidth,32*_config.tileHeight));//统一设置尺寸TODO：后续调试
     this->addChild(_buildingSprite, -1); // Z=-1：保证在UI下方
 
     // 同步精灵缩放（和建筑节点一致）
@@ -111,70 +111,7 @@ bool BaseBuilding::loadBuildingSprite() {
 
     return true;
 }
-/*bool BaseBuilding::checkUpgradeCondition(int& outErrCode) {
-    if (!canUpgrade()) {
-        outErrCode = 1;
-        return false;
-    }
-    if (_state == BuildingState::UPGRADING) {
-        outErrCode = 3;
-        return false;
-    }
-    // 获取下一等级配置
-    auto nextLvlConfig = getNextLevelConfig();
-    // 校验资源（需从VillageScene获取当前金币/圣水）
-    VillageScene* scene = VillageScene::getInstance();
-    if (scene->getGold() < nextLvlConfig.goldCost || scene->getElixir() < nextLvlConfig.elixirCost) {
-        outErrCode = 2;
-        return false;
-    }
-    outErrCode = 0;
-    return true;
-}*/
 
-// 开始升级
-void BaseBuilding::startUpgrade() {
-    /*int errCode = 0;
-    if (!checkUpgradeCondition(errCode)) {
-        // 提示错误（比如通过VillageScene的showText）
-        VillageScene* scene = VillageScene::getInstance();
-        if (errCode == 1) scene->showText("已达到最大等级！");
-        else if (errCode == 2) scene->showText("资源不足！");
-        else if (errCode == 3) scene->showText("建筑正在升级中！");
-        return;
-    }*/
-
-    // 扣除资源
-    VillageScene* scene = VillageScene::getInstance();
-
-    // 设置升级状态
-    _state = BuildingState::UPGRADING;
-
-    // 启动升级倒计时（每帧更新剩余时间）
-    this->schedule([this](float dt) {
-        _upgradeRemainingTime -= dt;
-        if (_upgradeRemainingTime <= 0) {
-            finishUpgrade();
-            this->unschedule("upgrade_timer");
-        }
-        }, "upgrade_timer");
-}
-
-// 升级完成
-void BaseBuilding::finishUpgrade() {
-    // 提升等级
-    _currentLevel += 1;
-    // 恢复闲置状态
-    _state = BuildingState::IDLE;
-    // 刷新属性（生命值/产量/容量等）
-    refreshBuildingAttributes();
-    // 刷新图片
-    updateBuildingSprite();
-    // 移除升级特效
-    // 回调通知场景（比如兵营升级后更新人口容量）
-    // 提示升级完成
-    VillageScene::getInstance()->showText("建筑升级成功！");
-}
 
 // 更新建筑精灵图片
 void BaseBuilding::updateBuildingSprite() {
@@ -183,7 +120,7 @@ void BaseBuilding::updateBuildingSprite() {
 
 // 刷新建筑属性
 void BaseBuilding::refreshBuildingAttributes() {
-
+    _config = getBuildingConfigByType(_config.type, _currentLevel);
 }
 
 
@@ -195,13 +132,13 @@ void BaseBuilding::initCommonUI() {
     if (!progressBg) {
         return;
     }
-    
-	auto hpBg = Sprite::create("ui/hp_bar.png");
+
+    auto hpBg = Sprite::create("ui/hp_bar.png");
     if (!hpBg) {
         return;
     }
-	// 血量条位置：建筑上方20像素（基于精灵尺寸）
-	_hpBar = ProgressTimer::create(hpBg);
+    // 血量条位置：建筑上方20像素（基于精灵尺寸）
+    _hpBar = ProgressTimer::create(hpBg);
     _hpBar->setType(ProgressTimer::Type::BAR);
     _hpBar->setMidpoint(Vec2(0, 0.5f));
     _hpBar->setBarChangeRate(Vec2(1, 0));
@@ -218,28 +155,42 @@ void BaseBuilding::initCommonUI() {
     this->addChild(_progressBar, 1);
 
     // 2. 等级标签
-    auto levelLabel = Label::createWithTTF("Lv" + std::to_string(_config.level), "fonts/Marker Felt.ttf", 16);
-    if (levelLabel) {
+    _levelLabel = Label::createWithTTF("Lv" + std::to_string(_currentLevel), "fonts/Marker Felt.ttf", 16);
+    if (_levelLabel) {
         // 标签位置：建筑右上角（基于精灵尺寸）
-        levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
-        levelLabel->setColor(Color3B::YELLOW);
-        this->addChild(levelLabel, 1);
+        _levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
+        _levelLabel->setColor(Color3B::YELLOW);
+        this->addChild(_levelLabel, 1);
+    }
+}
+void BaseBuilding::updateLevelLabel() {
+    if (_levelLabel) {
+        _levelLabel->setString("Lv" + std::to_string(_currentLevel));
+        return;
+    }
+    else {
+        _levelLabel = Label::createWithTTF("Lv" + std::to_string(_currentLevel), "fonts/Marker Felt.ttf", 16);
+        if (_levelLabel) {
+            _levelLabel->setPosition(_buildingSprite->getContentSize().width / 2 - 15, _buildingSprite->getContentSize().height / 2 - 15);
+            _levelLabel->setColor(Color3B::YELLOW);
+            this->addChild(_levelLabel, 1);
+        }
     }
 }
 void BaseBuilding::takeDamage(int damage) {
-	_currentHp -= damage;
-	if (_currentHp < 0) _currentHp = 0;
-	// 更新血条显示
-	float hpPercent = (static_cast<float>(_currentHp) / static_cast<float>(_config.hp)) * 100.0f;
-	if (_hpBar) {
-		_hpBar->setPercentage(hpPercent);
-	}
-	// 显示受击特效
-	//EffectManager::getInstance()->playHitEffect(this->getPosition());
-	// 检查是否摧毁
-	if (_currentHp == 0) {
+    _currentHp -= damage;
+    if (_currentHp < 0) _currentHp = 0;
+    // 更新血条显示
+    float hpPercent = (static_cast<float>(_currentHp) / static_cast<float>(_config.hp)) * 100.0f;
+    if (_hpBar) {
+        _hpBar->setPercentage(hpPercent);
+    }
+    // 显示受击特效
+    //EffectManager::getInstance()->playHitEffect(this->getPosition());
+    // 检查是否摧毁
+    if (_currentHp == 0) {
         VillageScene::getInstance()->destroyBuilding(this);
-	}
+    }
 }
 // 初始化触摸监听器
 void BaseBuilding::initTouchListener() {
@@ -273,7 +224,7 @@ void BaseBuilding::initTouchListener() {
 void BaseBuilding::startBuild() {
     /*if (VillageScene::getInstance()->getBaseMode() == BaseMode::CREATING) {
         setState(BuildingState::IDLE);
-		this->scheduleUpdate();//便于哪些建筑依赖于帧更新执行本职工作
+        this->scheduleUpdate();//便于哪些建筑依赖于帧更新执行本职工作
         return;
     }*/
     setState(BuildingState::BUILDING);
@@ -286,39 +237,61 @@ void BaseBuilding::startBuild() {
 // 通用：完成建造
 void BaseBuilding::finishBuild() {
     setState(BuildingState::IDLE);
-	doSpecialAction(); // 执行特有行为
+    doSpecialAction(); // 执行特有行为
     _progressBar->setVisible(false);
-	//依赖于帧更新执行本职工作的建筑不停止帧更新
-    if(_config.type!=BuildingType::TRAINING_CAMP&& _config.type != BuildingType::CANNON&&_config.type != BuildingType::ARROW_TOWER)
-    this->unscheduleUpdate();
+    //依赖于帧更新执行本职工作的建筑不停止帧更新
+    if (_config.type != BuildingType::TRAINING_CAMP && _config.type != BuildingType::CANNON && _config.type != BuildingType::ARROW_TOWER)
+        this->unscheduleUpdate();
+
     if (_buildFinishCallback) {
         _buildFinishCallback(this);
     }
 }
-// 通用：绑定回调
-void BaseBuilding::bindBuildFinishCallback(const std::function<void(BaseBuilding*)>& callback) {
-    _buildFinishCallback = callback;
-}
-// 通用：开始升级
-/*void BaseBuilding::startUpgrade() {
+// 开始升级
+void BaseBuilding::startUpgrade() {
     setState(BuildingState::UPGRADING);
     _progressTimer = 0.0f;
     _progressBar->setVisible(true);
     _progressBar->setPercentage(0);
+
+    // 启动升级倒计时（每帧更新剩余时间）
     this->scheduleUpdate();
+}
+
+// 升级完成
+void BaseBuilding::finishUpgrade() {
+    // 提升等级
+    _currentLevel += 1;
+    // 恢复闲置状态
+    // 刷新属性（生命值/产量/容量等）
+    refreshBuildingAttributes();
+    // 刷新图片
+    updateBuildingSprite();
+    updateLevelLabel();
+    // 提示升级完成
+    setState(BuildingState::IDLE);
+    doSpecialAction(); // 执行特有行为
+    if (_config.type != BuildingType::TRAINING_CAMP && _config.type != BuildingType::CANNON && _config.type != BuildingType::ARROW_TOWER)
+        this->unscheduleUpdate();
+    _progressBar->setVisible(false);
     if (_buildFinishCallback) {
         _buildFinishCallback(this);
     }
-}*/
+}
+
+// 通用：绑定回调
+void BaseBuilding::bindBuildFinishCallback(const std::function<void(BaseBuilding*)>& callback) {
+    _buildFinishCallback = callback;
+}
 
 // 通用：摧毁建筑
 void BaseBuilding::destroy() {
     setState(BuildingState::DESTROYED);
     //设置为半透明
     this->setOpacity(100);
-	//停止所有进度（如建造，升级）
+    //停止所有进度（如建造，升级）
     this->unscheduleUpdate();
-	// 移除触摸监听器，禁止交互
+    // 移除触摸监听器，禁止交互
     if (_touchListener) {
         Director::getInstance()->getEventDispatcher()->removeEventListener(_touchListener);
     }
@@ -357,12 +330,12 @@ void BaseBuilding::update(float dt) {
     //TODO:升级要有升级时间
     progress = clampf(progress, 0.0f, 1.0f);
     _progressBar->setPercentage(progress * 100);
-    if (_immediatelyBuild) {
-        progress = 1.0f; 
+    if (immediatelyBuild) {
+        progress = 1.0f;
         _progressBar->setPercentage(progress * 100);
     }
     if (progress >= 1.0f) {
-        _state == BuildingState::BUILDING ? finishBuild() : finishBuild();
+        _state == BuildingState::BUILDING ? finishBuild() : finishUpgrade();
     }
 }
 
@@ -377,7 +350,7 @@ GoldMine* GoldMine::create(const Vec2& tilePos, float mapScale) {
     GoldMine* sprite = new (std::nothrow) GoldMine();
     if (sprite && sprite->init(tilePos, mapScale)) {
         sprite->autorelease();
-   
+
         return sprite;
     }
     CC_SAFE_DELETE(sprite);
@@ -393,7 +366,7 @@ bool GoldMine::init(const Vec2& tilePos, float mapScale) {
 void GoldMine::doSpecialAction() {
     // 逻辑：每隔一段时间增加玩家金币
         // 非闲置/未摧毁状态才生产
-    if (getState() != BuildingState::IDLE ) {
+    if (getState() != BuildingState::IDLE) {
         return;
     }
 
@@ -404,19 +377,18 @@ void GoldMine::doSpecialAction() {
 }
 // 金币生产具体逻辑
 void GoldMine::produceGold(float dt) {
-    // 升级后提升产量（可根据config.level动态调整）
-    _goldPerInterval = 10 * getConfig().level;
-	_goldStored += _goldPerInterval;
+    _goldPerInterval = 10 * _currentLevel;
+    _goldStored += _goldPerInterval;
 }
 // 收集金币逻辑
 int GoldMine::collectGold() {
     int collect = _goldStored;
     //金币超容量（大本营容量）未考虑，后续添加
     _goldStored = 0;
-	return collect;
+    return collect;
 }
 // 金矿专属描述
-std::string GoldMine::getSpecialDesc()  {
+std::string GoldMine::getSpecialDesc() {
     return "生产金币的建筑，等级越高产量越高";
 }
 // 覆盖摧毁方法
@@ -426,59 +398,59 @@ void GoldMine::destroy() {
 }
 //ElixirCollector 子类实现
 ElixirCollector* ElixirCollector::create(const Vec2& tilePos, float mapScale) {
-	ElixirCollector* sprite = new (std::nothrow) ElixirCollector();
-	if (sprite && sprite->init(tilePos, mapScale)) {
-		sprite->autorelease();
-		return sprite;
-	}
-	CC_SAFE_DELETE(sprite);
-	return nullptr;
+    ElixirCollector* sprite = new (std::nothrow) ElixirCollector();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
 }
 bool ElixirCollector::init(const Vec2& tilePos, float mapScale) {
-	BuildingConfig config;
-	config.type = BuildingType::ELIXIR_COLLECTOR;
-	config.name = "圣水收集器";
-	config.imgPath = "building/elixir_collector.png"; // 确保路径正确
-	config.hp = 500;
-	config.tileWidth = 2;  // 占地 2x2
-	config.tileHeight = 2;
-	config.buildTime = 10.0f; // 10秒建完
-	config.cost = { {"gold", 100}, {"elixir", 50} }; // 建造消耗
-	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-	return true;
+    BuildingConfig config;
+    config.type = BuildingType::ELIXIR_COLLECTOR;
+    config.name = "圣水收集器";
+    config.imgPath = "building/elixir_collector.png"; // 确保路径正确
+    config.hp = 500;
+    config.tileWidth = 2;  // 占地 2x2
+    config.tileHeight = 2;
+    config.buildTime = 10.0f; // 10秒建完
+    config.cost = { {"gold", 100}, {"elixir", 50} }; // 建造消耗
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    return true;
 }
 void ElixirCollector::doSpecialAction() {
-	// 逻辑：每隔一段时间增加玩家圣水
-		// 非闲置/未摧毁状态才生产
-	if (getState() != BuildingState::IDLE) {
-		return;
-	}
-	// 停止已有生产定时器，避免重复
-	this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir));
-	// 每2秒生产一次圣水
-	this->schedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir), _produceInterval);
+    // 逻辑：每隔一段时间增加玩家圣水
+        // 非闲置/未摧毁状态才生产
+    if (getState() != BuildingState::IDLE) {
+        return;
+    }
+    // 停止已有生产定时器，避免重复
+    this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir));
+    // 每2秒生产一次圣水
+    this->schedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir), _produceInterval);
 }
 // 圣水生产具体逻辑
 void ElixirCollector::produceElixir(float dt) {
-	// 升级后提升产量（可根据config.level动态调整）
-	_elixirPerInterval = 10 * getConfig().level;
-	_elixirStored += _elixirPerInterval;
+    // 升级后提升产量（可根据config.level动态调整）
+    _elixirPerInterval = 10 * _currentLevel;
+    _elixirStored += _elixirPerInterval;
 }
 // 收集圣水逻辑
 int ElixirCollector::collectElixir() {
-	int collect = _elixirStored;
-	//圣水超容量（大本营容量）未考虑，后续添加
-	_elixirStored = 0;
-	return collect;
+    int collect = _elixirStored;
+    //圣水超容量（大本营容量）未考虑，后续添加
+    _elixirStored = 0;
+    return collect;
 }
 // 圣水收集器专属描述
 std::string ElixirCollector::getSpecialDesc() {
-	return "生产圣水的建筑，等级越高产量越高";
+    return "生产圣水的建筑，等级越高产量越高";
 }
 // 覆盖摧毁方法
 void ElixirCollector::destroy() {
     this->unschedule(CC_SCHEDULE_SELECTOR(ElixirCollector::produceElixir)); // 停止生产
-	BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
+    BaseBuilding::destroy(); // 父类设置状态为 DESTROYED
 }
 //Barracks
 Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
@@ -493,7 +465,7 @@ Barracks* Barracks::create(const cocos2d::Vec2& tilePos, float mapScale) {
 
 bool Barracks::init(const cocos2d::Vec2& tilePos, float mapScale) {
     // 初始化兵营配置
-    BuildingConfig config= getBuildingConfigByType(BuildingType::BARRACKS);
+    BuildingConfig config = getBuildingConfigByType(BuildingType::BARRACKS);
     _maxTroopSpace = 20; // 基础容量20
     if (!BaseBuilding::init(config, tilePos, mapScale)) {
         return false;
@@ -520,8 +492,8 @@ TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {
 }
 
 bool TownHall::init(const Vec2& tilePos, float mapScale) {
-	BuildingConfig config = getBuildingConfigByType(BuildingType::TOWN_HALL);
-    if(!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    BuildingConfig config = getBuildingConfigByType(BuildingType::TOWN_HALL);
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     return true;
 }
@@ -553,7 +525,7 @@ void TrainingCamp::initTroopTrainTimeConfig() {
 
 // 初始化训练营
 bool TrainingCamp::init(const Vec2& tilePos, float mapScale) {
-    BuildingConfig config= getBuildingConfigByType(BuildingType::TRAINING_CAMP);
+    BuildingConfig config = getBuildingConfigByType(BuildingType::TRAINING_CAMP);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     // 初始化兵种训练时间配置
@@ -663,7 +635,7 @@ void TrainingCamp::doSpecialAction() {
 // 训练营特殊描述
 std::string TrainingCamp::getSpecialDesc() {
     return StringUtils::format("训练士兵的建筑，等级%d，训练速度提升%d%%",
-        _config.level, (int)((_config.level - 1) * 10));
+        _currentLevel, (int)((_currentLevel - 1) * 10));
 }
 
 // 重写销毁逻辑
@@ -678,55 +650,55 @@ void TrainingCamp::destroy() {
 
 //Wall 子类实现
 Wall* Wall::create(const cocos2d::Vec2& tilePos, float mapScale) {
-	Wall* sprite = new (std::nothrow) Wall();
-	if (sprite && sprite->init(tilePos, mapScale)) {
-		sprite->autorelease();
-		return sprite;
-	}
-	CC_SAFE_DELETE(sprite);
-	return nullptr;
- }
+    Wall* sprite = new (std::nothrow) Wall();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
+}
 bool Wall::init(const cocos2d::Vec2& tilePos, float mapScale) {
-	BuildingConfig config= getBuildingConfigByType(BuildingType::WALL);
-	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-	_state = BuildingState::IDLE;
-	return true;
+    BuildingConfig config = getBuildingConfigByType(BuildingType::WALL);
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    _state = BuildingState::IDLE;
+    return true;
 }
 void Wall::doSpecialAction() {}
 
 // Vault 子类实现
 Vault* Vault::create(const cocos2d::Vec2& tilePos, float mapScale) {
-	Vault* sprite = new (std::nothrow) Vault();
-	if (sprite && sprite->init(tilePos, mapScale)) {
-		sprite->autorelease();
-		return sprite;
-	}
-	CC_SAFE_DELETE(sprite);
-	return nullptr;
+    Vault* sprite = new (std::nothrow) Vault();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
 }
 bool Vault::init(const cocos2d::Vec2& tilePos, float mapScale) {
-	BuildingConfig config = getBuildingConfigByType(BuildingType::VAULT);
-	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-	_state = BuildingState::IDLE;
-	return true;
+    BuildingConfig config = getBuildingConfigByType(BuildingType::VAULT);
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    _state = BuildingState::IDLE;
+    return true;
 }
 void Vault::doSpecialAction() {}
 
 // ElixirBottle 子类实现
 ElixirBottle* ElixirBottle::create(const cocos2d::Vec2& tilePos, float mapScale) {
-	ElixirBottle* sprite = new (std::nothrow) ElixirBottle();
-	if (sprite && sprite->init(tilePos, mapScale)) {
-		sprite->autorelease();
-		return sprite;
-	}
-	CC_SAFE_DELETE(sprite);
-	return nullptr;
+    ElixirBottle* sprite = new (std::nothrow) ElixirBottle();
+    if (sprite && sprite->init(tilePos, mapScale)) {
+        sprite->autorelease();
+        return sprite;
+    }
+    CC_SAFE_DELETE(sprite);
+    return nullptr;
 }
 bool ElixirBottle::init(const cocos2d::Vec2& tilePos, float mapScale) {
-	BuildingConfig config = getBuildingConfigByType(BuildingType::ELIXIR_BOTTLE);
-	if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-	_state = BuildingState::IDLE;
-	return true;
+    BuildingConfig config = getBuildingConfigByType(BuildingType::ELIXIR_BOTTLE);
+    if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
+    _state = BuildingState::IDLE;
+    return true;
 }
 void ElixirBottle::doSpecialAction() {}
 
@@ -778,15 +750,10 @@ void BaseAttackBuilding::update(float dt) {
 // 目标检测逻辑
 // 在 Building.cpp 中找到这个函数
 BaseTroop* BaseAttackBuilding::findTargetInRange() {
-    // 【修复开始】增加安全检查
     auto villageScene = VillageScene::getInstance();
     if (!villageScene) {
-        // 如果场景还没准备好，或者 Tag 没设置对，直接返回 nullptr，防止崩溃
         return nullptr;
     }
-    // 【修复结束】
-
-    // 原有逻辑
     std::vector<BaseTroop*> allEnemies = villageScene->getAllEnemyTroops();
     if (allEnemies.empty()) {
         return nullptr;
@@ -881,10 +848,10 @@ bool Cannon::init(const Vec2& tilePos, float mapScale) {
     BuildingConfig config = getBuildingConfigByType(BuildingType::CANNON);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
     // 初始化攻击属性（复用 BaseAttackBuilding 的接口）
-    float range = 100 ;
+    float range = 100;
     float damage = 100;
-    float cooldown = 2.0f ;
-    cooldown = std::max(cooldown, 1.0f); // 最低冷却1秒
+    float cooldown = 1.0f;
+    //cooldown = std::max(cooldown, 1.0f); // 最低冷却1秒
     initAttackProps(range, damage, cooldown, "effect/cannon_ball.png");
 
 
@@ -916,7 +883,7 @@ void Cannon::attackTarget() {
 // 特殊描述（和训练营格式一致）
 std::string Cannon::getSpecialDesc() {
     return StringUtils::format("近战攻击建筑，等级%d，攻击范围%.0f像素，伤害%.0f，攻速%.1f秒/次",
-        _config.level, _attackRange, _attackDamage, _attackCooldown);
+        _currentLevel, _attackRange, _attackDamage, _attackCooldown);
 }
 void Cannon::doSpecialAction() {};
 
@@ -931,18 +898,17 @@ ArrowTower* ArrowTower::create(const Vec2& tilePos, float mapScale) {
 }
 
 bool ArrowTower::init(const Vec2& tilePos, float mapScale) {
-    // 1. 基础建筑属性初始化
-    BuildingConfig config=getBuildingConfigByType(BuildingType::ARROW_TOWER);
+    // 基础建筑属性初始化
+    BuildingConfig config = getBuildingConfigByType(BuildingType::ARROW_TOWER);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-
-    // 2. 攻击属性初始化
+    //攻击属性初始化
     float range = 150;
     float damage = 30;
     float cooldown = 0.8f;
     cooldown = std::max(cooldown, 0.4f);
     initAttackProps(range, damage, cooldown, "effect/arrow.png");
 
- 
+
 
     // 调试：显示攻击范围
     showAttackRange(true);
@@ -969,6 +935,6 @@ void ArrowTower::attackTarget() {
 
 std::string ArrowTower::getSpecialDesc() {
     return StringUtils::format("远程攻击建筑，等级%d，攻击范围%.0f像素，伤害%.0f，攻速%.1f秒/次",
-        _config.level, _attackRange, _attackDamage, _attackCooldown);
+        _currentLevel, _attackRange, _attackDamage, _attackCooldown);
 }
 void ArrowTower::doSpecialAction() {};

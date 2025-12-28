@@ -1,5 +1,6 @@
-#ifndef __ENUM_TYPE_H__
-#define __ENUM_TYPE_H__
+#ifndef __ENUM_TYPE_H__  
+#define __ENUM_TYPE_H__  
+
 
 #include <string>
 #include <unordered_map>
@@ -45,7 +46,6 @@ enum class BuildingType {
     ELIXIR_BOTTLE,    ///< 圣水瓶 (存储圣水)
     UNKNOWN           ///< 未知/无效类型
 };
-
 /**
  * 建筑状态枚举.
  * 定义建筑当前的生命周期状态.
@@ -100,8 +100,6 @@ struct BuildingConfig {
     int tileHeight;                                 ///< 占用地图瓦片高度
     std::unordered_map<std::string, int> cost;      ///< 建造消耗 (key:"gold"/"elixir")
     float buildTime;                                ///< 初始建造时长 (秒)
-    int level = 1;                                  ///< 初始等级
-    std::map<int, BuildingLevelConfig> levelConfigs;///< 各等级详细配置表
 };
 
 /**
@@ -138,13 +136,12 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type, int level = 1);
  * * @param type 建筑类型.
  * @return 金币数量.
  */
-int getGoldCost(BuildingType type);
+int getGoldCost(BuildingType type,int level=1);
 
 /**
  * 获取建筑建造的圣水消耗.
  * * @param type 建筑类型.
  * @return 圣水数量.
  */
-int getElixirCost(BuildingType type);
-
+int getElixirCost(BuildingType type, int level=1);
 #endif // __ENUM_TYPE_H__

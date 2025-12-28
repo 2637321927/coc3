@@ -14,7 +14,7 @@ Scene* LevelScene::createWithLevel(const std::string& levelPath)
     if (pRet && pRet->level_init())
     {
         pRet->_currentLevelPath = levelPath;
-        pRet->loadGame(levelPath); // 调用父类的 loadGame 读取关卡配置
+        pRet->loadGame(levelPath,true); // 调用父类的 loadGame 读取关卡配置
         pRet->setupLevelUI();      // 设置关卡专属UI
         pRet->autorelease();
         return pRet; // 直接返回，因为 LevelScene 是 Scene 子类
