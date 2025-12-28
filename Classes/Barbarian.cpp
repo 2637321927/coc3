@@ -16,7 +16,7 @@ BarbarianTroop* BarbarianTroop::create(const Vec2& spawnPos, float mapScale) {
         config.id = 1001;               // 野蛮人唯一ID
         config.type = TroopType::BARBARIAN; // 兵种类型
         config.name = "Barbarian";      // 兵种名称
-        config.imgPath = "troops/barbarian.png"; // 纹理路径
+        config.imgPath = "troops/barbarian_default.png"; // 纹理路径
 
         // --- 属性配置 ---
         config.hp = 400;                // 生命值（较高，肉盾）
@@ -63,7 +63,7 @@ bool BarbarianTroop::init(const TroopConfig& config, const Vec2& spawnPos, float
  * 播放 "放大-缩小" 动画模拟挥砍动作，并闪烁红色模拟发力.
  */
 void BarbarianTroop::doSpecialAttack() {
-    if (_attackTarget == nullptr) return;
+    //if (_attackTarget == nullptr) return;
 
     // 1. 攻击动作1：短暂放大（体现攻击发力）
     auto scaleUp = ScaleTo::create(0.1f, _mapScale * 1.2f); // 放大到1.2倍
