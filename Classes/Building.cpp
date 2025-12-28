@@ -111,7 +111,153 @@ bool BaseBuilding::loadBuildingSprite() {
 
     return true;
 }
+bool BaseBuilding::checkUpgradeCondition(int& outErrCode) {
+    if (!canUpgrade()) {
+        outErrCode = 1;
+        return false;
+    }
+    if (_state == BuildingState::UPGRADING) {
+        outErrCode = 3;
+        return false;
+    }
+    // 获取下一等级配置
+    auto nextLvlConfig = getNextLevelConfig();
+    // 校验资源（需从VillageScene获取当前金币/圣水）
+    VillageScene* scene = VillageScene::getInstance();
+    if (scene->getGold() < nextLvlConfig.goldCost || scene->getElixir() < nextLvlConfig.elixirCost) {
+        outErrCode = 2;
+        return false;
+    }
+    outErrCode = 0;
+    return true;
+}
+// 升级条件校验
+bool BaseBuilding::checkUpgradeCondition(int& outErrCode) {
+    if (!canUpgrade()) {
+        outErrCode = 1;
+        return false;
+    }
+    if (_state == BuildingState::UPGRADING) {
+        outErrCode = 3;
+        return false;
+    }
+    // 获取下一等级配置
+    auto nextLvlConfig = getNextLevelConfig();
+    // 校验资源（需从VillageScene获取当前金币/圣水）
+    VillageScene* scene = VillageScene::getInstance();
+    if (scene->getGold() < nextLvlConfig.goldCost || scene->getElixir() < nextLvlConfig.elixirCost) {
+        outErrCode = 2;
+        return false;
+    }
+    outErrCode = 0;
+    return true;
+}
 
+// 开始升级
+void BaseBuilding::startUpgrade() {
+    int errCode = 0;
+    if (!checkUpgradeCondition(errCode)) {
+        // 提示错误（比如通过VillageScene的showText）
+        VillageScene* scene = VillageScene::getInstance();
+        if (errCode == 1) scene->showText("已达到最大等级！");
+        else if (errCode == 2) scene->showText("资源不足！");
+        else if (errCode == 3) scene->showText("建筑正在升级中！");
+        return;
+    }
+
+    // 扣除资源
+    auto nextLvlConfig = getNextLevelConfig();
+    VillageScene* scene = VillageScene::getInstance();
+    scene->spendGold(nextLvlConfig.goldCost);
+    scene->spendElixir(nextLvlConfig.elixirCost);
+
+    // 设置升级状态
+    _state = BuildingState::UPGRADING;
+    _upgradeRemainingTime = nextLvlConfig.buildTime;
+
+    // 启动升级倒计时（每帧更新剩余时间）
+    this->schedule([this](float dt) {
+        _upgradeRemainingTime -= dt;
+        if (_upgradeRemainingTime <= 0) {
+            finishUpgrade();
+            this->unschedule("upgrade_timer");
+        }
+        }, "upgrade_timer");
+
+    // 视觉反馈：比如显示升级中特效/进度条
+    showUpgradeEffect();
+}
+
+// 升级完成
+void BaseBuilding::finishUpgrade() {
+    // 提升等级
+    _currentLevel += 1;
+    // 恢复闲置状态
+    _state = BuildingState::IDLE;
+    // 刷新属性（生命值/产量/容量等）
+    refreshBuildingAttributes();
+    // 刷新图片
+    updateBuildingSprite();
+    // 移除升级特效
+    hideUpgradeEffect();
+    // 回调通知场景（比如兵营升级后更新人口容量）
+    if (_upgradeFinishCallback) {
+        _upgradeFinishCallback(this);
+    }
+    // 提示升级完成
+    VillageScene::getInstance()->showText("建筑升级成功！");
+}
+
+// 更新建筑精灵图片
+void BaseBuilding::updateBuildingSprite() {
+    auto currentConfig = getCurrentLevelConfig();
+    // 销毁原有精灵，加载新等级图片
+    if (_buildingSprite) {
+        _buildingSprite->removeFromParent();
+    }
+    _buildingSprite = Sprite::create(currentConfig.spritePath);
+    if (_buildingSprite) {
+        this->addChild(_buildingSprite);
+        // 调整位置/缩放（适配原有逻辑）
+        _buildingSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
+        _buildingSprite->setScale(_mapScale);
+    }
+}
+
+// 刷新建筑属性
+void BaseBuilding::refreshBuildingAttributes() {
+    auto currentConfig = getCurrentLevelConfig();
+    // 根据建筑类型更新属性
+    if (this->getType() == BuildingType::GOLD_MINE) {
+        GoldMine* mine = dynamic_cast<GoldMine*>(this);
+        if (mine) {
+            mine->setProductionPerSecond(currentConfig.capacity); // 更新产量
+            mine->setHp(currentConfig.hp); // 更新生命值
+        }
+    }
+    else if (this->getType() == BuildingType::BARRACKS) {
+        Barracks* barracks = dynamic_cast<Barracks*>(this);
+        if (barracks) {
+            barracks->_maxTroopSpace = currentConfig.capacity; // 更新兵营容量
+            barracks->setHp(currentConfig.hp); // 更新生命值
+        }
+    }
+    // 其他建筑类型同理...
+}
+
+// 获取当前等级配置
+BuildingLevelConfig BaseBuilding::getCurrentLevelConfig() const {
+    return _config.levelConfigs.at(_currentLevel);
+}
+
+// 获取下一等级配置
+BuildingLevelConfig BaseBuilding::getNextLevelConfig() const {
+    if (!canUpgrade()) {
+        // 返回当前配置（或空配置，需处理边界）
+        return getCurrentLevelConfig();
+    }
+    return _config.levelConfigs.at(_currentLevel + 1);
+}
 // 初始化通用UI（进度条、等级标签，血条）
 void BaseBuilding::initCommonUI() {
     //建造/升级进度条

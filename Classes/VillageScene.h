@@ -265,7 +265,18 @@ public:
     }
     // 摧毁建筑核心函数
     void destroyBuilding(BaseBuilding* building);
-
+    // 显示无法放置提示
+    void VillageScene::showCannotPlaceTip(Vec2 pos);
+    void VillageScene::showText(std::string string, Vec2 pos = Vec2(1000, 1000), float duringTime = 2.0f);
+    void setGold(int gold);
+    void setElixir(int elixir);
+    bool addGold(int amount);
+    bool spendGold(int amount);
+    bool addElixir(int amount);
+    bool spendElixir(int amount);
+    void showResourceShortageTip(const std::string& message);
+    void addGoldStorageCapacity(int bonus);
+    void addElixirStorageCapacity(int bonus);
 protected:
     bool level_init();
     ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
@@ -402,9 +413,6 @@ private:
     // 初始化建筑预览（暂时屏蔽）
     void initBuildPreview();
     void initFightScene();
-	// 显示无法放置提示
-    void VillageScene::showCannotPlaceTip(Vec2 pos);
-    void VillageScene::showText(std::string string, Vec2 pos=Vec2(1000,1000), float duringTime = 2.0f);
     // 初始化触摸事件（暂时屏蔽）(手机版用，如时间不够则放弃）
     void initTouchEvent();
     // 坐标转换：屏幕坐标 → 等轴测瓦片坐标
@@ -486,15 +494,6 @@ private:
     void onTroopAttack(BaseTroop* troop, BaseBuilding* target);
     //资源管控
     void initResourceBar();
-    void setGold(int gold);
-    void setElixir(int elixir);
-    bool addGold(int amount);
-    bool spendGold(int amount);
-    bool addElixir(int amount);
-    bool spendElixir(int amount);
-    void showResourceShortageTip(const std::string& message);
-	void addGoldStorageCapacity(int bonus);
-	void addElixirStorageCapacity(int bonus);
     // 关卡选择相关
     cocos2d::Layer* _levelSelectLayer;
     bool _isLevelSelectShow;
