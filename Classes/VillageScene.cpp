@@ -44,7 +44,7 @@ bool VillageScene::init()
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
     if (_baseMode == BaseMode::FIGHT) {
-        loadGame("fight.txt",false);
+        loadGame("village_save.txt",false);
     }
     return true;
 }
@@ -736,7 +736,7 @@ void VillageScene::init_level_Btns(BaseMode baseMode) {
     //origin.x, origin.y为左下角
     // origin.x+visibleSize.width最右边
     // origin。y+visibleSize.heigh
-    if (baseMode == BaseMode::FIGHT) {
+    if (baseMode == BaseMode::LEVEL1) {
         if (_troopModeBtn) {
             _troopModeBtn->setVisible(true);
         }
@@ -744,88 +744,15 @@ void VillageScene::init_level_Btns(BaseMode baseMode) {
             initTroopModeBtn(); // 如果没初始化，先初始化
         }
     }
-    // 创建建筑模式开关按钮（右上角悬浮）
-    if (baseMode != BaseMode::FIGHT) {
-        _buildModeBtn = ui::Button::create(
-            "ui/build_mode_btn_normal.png",  // 正常状态图片
-            "ui/build_mode_btn_selected.png"// 按下状态图片
-        );
-        _uiLayer->addChild(_buildModeBtn, 200);
-        _buildModeBtn->setScale(0.8f);
-        _buildModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 100));
-        _buildModeBtn->addClickEventListener([this](Ref* sender) {
-            this->toggleBuildBar(); // 点击切换建筑栏
-            });
-    }
 
 
-    // 创建关卡选择按钮（左下角）
-    if (baseMode != BaseMode::FIGHT) {
-        _levelSelectBtn = ui::Button::create(
-            "ui/level_select_btn_normal.png",  // 正常状态图片
-            "ui/level_select_btn_selected.png"// 按下状态图片
-        );
-        _uiLayer->addChild(_levelSelectBtn, 200);
-        // 初始化关卡选择层状态（TODO：为什么要加在这里？）
-        _isLevelSelectShow = false;
-        _levelSelectLayer = nullptr;
-        _levelSelectBtn->setScale(0.8f);
-        _levelSelectBtn->setPosition(Vec2(origin.x + 100, origin.y + 100)); // 左下角，距离左边缘和下边缘各50像素
-        _levelSelectBtn->addClickEventListener([this](Ref* sender) {
-            this->toggleLevelSelectMenu(); // 点击切换关卡选择菜单
-            });
-    }
-
-    if (baseMode != BaseMode::FIGHT) {
-        // 创建存档按钮
-        _loadBtn = ui::Button::create(
-            "ui/btn_normal.png",
-            "ui/btn_pressed.png",
-            "ui/btn_disabled.png"
-        );
-        _uiLayer->addChild(_loadBtn, 200);
-        // 创建存档按钮
-        _saveBtn = ui::Button::create(
-            "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
-            "ui/btn_pressed.png",  // 按下状态图片
-            "ui/btn_disabled.png"  // 禁用状态图片（可选）
-        );
-        _uiLayer->addChild(_saveBtn, 200);
-        _saveBtn->setContentSize(Size(120, 60));
-        _saveBtn->setPosition(Vec2(_backBtn->getPositionX(), _backBtn->getPositionY() - 80));
-
-        _loadBtn->setContentSize(Size(120, 60));// 位置在存档按钮下方，间距20
-        _loadBtn->setPosition(Vec2(_saveBtn->getPositionX(), _saveBtn->getPositionY() - 80));
-        // 设置按钮文字
-        auto saveText = ui::Text::create("save", "fonts/Marker Felt.ttf", 24);
-        saveText->setColor(Color3B::WHITE);
-        _saveBtn->addChild(saveText);
-        auto loadText = ui::Text::create("load", "fonts/Marker Felt.ttf", 24);
-        loadText->setColor(Color3B::WHITE);
-        _loadBtn->addChild(loadText);
-        _saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
-        _loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
-    }
-
-    if (baseMode != BaseMode::FIGHT) {
-        _fightBtn = ui::Button::create(
-            "ui/fight_btn_normal.png",  // 正常状态图片
-            "ui/fight_btn_selected.png"// 按下状态图片
-        );
-        _uiLayer->addChild(_fightBtn, 200);
-        _fightBtn->setScale(0.8f);
-        _fightBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100)); // 右下角，距离右边缘和下边缘各50像素
-        _fightBtn->addClickEventListener([this](Ref* sender) {
-            this->gotoFight(); // 点击进入战斗场景
-            });
-    }
-    if (baseMode == BaseMode::FIGHT) {
+    if (baseMode == BaseMode::LEVEL1) {
         _fightStartBtn = ui::Button::create("ui/fight_start_btn.png");
         _uiLayer->addChild(_fightStartBtn, 200);
         _fightStartBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100));
         _fightStartBtn->addClickEventListener([this](Ref* sender) {
             // 点击开始战斗后，隐藏掉选兵按钮
-            if (_troopModeBtn) _troopModeBtn->setVisible(false);
+            if (_troopModeBtn) _troopModeBtn->setVisible(true);
             this->beginFight();
             });
     }
@@ -2696,7 +2623,7 @@ bool VillageScene::level_init()
     _uiLayer->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
     this->addChild(_uiLayer, 200); // 布局层级200
     initMap();
-    init_level_Btns(BaseMode::FIGHT);
+    init_level_Btns(BaseMode::LEVEL1);
     go_back_Btn();
 
 
@@ -2713,10 +2640,15 @@ bool VillageScene::level_init()
     mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
-    if (_baseMode == BaseMode::FIGHT) {
+    if (_baseMode == BaseMode::LEVEL1) {
         loadGame("level1.txt",true);
     }
-
+    if (_baseMode == BaseMode::LEVEL2) {
+        loadGame("level2.txt", true);
+    }
+    if (_baseMode == BaseMode::LEVEL3) {
+        loadGame("level3.txt", true);
+    }
     return true;
 }
 
@@ -2761,40 +2693,44 @@ void VillageScene::go_back(const std::string& fileName) {
 
 
 
-void VillageScene::gotoLevel1(const std::string& Path) {
-    hideLevelSelectMenu();
-    VillageScene::saveGame();
-    // 1. 调用 LevelScene 的工厂函数（返回 Scene*，需强转为 LevelScene*）
-    Scene* scene = LevelScene::createWithLevel(Path);
-    LevelScene* levelScene = dynamic_cast<LevelScene*>(scene); // 安全强转
+void VillageScene::gotoLevel1(const std::string& levelFilename) { // 传入 "level1_preset.txt"
+    // 1. 先保存当前村庄状态（如果需要）
+    saveGame("village_save.txt");
 
-    if (levelScene) { // 强转成功才继续
-        // 2. 获取文件完整路径（Cocos 自动从 Resources 目录查找）
-        std::string fullPath = FileUtils::getInstance()->fullPathForFilename(Path);
+    // 2. 创建一个新的战斗场景
+    // 注意：这里我们使用 FIGHT 模式创建场景
+    Scene* levelScene = VillageScene::createScene(BaseMode::FIGHT);
 
-        if (FileUtils::getInstance()->isFileExist(fullPath)) {
-            // 3. 调用 loadGame（无需加 VillageScene::，子类已继承）
-            bool success = levelScene->loadGame(Path,true);
+    // 3. 获取 VillageScene 实例
+    // createScene 返回的是 Scene*，我们需要拿到里面的 Layer (VillageScene*)
+    // 根据你的 createScene 实现，Layer 被加为了 Scene 的子节点
+    // 假设 createScene 里 layer->setTag(25) 用于 FIGHT 模式
+    VillageScene* villageLayer = dynamic_cast<VillageScene*>(levelScene->getChildByTag(25));
 
-            if (success) {
-                CCLOG("成功将关卡数据注入 levelScene: %s", Path.c_str());
-            }
-            else {
-                CCLOGERROR("加载关卡数据失败: %s", Path.c_str());
-                return; // 加载失败则不切换场景
-            }
+    if (villageLayer) {
+        // 4. 关键：加载关卡预设文件
+        // 使用我们之前修改过的支持 Resources 目录加载的 loadGame
+        // 第二个参数 true 表示允许回退到 Resources 目录查找
+        bool loadSuccess = villageLayer->loadGame(levelFilename, true);
+
+        if (loadSuccess) {
+            CCLOG("成功加载关卡: %s", levelFilename.c_str());
+
+            // 5. 初始化战斗 UI 和数据
+            // 如果 loadGame 没有包含这些初始化，可能需要手动调用
+            // 例如：设置倒计时、隐藏建造按钮等
+            // villageLayer->beginFight(); // 如果你想进场就开始倒计时
+
+            // 6. 切换场景
+            Director::getInstance()->pushScene(levelScene);
         }
         else {
-            CCLOGERROR("错误：找不到关卡文件 %s", fullPath.c_str());
-            return;
+            CCLOG("加载关卡失败: %s", levelFilename.c_str());
+            // 如果加载失败，不要切换场景
         }
-
-        // 4. 场景切换（确保传入 Scene* 类型）
-        auto transition = TransitionSlideInR::create(0.5f, scene);
-        Director::getInstance()->replaceScene(transition);
     }
     else {
-        CCLOGERROR("LevelScene::createWithLevel 创建实例失败！");
+        CCLOG("获取 VillageScene 层失败");
     }
 }
 

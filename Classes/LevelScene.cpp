@@ -10,14 +10,18 @@ Scene* LevelScene::createWithLevel(const std::string& levelPath)
 {
     // 1. 创建 LevelScene 实例
     auto pRet = new (std::nothrow) LevelScene();
-    // 调用特有的 level_init 初始化 (假设这是 VillageScene 中定义的 protected 方法)
+    pRet->setBaseMode(BaseMode::FIGHT);
+
     if (pRet && pRet->level_init())
     {
         pRet->_currentLevelPath = levelPath;
-        pRet->loadGame(levelPath,true); // 调用父类的 loadGame 读取关卡配置
-        pRet->setupLevelUI();      // 设置关卡专属UI
+
+        // 这里已经加载过一次游戏数据了
+        pRet->loadGame(levelPath, true);
+
+        pRet->setupLevelUI();
         pRet->autorelease();
-        return pRet; // 直接返回，因为 LevelScene 是 Scene 子类
+        return pRet;
     }
     delete pRet;
     return nullptr;

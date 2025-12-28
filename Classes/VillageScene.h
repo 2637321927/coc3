@@ -17,7 +17,10 @@ enum class Mode {
     SPAWN_TROOP,    // 放置兵种模式
     FIGHT,     // 战斗模式（预留）
     MOVE, 	// 移动建筑模式
-    PROTECT // 保护模式(过渡模式，放置误触)
+    PROTECT, // 保护模式(过渡模式，放置误触)
+    LEVEL1,
+    LEVEL2,
+    LEVEL3
 };
 //存档相关
 namespace SaveData {
@@ -512,7 +515,7 @@ private:
     // 跳转到关卡的函数
 
     void go_back_Btn();
-    void gotoLevel1(const std::string& savePath);
+    void VillageScene::gotoLevel1(const std::string& levelFilename);
 
 
 
