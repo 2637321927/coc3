@@ -30,6 +30,20 @@ public:
     virtual void startUpgrade();        // 开始升级（通用逻辑）
     virtual void destroy();             // 摧毁建筑（通用逻辑）
     virtual void takeDamage(int damage); // 受到伤害（通用逻辑）
+    virtual bool checkUpgradeCondition(int& outErrCode); // 检查升级条件（通用）
+    virtual bool canUpgrade() const; // 检查是否可升级（是否达到最大等级）
+    int getLevel() const { return _config.level; }
+    // 设置等级（内部调用，用于加载存档/升级完成）
+    void setLevel(int level);
+    // 升级前置校验（资源是否足够、是否在升级中）
+    bool checkUpgradeCondition(int& outErrCode); // outErrCode：1=等级已满，2=资源不足，3=升级中
+    // 开始升级（扣除资源，设置升级状态，启动倒计时）
+    // 升级完成（更新等级、属性、图片，恢复状态）
+    void finishUpgrade();
+    // 获取当前等级的配置
+    BuildingLevelConfig getCurrentLevelConfig() const;
+    // 获取下一等级的配置
+    BuildingLevelConfig getNextLevelConfig() const;
     void setState(BuildingState state); // 设置状态（通用）
     BuildingState getState() const { return _state; }
     // ========== 通用属性接口（所有建筑都有） ==========
@@ -77,12 +91,18 @@ protected:
 	BuildingState _state = BuildingState::UNKNOWN;  // 当前状态
     std::vector<Vec2> _tilePos;             // 占用的瓦片坐标(左上角)
 	int _currentHp;          // 当前生命值
+	int _currentLevel = 1;		  // 当前等级
     float _mapScale = 1.0f;             // 地图缩放比例
     float _progressTimer = 0.0f;        // 进度计时器
+    float _upgradeRemainingTime; // 升级剩余时间（秒）
     ProgressTimer* _progressBar = nullptr; // 通用进度条
     ProgressTimer* _hpBar = nullptr; // 通用血条
 	Sprite*  _buildingSprite;        // 建筑图片精灵
 	bool _immediatelyBuild = 0; // 是否立即建造完成
+    // 内部更新函数：更新建筑精灵图片（等级变化时调用）
+    void updateBuildingSprite();
+    // 内部更新函数：刷新建筑属性（生命值/产量/容量等）
+    void refreshBuildingAttributes();
 };
 class GoldMine : public BaseBuilding {
 public:

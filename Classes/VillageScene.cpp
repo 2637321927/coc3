@@ -2343,7 +2343,7 @@ bool VillageScene::loadGame(const std::string& savePath) {
     //std::string saveStr = fullPath;
    std::string saveStr = cocos2d::FileUtils::getInstance()->getStringFromFile(fullPath);
     // 反序列化数据
-    SaveData::Village saveData = SaveData::Village::fromString(savePath);
+    SaveData::Village saveData = SaveData::Village::fromString(saveStr);
     // 恢复场景数据
     unpackSaveData(saveData);
     CCLOG("读档成功：恢复了 %d 栋建筑", (int)saveData.buildings.size());
