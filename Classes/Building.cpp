@@ -121,6 +121,45 @@ void BaseBuilding::updateBuildingSprite() {
 // 刷新建筑属性
 void BaseBuilding::refreshBuildingAttributes() {
     _config = getBuildingConfigByType(_config.type, _currentLevel);
+    switch (_config.type) {
+    case(BuildingType::ARROW_TOWER): {
+        auto it1 = dynamic_cast<ArrowTower*>(this);
+        it1->upGrade();
+        break;
+    }
+    case(BuildingType::CANNON): {
+        auto it2 = dynamic_cast<Cannon*>(this);
+        it2->upGrade();
+        break;
+    }
+    case(BuildingType::BARRACKS): {
+        auto it3 = dynamic_cast<Barracks*>(this);
+        it3->upGrade();
+        break;
+    }
+    case(BuildingType::VAULT): {
+        auto it4 = dynamic_cast<Vault*>(this);
+        it4->upGrade();
+        break;
+    }
+    case(BuildingType::ELIXIR_BOTTLE):{
+        auto it5 = dynamic_cast<ElixirBottle*>(this);
+        it5->upGrade();
+        break;
+    }
+    case(BuildingType::GOLD_MINE): {
+        auto it6 = dynamic_cast<GoldMine*>(this);
+        it6->upGrade();
+        break;
+    }
+    case(BuildingType::ELIXIR_COLLECTOR): {
+        auto it7 = dynamic_cast<ElixirCollector*>(this);
+        it7->upGrade();
+        break;
+    }
+    }
+
+
 }
 
 
@@ -330,11 +369,13 @@ void BaseBuilding::update(float dt) {
     //TODO:升级要有升级时间
     progress = clampf(progress, 0.0f, 1.0f);
     _progressBar->setPercentage(progress * 100);
+    CCLOG("asdasdaSDaSdasd");
     if (immediatelyBuild) {
         progress = 1.0f;
         _progressBar->setPercentage(progress * 100);
     }
     if (progress >= 1.0f) {
+        CCLOG("asdasdaSDaSdadsfffssdfsdfsdfsdasd");
         _state == BuildingState::BUILDING ? finishBuild() : finishUpgrade();
     }
 }
@@ -377,7 +418,6 @@ void GoldMine::doSpecialAction() {
 }
 // 金币生产具体逻辑
 void GoldMine::produceGold(float dt) {
-    _goldPerInterval = 10 * _currentLevel;
     _goldStored += _goldPerInterval;
 }
 // 收集金币逻辑
@@ -433,7 +473,6 @@ void ElixirCollector::doSpecialAction() {
 // 圣水生产具体逻辑
 void ElixirCollector::produceElixir(float dt) {
     // 升级后提升产量（可根据config.level动态调整）
-    _elixirPerInterval = 10 * _currentLevel;
     _elixirStored += _elixirPerInterval;
 }
 // 收集圣水逻辑
@@ -679,7 +718,6 @@ Vault* Vault::create(const cocos2d::Vec2& tilePos, float mapScale) {
 bool Vault::init(const cocos2d::Vec2& tilePos, float mapScale) {
     BuildingConfig config = getBuildingConfigByType(BuildingType::VAULT);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-    _state = BuildingState::IDLE;
     return true;
 }
 void Vault::doSpecialAction() {}
@@ -697,7 +735,6 @@ ElixirBottle* ElixirBottle::create(const cocos2d::Vec2& tilePos, float mapScale)
 bool ElixirBottle::init(const cocos2d::Vec2& tilePos, float mapScale) {
     BuildingConfig config = getBuildingConfigByType(BuildingType::ELIXIR_BOTTLE);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-    _state = BuildingState::IDLE;
     return true;
 }
 void ElixirBottle::doSpecialAction() {}

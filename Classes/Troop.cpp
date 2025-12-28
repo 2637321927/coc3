@@ -179,6 +179,7 @@ void BaseTroop::updateAttackCD() {
 
 // ========== 通用：更新移动逻辑 ==========
 void BaseTroop::updateMovement(float dt) {
+  
     if (_state != TroopState::MOVING) {
         CCLOG("NOMOVE1");
         return;
@@ -190,7 +191,7 @@ void BaseTroop::updateMovement(float dt) {
             CCLOG("nopath");
             return;
         }
-
+        auto villageScene=VillageScene::getInstance();
         // 1. 坐标转换（通过公有接口）
         Vec2 startTile = getCurrentTilePos();
         Vec2 targetTile = _villageScene->screenToIsoTilePublic(_targetPos);
@@ -243,17 +244,19 @@ void BaseTroop::updateMovement(float dt) {
         }
     }
     else {
+
         // 向当前路径点移动
         direction.normalize();
         Vec2 moveStep = direction * _config.moveSpeed * dt * _mapScale;
         this->setPosition(this->getPosition() + moveStep);
+   
     }
 }
 
 // ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);
-    setState(TroopState::MOVING);
+    setState(TroopState::ATTACKING);
     // 根据不同状态处理逻辑
     switch (_state) {
     case TroopState::TRAINING: {
@@ -267,7 +270,7 @@ void BaseTroop::update(float dt) {
     }
     case TroopState::MOVING: {
         // 移动逻辑
-
+        
         updateMovement(dt);
         break;
     }
@@ -276,7 +279,7 @@ void BaseTroop::update(float dt) {
         updateAttackCD();
 
         // 冷却完成且有目标则发起攻击
-        if (_attackCDTimer >= _config.attackSpeed && _attackTarget != nullptr) {
+        if (_attackCDTimer >= _config.attackSpeed /* && _attackTarget != nullptr*/) {
             // 调用特有攻击行为
             doSpecialAttack();
 

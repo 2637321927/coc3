@@ -65,7 +65,7 @@ bool BomberTroop::init(const TroopConfig& config, const Vec2& spawnPos, float ma
  * 包含三个阶段：快速闪烁预热 -> 放大变色爆炸 -> 自身销毁.
  */
 void BomberTroop::doSpecialAttack() {
-    if (_attackTarget == nullptr) return;
+    //if (_attackTarget == nullptr) return;
 
     // 1. 自爆前预热动画：快速闪烁（提醒玩家即将爆炸）
     auto blink = Blink::create(0.5f, 3); // 0.5秒内闪烁3次

@@ -144,6 +144,7 @@ void BuildingPopup::createButtons() {
             createButton("ui/btn_destroy.png", ButtonType::DESTROY, Vec2(startX + btnWidth + spacing, startY));
         }
     }
+
     else if (_targetBuilding->getType() == BuildingType::ELIXIR_COLLECTOR) {
         if (_targetBuilding->getState() == BuildingState::IDLE) {
             // 1. –≈œ¢∞¥≈•
