@@ -559,8 +559,7 @@ private:
     void go_back(const std::string& fileName);
     void go_back_Btn();
     void gotoLevel1(const std::string& savePath);
-    void gotoLevel2();
-    void gotoLevel3();
+
 
     // ’Ω∂∑œ‡πÿ
     void gotoFight();

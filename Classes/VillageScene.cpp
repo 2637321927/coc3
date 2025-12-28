@@ -872,15 +872,22 @@ void VillageScene::createBuildBar() {
 
     // 建筑按钮 - 大本营
     auto townHallBtn = MenuItemImage::create(
-        "building/town_hall_icon.png",
-        "building/town_hall_icon_selected.png",
+        "building\\town_hall_icon.png",
+        "building\\town_hall_icon_selected.png",
         [this](Ref* sender) {
+
             _Mode = Mode::PLACE_BUILDING;
             _selectedBuildingType = BuildingType::TOWN_HALL;
             _buildPreview->setVisible(true);
             _buildPreview->setTexture("building/town_hall_preview.png");
         }
     );
+    if (townHallBtn == nullptr) {
+        CCLOG("ERROR: Town Hall Button create failed! Check filename.");
+    }
+    else {
+        CCLOG("Town Hall Button size: %f, %f", townHallBtn->getContentSize().width, townHallBtn->getContentSize().height);
+    }
 
     // 建筑按钮 - 金矿
     auto goldMineBtn = MenuItemImage::create(
@@ -2609,7 +2616,7 @@ void VillageScene::createLevelSelectMenu() {
         "ui/level2_btn_normal.png",
         "ui/level2_btn_selected.png",
         [this](Ref* sender) {
-            this->gotoLevel2();
+            this->gotoLevel1("level2_preset.txt");
         }
     );
     level2Btn->setPosition(Vec2(0, -110));
@@ -2620,7 +2627,7 @@ void VillageScene::createLevelSelectMenu() {
         "ui/level3_btn_normal.png",
         "ui/level3_btn_selected.png",
         [this](Ref* sender) {
-            this->gotoLevel3();
+            this->gotoLevel1("level3_preset.txt");
         }
     );
     level3Btn->setPosition(Vec2(200, -110));
@@ -2722,8 +2729,6 @@ void VillageScene::go_back(const std::string& fileName) {
 
 
 
-// 创建关卡1场景
-
 void VillageScene::gotoLevel1(const std::string& Path) {
     hideLevelSelectMenu();
     VillageScene::saveGame();
@@ -2761,19 +2766,7 @@ void VillageScene::gotoLevel1(const std::string& Path) {
     }
 }
 
-// 跳转到关卡2
-void VillageScene::gotoLevel2() {
-    hideLevelSelectMenu();
-    bool success = this->loadGame("level2_preset.txt");
-    if (!success) CCLOG("无法加载关卡 2");
-}
 
-// 跳转到关卡3
-void VillageScene::gotoLevel3() {
-    hideLevelSelectMenu();
-    bool success = this->loadGame("level3_preset.txt");
-    if (!success) CCLOG("无法加载关卡 3");
-}
 void VillageScene::gotoFight() {
     saveGame("fight.txt");
     Scene* fightScene = VillageScene::createScene(BaseMode::FIGHT);
