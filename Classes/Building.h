@@ -40,7 +40,6 @@ public:
         updateBuildingSprite();
         updateLevelLabel();
         refreshBuildingAttributes();
-
     }
     // 升级前置校验（资源是否足够、是否在升级中）
     //bool checkUpgradeCondition(int& outErrCode); // outErrCode：1=等级已满，2=资源不足，3=升级中
@@ -60,6 +59,12 @@ public:
         return _tilePos[0];
     }
     std::vector<Vec2> getTilePositions() const { return _tilePos; }
+    void setTilePos(Vec2 tilePos) {
+        _tilePos.push_back(tilePos);
+    }
+    void clearTilePos() {
+        _tilePos.clear();
+    }
     // int getLevel() const { return _config.level; }
     void buildImmediately() { immediatelyBuild = 1; }
     const BuildingConfig& getConfig() const { return _config; }

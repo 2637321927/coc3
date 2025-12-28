@@ -1,5 +1,5 @@
 #include "EffectManager.h"
-
+#include "VillageScene.h"
 // 初始化静态单例实例
 EffectManager* EffectManager::_instance = nullptr;
 
@@ -50,16 +50,18 @@ void EffectManager::playProjectileEffect(const std::string& imgPath,
     }
 
     // 获取当前运行的场景，将特效添加到场景中
-    auto runningScene = Director::getInstance()->getRunningScene();
+    auto runningScene = VillageScene::getInstance();
     if (!runningScene) {
         return;
     }
+    //auto start1 = runningScene->isoTileToContainerPosPublic(start);
     // 保证特效在建筑/兵种上层显示，不会被遮挡 (层级10000)
-    runningScene->addChild(projectile, 10000);
+    runningScene->addMapChild(projectile);
 
     // 设置特效起始位置
     projectile->setPosition(start);
 
+    auto end1 = runningScene->isoTileToContainerPosPublic(end);
     // 创建动作序列：先移动到终点，再自动移除特效（避免内存泄漏）
     auto moveAction = MoveTo::create(duration, end); // 移动动作
     auto removeAction = RemoveSelf::create();        // 移除动作

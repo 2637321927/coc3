@@ -169,6 +169,9 @@ namespace SaveData {
 class VillageScene : public Scene
 {
 public:
+    void addMapChild(Sprite* child) {
+        _mapContainer->addChild(child, 10000);
+    }
     // 新增：提供坐标转换接口
     Vec2 screenToIsoTilePublic(const Vec2& screenPos) {
         return screenToIsoTile(screenPos);  // 调用原有私有方法
@@ -216,6 +219,7 @@ public:
     static cocos2d::Scene* createScene(BaseMode baseMode = BaseMode::CREATING);
     // 初始化方法
     virtual bool init();
+
     // CREATE_FUNC 宏：自动生成 create() 方法
     CREATE_FUNC(VillageScene);
     // 存档（保存到本地文件）
@@ -408,6 +412,8 @@ private:
     void clampMapPosition();
     // 初始化地图
     void initMap();
+    void initMapContainer();
+    bool loadMap(const std::string& mapPath);
     void initBtns(BaseMode baseMode = BaseMode::CREATING); //初始化一切按钮
     // 初始化建筑预览（暂时屏蔽）
     void initBuildPreview();

@@ -183,7 +183,6 @@ void BaseTroop::updateMovement(float dt) {
         CCLOG("NOMOVE1");
         return;
     }
-
     // 如果路径为空，尝试重新计算路径
     if (_pathPoints.empty()) {
         // 复用setTargetWorldPosition中的路径计算逻辑

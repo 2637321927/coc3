@@ -856,7 +856,7 @@ bool Cannon::init(const Vec2& tilePos, float mapScale) {
 
 
     // µ÷ÊÔ£ºÏÔÊ¾¹¥»÷·¶Î§
-    showAttackRange(true);
+    showAttackRange(false);
 
     return true;
 }
@@ -910,8 +910,7 @@ bool ArrowTower::init(const Vec2& tilePos, float mapScale) {
 
 
 
-    // µ÷ÊÔ£ºÏÔÊ¾¹¥»÷·¶Î§
-    showAttackRange(true);
+    showAttackRange(false);
 
     return true;
 }

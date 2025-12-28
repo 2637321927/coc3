@@ -145,8 +145,8 @@ void VillageScene::onMouseDown(Event* event)
             // _troopPreview->setVisible(false);
         }
         else if (_Mode == Mode::MOVE && !_isAnyBuildSelected && _isLastMouseLeftButtonDown) {
-            Vec2 currentPos = Vec2(e->getCursorX(), e->getCursorY());
-            Vec2 tilePos = screenToIsoTile(currentPos);
+            Vec2 currentMousePos = Vec2(e->getCursorX(), e->getCursorY());
+            Vec2 tilePos = screenToIsoTile(currentMousePos);
             for (auto building : _buildings) {
                 std::vector<Vec2> tiles = building->getTilePositions();
                 auto it = std::find(tiles.begin(), tiles.end(), tilePos);
@@ -155,6 +155,8 @@ void VillageScene::onMouseDown(Event* event)
                     _movingBuilding = building;
                     _selectedBuildingType = building->getType();
                     _buildPreview->setTexture(building->getConfig().imgPath);
+                    Vec2 containerLocalPos = _mapContainer->convertToNodeSpaceAR(currentMousePos);
+                    _buildPreview->setPosition(containerLocalPos);
                     _buildPreview->setVisible(true);
                     building->setVisible(false);
                     _isAnyBuildSelected = true;
@@ -191,6 +193,12 @@ void VillageScene::onMouseDown(Event* event)
             }
             _Mode = Mode::NONE;
             _isContinuousPlace = false;//自动退出连续放置
+        }
+        if (_Mode == Mode::SPAWN_TROOP && _isTroopBarShow) {
+            if (_troopPreview) {
+                _troopPreview->setVisible(false);
+            }
+            _Mode = Mode::NONE;
         }
         _isLastMouseLeftButtonDown = false;
     }
@@ -373,42 +381,47 @@ Scene* VillageScene::createScene(BaseMode mode)
     }
     return scene;
 }
+bool VillageScene::loadMap(const std::string& mapPath) {
+    // 销毁旧地图（如果存在）
+    if (_tileMap) {
+        _tileMap->removeFromParentAndCleanup(true); // 彻底销毁旧地图
+        _tileMap = nullptr;
+        _bgLayer = nullptr;
+    }
+
+    // 加载新地图
+    _tileMap = TMXTiledMap::create(mapPath);
+    if (!_tileMap) { // 加载失败容错
+        CCLOG("地图加载失败：%s", mapPath.c_str());
+        return false;
+    }
+
+    // 重置地图相关参数（和原initMap逻辑一致）
+    _tileSize = _tileMap->getTileSize();
+    _mapSize = _tileMap->getMapSize();
+    _bgLayer = _tileMap->getLayer("bg_layer"); // 确保新地图也有bg_layer层
+
+    // 地图在容器内的锚点和位置（保持和原逻辑一致）
+    _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f));
+    _tileMap->setPosition(Vec2::ZERO);
+    _mapContainer->addChild(_tileMap, 0);
+
+    CCLOG("地图加载成功：%s", mapPath.c_str());
+    return true;
+}
+void VillageScene::initMapContainer() {
+    _mapContainer = Node::create();
+    this->addChild(_mapContainer, 0);
+
+    // 容器居中（原initMap中的居中逻辑）
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    _mapContainer->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+}
 // 加载等轴测地图
 void VillageScene::initMap()
 {
-    _tileMap = TMXTiledMap::create("map/map1.tmx");
-    // 关键：加到 _mapContainer，而不是 this
-    _mapContainer->addChild(_tileMap, 0);
-
-    _tileSize = _tileMap->getTileSize();
-    _mapSize = _tileMap->getMapSize();
-    _bgLayer = _tileMap->getLayer("bg_layer");
-
-    Size visibleSize = Director::getInstance()->getVisibleSize();
-
-    // 整个容器居中
-    _mapContainer->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
-    // 地图在容器内部居中（相对于容器原点）
-    _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f));
-    _tileMap->setPosition(Vec2::ZERO);
-    /*
-    // 加载地图文件
-    _tileMap = TMXTiledMap::create("map/map1.tmx");
-    this->addChild(_tileMap, 0);
-
-    // 记录地图参数
-    _tileSize = _tileMap->getTileSize();
-    _mapSize = _tileMap->getMapSize();
-
-    // 获取关键图层（与Tiled中命名对应）
-    _bgLayer = _tileMap->getLayer("bg_layer"); // 背景图层（有视觉纹理）
-    Size visibleSize = Director::getInstance()->getVisibleSize();
-    _tileMap->setAnchorPoint(Vec2(0.5f, 0.5f)); // 锚点居中（拖拽/缩放都依赖）
-    _tileMap->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));//初始位置居中
-    _tileMap->setScale(1.0f);
-    */
-    //TODO
-   // _pathLayer = _tileMap->getLayer("path_layer");
+    initMapContainer(); // 初始化容器
+    loadMap("map/map1.tmx"); // 加载默认地图
 }
 // 初始化按钮相关代码
 void VillageScene::initBtns(BaseMode baseMode) {
@@ -440,20 +453,21 @@ void VillageScene::initBtns(BaseMode baseMode) {
             });
     }
 
-
-    // 兵种模式开关按钮（在建筑按钮左侧）
-    _troopModeBtn = ui::Button::create(
-        "ui/troop_mode_btn_normal.png",  // 正常状态图片
-        "ui/troop_mode_btn_selected.png"// 按下状态图片
-    );
-    _uiLayer->addChild(_troopModeBtn, 200);
-    _troopModeBtn->setScale(0.8f);
-    _troopModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 220, origin.y + visibleSize.height - 100)); // 建筑按钮左侧
-    _troopModeBtn->addClickEventListener([this](Ref* sender) {
-        this->toggleTroopBar(); // 点击切换兵种栏
-        });
-    if (_baseMode == BaseMode::FIGHT) {
-        _troopModeBtn->setVisible(false);
+    if (_baseMode == BaseMode::CREATING || _baseMode == BaseMode::FIGHT) {
+        // 兵种模式开关按钮（在建筑按钮左侧）
+        _troopModeBtn = ui::Button::create(
+            "ui/troop_mode_btn_normal.png",  // 正常状态图片
+            "ui/troop_mode_btn_selected.png"// 按下状态图片
+        );
+        _uiLayer->addChild(_troopModeBtn, 200);
+        _troopModeBtn->setScale(0.8f);
+        _troopModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 220, origin.y + visibleSize.height - 100)); // 建筑按钮左侧
+        _troopModeBtn->addClickEventListener([this](Ref* sender) {
+            this->toggleTroopBar(); // 点击切换兵种栏
+            });
+        if (_baseMode == BaseMode::FIGHT) {
+            _troopModeBtn->setVisible(false);
+        }
     }
     // 创建建筑模式开关按钮（右上角悬浮）
     if (baseMode != BaseMode::FIGHT) {
@@ -1084,11 +1098,12 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
 }
 void VillageScene::moveBuilding(BaseBuilding* building, Vec2 tilePos) {
     auto config = building->getConfig();
-
+    building->clearTilePos();
     // 记录该建筑占用的所有瓦片
     for (int x = 0; x < config.tileWidth; ++x) {
         for (int y = 0; y < config.tileHeight; ++y) {
             addOccupiedTile(Vec2(tilePos.x + x, tilePos.y + y));
+            building->setTilePos(Vec2(tilePos.x + x, tilePos.y + y));
         }
     }
     // 计算建筑占用瓦片范围的中心点（瓦片坐标）
@@ -1697,6 +1712,8 @@ void VillageScene::toggleBuildBar() {
         else {
             _buildBarLayer->setVisible(true);
         }
+        this->hideTroopBar();
+        _isTroopBarShow = false;
         _isBuildBarShow = true;
     }
     else {
@@ -1863,6 +1880,8 @@ void VillageScene::toggleTroopBar() {
         else {
             troopBarLayer->setVisible(true);
         }
+        this->hideBuildBar();
+        _isBuildBarShow = false;
         _isTroopBarShow = true;
         // 初始化兵种预览（首次调用）
         if (!_troopPreview) {
@@ -1975,7 +1994,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     troop->setAnchorPoint(Vec2(0.5f, 0.5f));
     troop->setPosition(containerLocalPos);
     troop->setScale(1.0f); // 固定缩放
-    troop->setLocalZOrder(2000 - (tilePos.x + tilePos.y)); // 层级比建筑高
+    troop->setLocalZOrder(1500 - (tilePos.x + tilePos.y)); // 层级比建筑高
     _mapContainer->addChild(troop);
 
     // ===== 第六步：记录兵种 =====
@@ -1995,10 +2014,10 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     if (targetBuilding) {
         // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
        // CCLOG("troop is %s", troop ? "valid" : "null");
-        troop->setTargetWorldPosition(targetBuilding->getPosition());
+        troop->setTargetWorldPosition(targetBuilding->getTilePos());
         // CCLOG("YEoS!!!!!!!");
          //CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
-        targetBuilding->getPosition().x, targetBuilding->getPosition().y;
+        //targetBuilding->getPosition().x, targetBuilding->getPosition().y;
     }
     else {
         // CCLOG("未找到敌方建筑，兵种进入lazy状态");
