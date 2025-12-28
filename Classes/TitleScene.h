@@ -32,12 +32,13 @@ private:
     // 全局静态变量保存实例
     static TitleScene* _instance;
     // 按钮点击回调（预留不同模式入口）
-    void onStartGameClick(cocos2d::Ref* pSender);
-    void onLevelSelectClick(cocos2d::Ref* pSender);
-    void onSettingClick(cocos2d::Ref* pSender);
+    void onCreateGameClick(Ref* pSender);
+    void onLevelSelectClick(Ref* pSender);
+    void onNormalGameClick(Ref* pSender);
+    void onSettingClick(Ref* pSender);
     void onEnter();
     // 适配按钮点击区域（可选，优化触摸体验）
-    cocos2d::Rect getButtonRect(cocos2d::Sprite* btnSprite);
+    Rect getButtonRect(Sprite* btnSprite);
 };
 
 #endif // __TITLE_SCENE_H__

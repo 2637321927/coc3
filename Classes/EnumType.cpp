@@ -107,7 +107,7 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type,int level)
             "Ê¥Ë®ÊÕ¼¯Æ÷",           // name
             "building/elixir_collector.png", // imgPath
             500,                    // hp
-            3,                      // tileWidth
+            2,                      // tileWidth
             2,                      // tileHeight
             { {"gold", 600}, {"elixir", 250} }, // cost
             12.0f                   // buildTime

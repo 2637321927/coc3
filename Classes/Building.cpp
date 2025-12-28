@@ -54,7 +54,12 @@ bool BaseBuilding::init(const BuildingConfig& config, const Vec2& tilePos, float
 
     // 保存核心配置
     _config = config;
-    _tilePos = tilePos;
+    //_tilePos = tilePos;
+	for (int x = 0;x < config.tileWidth;x++) {
+		for (int y = 0;y < config.tileHeight;y++) {
+			_tilePos.push_back(Vec2(tilePos.x + x, tilePos.y + y));
+		}
+	}
     _mapScale = mapScale;
 	_currentHp = config.hp; // 初始化当前血量为满值
 	CCLOG("tile.x: %f, tile.y: %f", tilePos.x, tilePos.y);
@@ -206,6 +211,7 @@ void BaseBuilding::startBuild() {
 // 通用：完成建造
 void BaseBuilding::finishBuild() {
     setState(BuildingState::IDLE);
+	doSpecialAction(); // 执行特有行为
     _progressBar->setVisible(false);
 	//依赖于帧更新执行本职工作的建筑不停止帧更新
     if(_config.type!=BuildingType::TRAINING_CAMP&& _config.type != BuildingType::CANNON&&_config.type != BuildingType::ARROW_TOWER)
@@ -273,6 +279,7 @@ void BaseBuilding::update(float dt) {
     if (_state != BuildingState::BUILDING && _state != BuildingState::UPGRADING) return;
     _progressTimer += dt;
     float progress = _progressTimer / _config.buildTime;
+    //TODO:升级要有升级时间
     progress = clampf(progress, 0.0f, 1.0f);
     _progressBar->setPercentage(progress * 100);
     if (_immediatelyBuild) {
@@ -439,7 +446,6 @@ TownHall* TownHall::create(const Vec2& tilePos, float mapScale) {
 
 bool TownHall::init(const Vec2& tilePos, float mapScale) {
 	BuildingConfig config = getBuildingConfigByType(BuildingType::TOWN_HALL);
-
     if(!BaseBuilding::init(config, tilePos, mapScale)) return false;
 
     return true;
@@ -796,10 +802,10 @@ Cannon* Cannon::create(const Vec2& tilePos, float mapScale) {
 
 // 初始化
 bool Cannon::init(const Vec2& tilePos, float mapScale) {
-    // 1. 初始化建筑基础属性（和训练营一致）
+    // 初始化建筑基础属性（和训练营一致）
     BuildingConfig config = getBuildingConfigByType(BuildingType::CANNON);
     if (!BaseBuilding::init(config, tilePos, mapScale)) return false;
-    // 2. 初始化攻击属性（复用 BaseAttackBuilding 的接口）
+    // 初始化攻击属性（复用 BaseAttackBuilding 的接口）
     float range = 100 ;
     float damage = 100;
     float cooldown = 2.0f ;
