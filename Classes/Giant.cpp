@@ -65,7 +65,7 @@ bool GiantTroop::init(const TroopConfig& config, const Vec2& spawnPos, float map
  * 播放缓慢放大（蓄力）、闪黄、震动动画，模拟重拳攻击效果.
  */
 void GiantTroop::doSpecialAttack() {
-    if (_attackTarget == nullptr) return;
+    //if (_attackTarget == nullptr) return;
 
     // 1. 攻击动作1：缓慢放大（体现巨人笨重的攻击节奏）
     auto scaleUp = ScaleTo::create(0.2f, _mapScale * 1.8f); // 放大到1.8倍

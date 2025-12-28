@@ -63,7 +63,7 @@ bool ArcherTroop::init(const TroopConfig& config, const Vec2& spawnPos, float ma
  * 创建箭矢精灵，播放从当前位置飞向目标的动画.
  */
 void ArcherTroop::doSpecialAttack() {
-    if (_attackTarget == nullptr) return;
+    //if (_attackTarget == nullptr) return;
 
     // 1. 播放射箭动画
     auto arrow = Sprite::create("troops/arrow.png");
