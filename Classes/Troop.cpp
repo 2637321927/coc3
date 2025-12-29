@@ -338,37 +338,43 @@ void BaseTroop::update(float dt) {
 
 // [Troop.cpp]
 
+// [Troop.cpp]
+
 void BaseTroop::findNewTarget() {
     if (!_villageScene) return;
 
+    // 获取当前兵种位置
     Vec2 myPos = this->getPosition();
 
-    // 1. 【新增】确定要忽略的建筑类型
+    // 1. 【核心逻辑】定义要忽略的类型
     BuildingType ignoreType = BuildingType::UNKNOWN;
 
-    // 如果是弓箭手，设置忽略围墙
+    // 如果是弓箭手，我们要忽略围墙
     if (_config.type == TroopType::ARCHER) {
         ignoreType = BuildingType::WALL;
     }
 
-    // 还可以扩展：比如巨人(GIANT)优先攻击防御建筑，这里可以写更复杂的逻辑
-    // 但目前只处理弓箭手不打墙
+    // 也可以扩展：巨人优先打防御塔
+    // if (_config.type == TroopType::GIANT) { ... }
 
-    // 2. 第一次搜索：尝试寻找非围墙的目标
+    // 2. 第一轮搜索：尝试寻找“非忽略类型”的最近建筑
+    // 对于弓箭手来说，这一步会跳过所有围墙，直接锁里面最近的建筑
     BaseBuilding* newTarget = _villageScene->findNearestEnemyBuilding(myPos, ignoreType);
 
-    // 3. 【兜底逻辑】如果没找到（比如全图只剩下围墙了），且我们确实设置了忽略
-    // 那么必须重新搜一次，这次不忽略围墙，否则弓箭手会发呆导致游戏无法结束
+    // 3. 【兜底逻辑】如果没找到目标，但我们确实设置了忽略类型
+    // 说明场上只剩下围墙了（其他建筑都被拆光了）
+    // 这时候必须重新搜一次，不再忽略围墙，否则弓箭手会发呆
     if (!newTarget && ignoreType != BuildingType::UNKNOWN) {
         newTarget = _villageScene->findNearestEnemyBuilding(myPos, BuildingType::UNKNOWN);
     }
 
-    // 4. 设置目标
+    // 4. 设置最终目标
     if (newTarget) {
-        setAttackTarget(newTarget);
+        setAttackTarget(newTarget,ignoreType);
     }
     else {
-        setAttackTarget(nullptr);
+        // 全图都空了
+        setAttackTarget(nullptr, ignoreType);
         setState(TroopState::IDLE);
     }
 }
@@ -408,8 +414,18 @@ void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
 
 }
 
-void BaseTroop::setAttackTarget(BaseBuilding* target) {
+void BaseTroop::setAttackTarget(BaseBuilding* target, BuildingType ignoretype) {
     // 1. 如果目标没变，直接返回
+    if (_attackTarget->getConfig().type == ignoretype) {
+        CC_SAFE_RELEASE(_attackTarget);
+
+        // 3. 设置新目标
+        _attackTarget = target;
+
+        // 4. 持有新目标（引用计数+1）
+        // 关键：这保证了只要 _attackTarget 不为空，由于兵种“抓”着它，它绝不会在别处被彻底删除
+        CC_SAFE_RETAIN(_attackTarget);
+    }
     if (_attackTarget == target) return;
 
     // 2. 释放旧目标（如果存在，引用计数-1）

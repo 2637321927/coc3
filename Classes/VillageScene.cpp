@@ -2010,6 +2010,10 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     troop->setScale(1.0f); // 固定缩放
     troop->setLocalZOrder(1500 - (tilePos.x + tilePos.y)); // 层级比建筑高
     _mapContainer->addChild(troop);
+    BuildingType ignoreType = BuildingType::UNKNOWN;
+
+
+
 
     // ===== 第六步：记录兵种 =====
     _spawnedTroops.push_back(troop);
@@ -2027,10 +2031,17 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
 
     if (targetBuilding) {
+        BuildingType ignoreType = BuildingType::UNKNOWN;
+
+        // 如果是弓箭手，初始索敌时忽略围墙
+        if (type == TroopType::ARCHER) {
+            ignoreType = BuildingType::WALL;
+        }
+
         // 【修改】使用新接口 setAttackTarget
         // 这个函数内部会自动调用 setTargetTilePosition 进行寻路
         // 并且会把 _attackTarget 指针赋值给兵种
-        troop->setAttackTarget(targetBuilding);
+        troop->setAttackTarget(targetBuilding,ignoreType);
 
         CCLOG("生成兵种，锁定目标: %s (%.0f, %.0f)",
             targetBuilding->getConfig().name.c_str(),
@@ -3033,22 +3044,21 @@ void VillageScene::destroyScene() {
     }
 }
 
-// 【修改】实现查找最近敌方建筑（支持忽略特定类型）
+// 【修改】支持忽略特定类型的搜索逻辑
 BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType) {
     BaseBuilding* nearestBuilding = nullptr;
-    float minDistance = FLT_MAX;
+    float minDistance = FLT_MAX; // 初始化为无穷大
 
-    // 遍历所有建筑
     for (auto& building : _buildings) {
-        // 1. 基础判空和死亡检查
+        // 1. 基础检查：指针为空或已经被销毁，跳过
         if (!building || building->getState() == BuildingState::DESTROYED) continue;
 
-        // 2. 【新增】如果是需要忽略的类型（比如弓箭手忽略围墙），直接跳过
+        // 2. 【核心修改】如果是我们想忽略的类型（比如围墙），直接跳过！
         if (building->getType() == ignoreType) {
             continue;
         }
 
-        // 3. 计算距离
+        // 3. 寻找距离最近的
         float distance = troopPos.distance(building->getPosition());
         if (distance < minDistance) {
             minDistance = distance;
