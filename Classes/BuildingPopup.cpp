@@ -164,7 +164,7 @@ void BuildingPopup::createButtons() {
     else if (_targetBuilding->getType() == BuildingType::TRAINING_CAMP) {
         // 训练营按钮（4个，居中）
         // TODO: 加入预览当前部队按钮
-        if (_targetBuilding->getState() == BuildingState::IDLE) {
+        if (_targetBuilding->getState() == BuildingState::IDLE|| _targetBuilding->getState() == BuildingState::TRAINING) {
             createButton("ui/btn_info.png", ButtonType::INFO, Vec2(startX, startY));
             createButton("ui/btn_upgrade.png", ButtonType::UPGRADE, Vec2(startX + btnWidth + spacing, startY));
             createButton("ui/btn_train.png", ButtonType::TRAINING, Vec2(startX + 2 * (btnWidth + spacing), startY));

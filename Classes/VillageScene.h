@@ -272,10 +272,12 @@ public:
     void VillageScene::showText(std::string string, Vec2 pos = Vec2(1000, 1000), float duringTime = 2.0f);
     void setGold(int gold);
     void setElixir(int elixir);
+    void setPopulation(int amount);
     bool addGold(int amount);
     bool spendGold(int amount);
     bool addElixir(int amount);
     bool spendElixir(int amount);
+
     void showResourceShortageTip(const std::string& message);
     void addGoldStorageCapacity(int bonus);
     void addElixirStorageCapacity(int bonus);
@@ -374,6 +376,7 @@ private:
     bool _isTroopBarShow = false;// 兵种栏是否显示
     Sprite* _troopPreview;               // 兵种放置预览图
     TroopType _selectedTroopType = TroopType::UNKNOWN; // 选中的兵种类型
+    std::unordered_map<TroopType, int> _trainedTroops;//当前已经训练的兵种和数量
     std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期，不一定是敌军）
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
     std::vector<BaseTroop*> _enemyTroops; // 敌方兵种列表(预留，用于战斗模式)
@@ -389,8 +392,10 @@ private:
     int _builder;    //建造者数量
     cocos2d::Label* _goldLabel;      // 金币显示标签
     cocos2d::Label* _elixirLabel;    // 圣水显示标签
+    cocos2d::Label* _populationLabel;
     cocos2d::Sprite* _goldIcon;      // 金币图标
     cocos2d::Sprite* _elixirIcon;    // 圣水图标
+    cocos2d::Sprite* _populationIcon;
     // -------------------------- 方法声明 --------------------------
     // 滚轮回调函数
     // 事件回调（新增鼠标按下/移动/松开）
@@ -488,6 +493,7 @@ private:
     void refreshPopupTrainInfo();
     // 弹窗内的倒计时刷新调度（仅在弹窗打开时运行）
     void updatePopupTimer(float dt);
+    void onTroopTrainFinished(TroopType type);
     // 刷新队列UI
     void refreshTrainQueueUI();
     // 更新队列倒计时
