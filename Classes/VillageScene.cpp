@@ -2914,7 +2914,7 @@ void VillageScene::beginFight() {
     _totalTime = 150.0f; // 2分30秒 = 150秒
     _remainingTime = _totalTime;
     this->schedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown), 0.1f);
-    _fightStartBtn->setVisible(false);
+    //_fightStartBtn->setVisible(false);
     initStarRatingUI();
 }
 void VillageScene::updateCountDown(float dt)
@@ -2951,20 +2951,19 @@ void VillageScene::initStarRatingUI() {
     _destroyedBuildingCount = 0;
     destroyPercent = 0.0f;
     currentStars = 0;
-    _starTargetPos = Vec2(origin.x + visibleSize.width - 150,
-        origin.y + visibleSize.height - 150); // 星级最终位置
+    _starTargetPos = Vec2(origin.x + 150, origin.y + visibleSize.height - 50); // 星级最终位置
 
     // 1. 创建百分比显示标签
     percentLabel = Label::createWithTTF("0%", "fonts/Marker Felt.ttf", 32);
-    percentLabel->setPosition(_starTargetPos.x - 80, _starTargetPos.y + 40);
+    percentLabel->setPosition(_starTargetPos.x +150, _starTargetPos.y -100);
     percentLabel->setColor(Color3B::YELLOW);
     _uiLayer->addChild(percentLabel, 201);
 
     // 2. 创建3颗星星（初始为灰色未激活状态）
     for (int i = 0; i < 3; i++) {
         Sprite* star = Sprite::create("ui/star_grey.png"); // 灰色星星资源
-        star->setScale(0.8f);
-        star->setPosition(0, 0);
+        star->setScale(0.5f);
+        star->setPosition(_starTargetPos.x+100*i, _starTargetPos.y);
         star->setVisible(true);
         _uiLayer->addChild(star, 201);
         starSprites.pushBack(star);
@@ -2982,7 +2981,9 @@ void VillageScene::updateDestroyPercent() {
     // 计算百分比（防止超过100%）
     destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
     // 更新标签显示
-    percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));
+    if (percentLabel) {
+        percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));
+    }
 }
 
 // 检查星级解锁逻辑
@@ -3018,9 +3019,9 @@ void VillageScene::flyStarToTarget(int starIndex) {
 
     // 组合动画：淡入+缩放+移动
     auto fadeIn = FadeIn::create(0.2f);
-    auto scaleTo = ScaleTo::create(0.8f, 0.8f); // 缩放到目标大小
-    auto moveTo = MoveTo::create(0.8f,
-        Vec2(_starTargetPos.x + (starIndex * 50), _starTargetPos.y));
+    auto scaleTo = ScaleTo::create(0.5f, 0.5f); // 缩放到目标大小
+    auto moveTo = MoveTo::create(0.5f,
+        Vec2(_starTargetPos.x + (starIndex * 100), _starTargetPos.y));
     auto easeMove = EaseBackOut::create(moveTo); // 缓动效果更自然
 
     // 并行执行动画
