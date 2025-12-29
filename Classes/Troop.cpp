@@ -351,12 +351,9 @@ void BaseTroop::findNewTarget() {
     // ==================== 第一阶段：优先目标搜索 (偏好特定类型的兵种) ====================
 
     // 1. 【巨人逻辑】优先寻找防御建筑
-    if (_config.type == TroopType::GIANT) {
-        std::vector<BuildingType> defenseTypes = { BuildingType::CANNON, BuildingType::ARROW_TOWER };
-        newTarget = _villageScene->findNearestBuildingByTypes(myPos, defenseTypes);
-    }
+
     // 2. 【炸弹人逻辑】优先寻找城墙
-    else if (_config.type == TroopType::BOMBER) {
+    if (_config.type == TroopType::BOMBER) {
         std::vector<BuildingType> wallTypes = { BuildingType::WALL };
         newTarget = _villageScene->findNearestBuildingByTypes(myPos, wallTypes);
     }
@@ -378,9 +375,7 @@ void BaseTroop::findNewTarget() {
         }
         // B. 【巨人逻辑 (无防御塔时)】
         // 如果防御塔都被拆光了，巨人转为普通攻击模式，但也应该忽略围墙（除非只剩围墙）
-        else if (_config.type == TroopType::GIANT) {
-            ignoreType = BuildingType::WALL;
-        }
+
         // C. 【炸弹人逻辑 (无墙时)】
         // 如果全图没墙了，炸弹人就打普通建筑，不忽略任何东西
         else if (_config.type == TroopType::BOMBER) {

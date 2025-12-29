@@ -2017,8 +2017,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
 
     // ===== 第六步：记录兵种数据 =====
     _spawnedTroops.push_back(troop);
-
-    if (_Mode == Mode::FIGHT) {
+    if (_Mode == Mode::FIGHT || _Mode == Mode::SPAWN_TROOP) {
         _enemyTroops.push_back(troop);
     }
 
@@ -2027,14 +2026,9 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     BaseBuilding* targetBuilding = nullptr;
 
     // 1. 【巨人逻辑】优先攻击防御建筑 (加农炮、箭塔)
-    if (type == TroopType::GIANT) {
-        // 定义防御建筑列表
-        std::vector<BuildingType> defenseTypes = { BuildingType::CANNON, BuildingType::ARROW_TOWER };
-        // 尝试寻找最近的防御建筑
-        targetBuilding = findNearestBuildingByTypes(containerLocalPos, defenseTypes);
-    }
+
     // 2. 【炸弹人逻辑】优先攻击城墙
-    else if (type == TroopType::BOMBER) {
+   if (type == TroopType::BOMBER) {
         std::vector<BuildingType> wallType = { BuildingType::WALL };
         targetBuilding = findNearestBuildingByTypes(containerLocalPos, wallType);
     }
@@ -2048,10 +2042,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
         if (type == TroopType::ARCHER) {
             ignoreType = BuildingType::WALL;
         }
-        // 巨人如果没有防御塔可打，也应该忽略围墙去打普通建筑（防止盯着墙发呆）
-        else if (type == TroopType::GIANT) {
-            ignoreType = BuildingType::WALL;
-        }
+
 
         // 搜索最近的普通目标
         targetBuilding = findNearestEnemyBuilding(containerLocalPos, ignoreType);
@@ -3070,7 +3061,7 @@ void VillageScene::initStarRatingUI() {
 void VillageScene::updateDestroyPercent() {
     // 计算百分比（防止超过100%）
     destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
-    if (destroyPercent = 100) {
+    if (destroyPercent == 100) {
         this->unschedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown));
         // 触发战斗结算
         this->onFightSettle();
