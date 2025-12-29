@@ -194,7 +194,7 @@ void BaseBuilding::initCommonUI() {
     _progressBar->setVisible(false);
     this->addChild(_progressBar, 1);
 
-    // 2. 等级标签
+    // 等级标签
     _levelLabel = Label::createWithTTF("Lv" + std::to_string(_currentLevel), "fonts/Marker Felt.ttf", 16);
     if (_levelLabel) {
         // 标签位置：建筑右上角（基于精灵尺寸）

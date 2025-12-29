@@ -60,6 +60,14 @@ private:
      * @param pos 按钮在弹窗中的位置.
      */
     void createButton(const std::string& imgPath, ButtonType type, const Vec2& pos);
-};
 
+
+    void createInfoPanel();
+    void updateInfoText();
+    Label* _hpLabel = nullptr;
+    Label* _upgradeCostLabel = nullptr;
+    Label* _specialAttrLabel1 = nullptr;
+    Label* _specialAttrLabel2 = nullptr;
+    Label* _specialAttrLabel3 = nullptr;
+};
 #endif // __BUILDING_POPUP_H__

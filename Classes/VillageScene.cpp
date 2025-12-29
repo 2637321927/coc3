@@ -975,9 +975,37 @@ void VillageScene::createBuildBar() {
         "ui/cancel_place_btn.png",
         "ui/cancel_place_btn_selected.png",
         [this](Ref* sender) {
-            _isContinuousPlace = !_isContinuousPlace; // 切换状态
+            _isContinuousPlace = !_isContinuousPlace; 
         }
     );
+     auto createSplitCostLabels = [](MenuItemImage* btn, int goldCost, int elixirCost) {
+         if (!btn) return; 
+         Size btnSize = btn->getContentSize();
+         float offsetY = 20.0f; 
+         std::string goldText = StringUtils::format("gold: %d", goldCost);
+         Label* goldLabel = Label::createWithSystemFont(goldText, "Marker Felt.ttf", 16);
+         goldLabel->setColor(Color3B::YELLOW); 
+         goldLabel->enableOutline(Color4B::BLACK, 1); 
+         goldLabel->setPosition(Vec2(btnSize.width / 2, btnSize.height + offsetY*2));
+         btn->addChild(goldLabel); 
+
+         std::string elixirText = StringUtils::format("elixir: %d", elixirCost);
+         Label* elixirLabel = Label::createWithSystemFont(elixirText, "Marker Felt.ttf", 16);
+         elixirLabel->setColor(Color3B::MAGENTA); 
+         elixirLabel->enableOutline(Color4B::BLACK, 1); 
+         elixirLabel->setPosition(Vec2(btnSize.width / 2, btnSize.height + offsetY));
+         btn->addChild(elixirLabel); 
+         };
+     createSplitCostLabels(_goldMineBtn, getBuildingConfigByType(BuildingType::GOLD_MINE).cost.find("gold")->second, getBuildingConfigByType(BuildingType::GOLD_MINE).cost.find("elixir")->second);
+     createSplitCostLabels(_elixirCollectorBtn, getBuildingConfigByType(BuildingType::ELIXIR_COLLECTOR).cost.find("gold")->second, getBuildingConfigByType(BuildingType::ELIXIR_COLLECTOR).cost.find("elixir")->second);
+     createSplitCostLabels(_barracksBtn, getBuildingConfigByType(BuildingType::BARRACKS).cost.find("gold")->second, getBuildingConfigByType(BuildingType::BARRACKS).cost.find("elixir")->second);
+     createSplitCostLabels(_trainingCampBtn, getBuildingConfigByType(BuildingType::TRAINING_CAMP).cost.find("gold")->second, getBuildingConfigByType(BuildingType::TRAINING_CAMP).cost.find("elixir")->second);
+     createSplitCostLabels(_arrowTowerBtn, getBuildingConfigByType(BuildingType::ARROW_TOWER).cost.find("gold")->second, getBuildingConfigByType(BuildingType::ARROW_TOWER).cost.find("elixir")->second);
+     createSplitCostLabels(_cannonBtn, getBuildingConfigByType(BuildingType::CANNON).cost.find("gold")->second, getBuildingConfigByType(BuildingType::CANNON).cost.find("elixir")->second);
+     createSplitCostLabels(_wallBtn, getBuildingConfigByType(BuildingType::WALL).cost.find("gold")->second, getBuildingConfigByType(BuildingType::WALL).cost.find("elixir")->second);
+     createSplitCostLabels(_elixirBottleBtn, getBuildingConfigByType(BuildingType::ELIXIR_BOTTLE).cost.find("gold")->second, getBuildingConfigByType(BuildingType::ELIXIR_BOTTLE).cost.find("elixir")->second);
+     createSplitCostLabels(_vaultBtn, getBuildingConfigByType(BuildingType::VAULT).cost.find("gold")->second, getBuildingConfigByType(BuildingType::VAULT).cost.find("elixir")->second);
+
     // 排列按钮
     auto menu = Menu::create(_townHallBtn, _goldMineBtn, _elixirCollectorBtn, _barracksBtn, _trainingCampBtn, _cannonBtn, _arrowTowerBtn, _wallBtn, _elixirBottleBtn, _vaultBtn, _cancelPlaceBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
@@ -987,6 +1015,7 @@ void VillageScene::createBuildBar() {
         checkCanGetBuilding();
     }
 }
+
 void VillageScene::checkCanGetBuilding() {
     if (!_townHall) {
          _goldMineBtn->setColor(Color3B::GRAY);
@@ -1024,13 +1053,7 @@ void VillageScene::hideBuildBar() {
 void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup::ButtonType type) {
     switch (type) {
     case BuildingPopup::ButtonType::INFO:
-        // 显示建筑信息（示例：打印日志/弹出信息框）
-        /*log("建筑信息：类型=%d，等级=%d，血量=%d，位置=(%f,%f)",
-            (int)building->getType(),
-            building->_currentLevel,
-            building->getConfig().hp,
-            building->getTilePos().x,
-            building->getTilePos().y);*/
+        createInfoPanel(building);
         break;
 
     case BuildingPopup::ButtonType::UPGRADE:
@@ -2051,14 +2074,9 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     BaseBuilding* targetBuilding = nullptr;
 
     // 1. 【巨人逻辑】优先攻击防御建筑 (加农炮、箭塔)
-    if (type == TroopType::GIANT) {
-        // 定义防御建筑列表
-        std::vector<BuildingType> defenseTypes = { BuildingType::CANNON, BuildingType::ARROW_TOWER };
-        // 尝试寻找最近的防御建筑
-        targetBuilding = findNearestBuildingByTypes(containerLocalPos, defenseTypes);
-    }
+
     // 2. 【炸弹人逻辑】优先攻击城墙
-    else if (type == TroopType::BOMBER) {
+   if (type == TroopType::BOMBER) {
         std::vector<BuildingType> wallType = { BuildingType::WALL };
         targetBuilding = findNearestBuildingByTypes(containerLocalPos, wallType);
     }
@@ -2072,10 +2090,7 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
         if (type == TroopType::ARCHER) {
             ignoreType = BuildingType::WALL;
         }
-        // 巨人如果没有防御塔可打，也应该忽略围墙去打普通建筑（防止盯着墙发呆）
-        else if (type == TroopType::GIANT) {
-            ignoreType = BuildingType::WALL;
-        }
+
 
         // 搜索最近的普通目标
         targetBuilding = findNearestEnemyBuilding(containerLocalPos, ignoreType);
@@ -3356,14 +3371,99 @@ void VillageScene::updateCountDown(float dt)
     // 格式化字符串（补0，如显示 02:30、00:05）
     _countDownLabel->setString(StringUtils::format("%02d:%02d", minutes, seconds));
 }
+
+
+void VillageScene::showFightSettlePopup()
+{
+    // 1. 创建弹窗根节点（用于承载所有弹窗元素，方便统一管理）
+    LayerColor* popupRoot = LayerColor::create(Color4B(0, 0, 0, 180)); // 半透明黑色背景遮罩
+    popupRoot->setName("FightSettlePopup");
+    popupRoot->setContentSize(Director::getInstance()->getVisibleSize());
+    // 开启触摸吞噬，防止点击弹窗穿透到下层界面
+    auto touchListener = EventListenerTouchOneByOne::create();
+    touchListener->setSwallowTouches(true);
+    touchListener->onTouchBegan = [](Touch* touch, Event* event) { return true; };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(touchListener, popupRoot);
+    _uiLayer->addChild(popupRoot, 1000); // 设为最高层级，确保弹窗在最上层
+
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    Vec2 origin = Director::getInstance()->getVisibleOrigin();
+    Vec2 popupCenter = Vec2(origin.x + visibleSize.width / 2, origin.y + visibleSize.height / 2);
+
+    // 2. 创建弹窗背景（可替换为自定义弹窗背景图片）
+    Sprite* popupBg = Sprite::create("ui/menu_bg.png"); // 自定义弹窗背景资源
+    if (!popupBg) {
+        // 备用：若没有图片资源，创建纯色背景
+        popupBg = Sprite::create();
+        popupBg->setTextureRect(Rect(0, 0, 500, 600));
+        popupBg->setColor(Color3B(50, 50, 80));
+        popupBg->setOpacity(255);
+    }
+    popupBg->setPosition(popupCenter);
+    popupBg->setScale(1.0f);
+    popupRoot->addChild(popupBg);
+    int starShowCount = currentStars; // 从现有逻辑获取已解锁星级
+    float starStartX = popupBg->getContentSize().width/2  - 180; // 星级居中排列
+    float starY = popupBg->getContentSize().height-starShowCount * 180; // 星级在胜负图片下方
+    if (destroyPercent >= 50.0f) starShowCount = 1;
+    if (destroyPercent >= 80.0f) starShowCount = 2;
+    if (destroyPercent >= 100.0f) starShowCount = 3;
+
+    for (int i = 0; i < 3; i++) { // 固定显示3颗星（已解锁显示黄色，未解锁显示灰色）
+        Sprite* starSprite = nullptr;
+        if (i <starShowCount) {
+            starSprite = Sprite::create("ui/star_yellow.png"); // 已解锁黄色星星
+        }
+        else {
+            starSprite = Sprite::create("ui/star_grey.png");   // 未解锁灰色星星
+        }
+        if (starSprite) {
+            starSprite->setScale(0.6f);
+            Vec2 starPos = Vec2(starStartX + i * 180, starY );
+            starSprite->setPosition(starPos);
+            popupBg->addChild(starSprite);
+        }
+    }
+
+    // 显示摧毁百分比文字标签
+    Label* percentDisplayLabel = Label::createWithTTF(StringUtils::format("%.1f%%", destroyPercent),
+        "fonts/Marker Felt.ttf", 32);
+    if (percentDisplayLabel) {
+        percentDisplayLabel->setColor(Color3B::YELLOW);
+        percentDisplayLabel->setPosition(Vec2(popupBg->getContentSize().width / 2, popupBg->getContentSize().height - 260));
+        popupBg->addChild(percentDisplayLabel);
+    }
+
+
+    Sprite* btnNormal = Sprite::create("ui/btn_destroy.png");
+    Sprite* btnPressed = Sprite::create("ui/btn_destroy.png");
+    if (!btnPressed) {
+        btnPressed = Sprite::create();
+        btnPressed->setTextureRect(btnNormal->getTextureRect());
+        btnPressed->setColor(Color3B(180, 180, 180)); // 按下时变暗
+    }
+
+    MenuItemSprite* backBtn = MenuItemSprite::create(btnNormal, btnPressed,
+        CC_CALLBACK_0(VillageScene::backfromFight, this)); // 绑定返回函数
+
+    backBtn->setScale(0.9f);
+    // 按钮放置在弹窗下方居中位置
+    Vec2 btnPos = Vec2(popupBg->getContentSize().width / 2, 80);
+    backBtn->setPosition(btnPos);
+
+    // 创建菜单并添加按钮
+    Menu* menu = Menu::create(backBtn, nullptr);
+    menu->setPosition(Vec2::ZERO); // 菜单位置相对弹窗背景，设为原点
+    popupBg->addChild(menu);
+    popupBg->setScale(0.8f);
+    popupBg->setOpacity(0);
+    auto scaleTo = ScaleTo::create(0.3f, 1.0f);
+    auto fadeIn = FadeIn::create(0.3f);
+    auto ease = EaseBackOut::create(scaleTo);
+    popupBg->runAction(Spawn::create(ease, fadeIn, nullptr));
+}
 void VillageScene::onFightSettle() {
-    if (destroyPercent = 100) {
-
-    }
-    else {
-
-    }
-    //backfromFight();
+    showFightSettlePopup();
 }
 void VillageScene::initStarRatingUI() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
@@ -3481,7 +3581,6 @@ void VillageScene::destroyScene() {
     }
 }
 
-// 【修改】实现查找最近敌方建筑（支持忽略特定类型）
 
 
 void VillageScene::onExit() {
@@ -3529,8 +3628,6 @@ void VillageScene::update(float dt)
 
 
 
-
-// [VillageScene.cpp]
 
 // 初始化升级栏
 void VillageScene::createUpgradeBar() {
@@ -3723,4 +3820,136 @@ void VillageScene::init_troop_upgrade_ModeBtn() {
     auto menu = Menu::create(troop_upgrade_ModeBtn, nullptr);
     menu->setPosition(Vec2::ZERO);
     this->addChild(menu, 100);
+}
+
+
+void VillageScene::createInfoPanel(BaseBuilding* targetBuilding) {
+    auto maskLayer = LayerColor::create(Color4B(0, 0, 0, 180));
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+    maskLayer->setContentSize(visibleSize);
+    Size maskSize = maskLayer->getContentSize();
+    maskLayer->setPosition(Vec2::ZERO);
+    this->addChild(maskLayer, 1000); // 最高层级确保不被遮挡
+
+    // 创建弹窗背景（图片）
+    auto popupBg = Sprite::create("ui/build_bar_bg.png");
+    popupBg->setContentSize(Size(500, 300));
+    if (!popupBg) { // 图片不存在时，创建纯色备用背景
+        popupBg = Sprite::create();
+        auto colorBg = LayerColor::create(Color4B(255, 255, 255, 255), 500, 300);
+        colorBg->setPosition(Vec2::ZERO);
+        popupBg->addChild(colorBg);
+        popupBg->setContentSize(Size(500, 300));
+    }
+    // 弹窗居中显示
+    popupBg->setPosition(maskSize.width / 2, maskSize.height / 2);
+    maskLayer->addChild(popupBg, 1);
+    auto closeBtn = MenuItemImage::create(
+        "ui/btn_destroy.png",
+        "ui/btn_destroy.png",
+        [maskLayer](Ref* sender) { maskLayer->removeFromParent(); }
+    );
+    closeBtn->setPosition(popupBg->getContentSize().width - 30, popupBg->getContentSize().height - 30); // 右上角
+    auto menu = Menu::create(closeBtn, nullptr); // Menu是按钮容器
+    menu->setPosition(Vec2::ZERO); // Menu位置归零（按钮位置基于popupBg）
+    popupBg->addChild(menu, 2); // 按钮加到弹窗背景
+
+
+    Vec2 panelPos = Vec2(visibleSize.width / 2, visibleSize.height / 2 - 50);
+    auto hpLabel = Label::createWithSystemFont("", "Arial", 24);
+    hpLabel->setPosition(250,250);
+    hpLabel->setColor(Color3B::RED);
+    popupBg->addChild(hpLabel, 1000);
+    // 升级消耗Label
+    auto upgradeCostLabel = Label::createWithSystemFont("", "Arial", 24);
+    upgradeCostLabel->setPosition(250, 200);
+    upgradeCostLabel->setColor(Color3B::GREEN);
+    popupBg->addChild(upgradeCostLabel, 1000);
+
+    // 专属属性Label1
+    auto specialAttrLabel1 = Label::createWithSystemFont("", "Arial", 24);
+    specialAttrLabel1->setPosition(250,150);
+    specialAttrLabel1->setColor(Color3B::YELLOW);
+    popupBg->addChild(specialAttrLabel1, 1000);
+
+    //专属属性Label2
+    auto specialAttrLabel2 = Label::createWithSystemFont("", "Arial", 24);
+    specialAttrLabel2->setPosition(250,100);
+    specialAttrLabel2->setColor(Color3B::BLACK);
+    popupBg->addChild(specialAttrLabel2, 1000);
+
+    auto specialAttrLabel3 = Label::createWithSystemFont("", "Arial", 24);
+    specialAttrLabel3->setPosition(250,50);
+    specialAttrLabel3->setColor(Color3B::WHITE);
+    popupBg->addChild(specialAttrLabel3, 1000);
+    if (!targetBuilding) return;
+
+
+    int currentHp = targetBuilding->getCurrentHp();
+    int maxHp = targetBuilding->getConfig().hp;
+    hpLabel->setString(StringUtils::format("hp: %.0d/%.0d", currentHp, maxHp));
+
+
+    int upgradeLevel = targetBuilding->getLevel() + 1;
+    int upgradeGoldCost = getBuildingConfigByType(targetBuilding->getConfig().type, upgradeLevel).cost.find("gold")->second;
+    int upgradeElixirCost = getBuildingConfigByType(targetBuilding->getConfig().type, upgradeLevel).cost.find("elixir")->second;
+    upgradeCostLabel->setString(StringUtils::format("upgrade cost: gold%d elixir%d",
+        upgradeGoldCost, upgradeElixirCost));
+
+
+    BuildingType type = targetBuilding->getConfig().type;
+    switch (type) {
+    case BuildingType::BARRACKS: { // 兵营显示容量
+        int capacity = dynamic_cast<Barracks*>(targetBuilding)->getTroopSpace();
+        specialAttrLabel1->setString(StringUtils::format("population capacity: %d", capacity));
+        specialAttrLabel2->setString("");
+        specialAttrLabel3->setString("");
+        break;
+    }
+    case BuildingType::ARROW_TOWER: // 攻击类显示攻击力/范围/间隔
+    case BuildingType::CANNON: {
+        float attack = dynamic_cast<BaseAttackBuilding*>(targetBuilding)->getAttackDamage();
+        float attackRange = dynamic_cast<BaseAttackBuilding*>(targetBuilding)->getAttackRange();
+        float attackInterval = dynamic_cast<BaseAttackBuilding*>(targetBuilding)->getAttackCooldown();
+        specialAttrLabel1->setString(StringUtils::format("AttackDamage: %.0f", attack));
+        specialAttrLabel2->setString(StringUtils::format("AttackRange: %.0f", attackRange));
+        specialAttrLabel3->setString(StringUtils::format("AttackCooldown: %.1fs", attackInterval));
+        break;
+    }
+    case BuildingType::VAULT: // 存储类显示当前存储/最大存储
+    case BuildingType::ELIXIR_BOTTLE: {
+        int stored = (type == BuildingType::VAULT)
+            ? dynamic_cast<Vault*>(targetBuilding)->getStorageCapacity()
+            : dynamic_cast<ElixirBottle*>(targetBuilding)->getStorageCapacity();
+        std::string resType = (type == BuildingType::VAULT) ? "gold capacity" : "elixir capacity";
+        specialAttrLabel1->setString(StringUtils::format("%s:%d", resType.c_str(), stored));
+        specialAttrLabel2->setString("");
+        specialAttrLabel3->setString("");
+        break;
+    }
+
+    case BuildingType::GOLD_MINE: // 生产类显示每分钟产量
+    case BuildingType::ELIXIR_COLLECTOR:
+    {
+        int production = (type == BuildingType::GOLD_MINE)
+            ? dynamic_cast<GoldMine*>(targetBuilding)->getProduce()
+            : dynamic_cast<ElixirCollector*>(targetBuilding)->getProduce();
+        std::string prodType = (type == BuildingType::GOLD_MINE) ? "gold" : "elixir";
+        float produceInterval = (type == BuildingType::GOLD_MINE)
+            ? dynamic_cast<GoldMine*>(targetBuilding)->getProduceInterval()
+            : dynamic_cast<ElixirCollector*>(targetBuilding)->getProduceInterval();
+        int store = (type == BuildingType::GOLD_MINE)
+            ? dynamic_cast<GoldMine*>(targetBuilding)->getStored()
+            : dynamic_cast<ElixirCollector*>(targetBuilding)->getStored();
+        specialAttrLabel1->setString(StringUtils::format("produce %s: %d/%.1fs", prodType.c_str(), production, produceInterval));
+        specialAttrLabel2->setString(StringUtils::format("Stored : %d", store));
+        specialAttrLabel3->setString("");
+        break;
+    }
+    default:
+        specialAttrLabel1->setString("");
+        specialAttrLabel2->setString("");
+        specialAttrLabel3->setString("");
+        break;
+    }
 }

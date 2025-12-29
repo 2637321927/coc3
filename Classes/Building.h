@@ -65,6 +65,7 @@ public:
     void clearTilePos() {
         _tilePos.clear();
     }
+    int getCurrentHp() { return _currentHp; }
     // int getLevel() const { return _config.level; }
     void buildImmediately() { immediatelyBuild = 1; }
     const BuildingConfig& getConfig() const { return _config; }
@@ -121,7 +122,10 @@ public:
     std::string getSpecialDesc() override;
     // ÊÕ¼¯½ð±Ò
     int collectGold();
+    int  getProduce() { return _goldPerInterval; }
     void produceGold(float dt);
+    int getProduceInterval() { return  _produceInterval; };
+    int getStored() { return _goldStored; };
     void destroy() override;
     void upGrade() {
         _goldPerInterval += 100;
@@ -145,6 +149,9 @@ public:
     int collectElixir();
     void produceElixir(float dt);
     void destroy() override;
+    int getProduce() { return _elixirPerInterval; };
+    int getProduceInterval() { return  _produceInterval; };
+    int getStored() { return _elixirStored; };
     void upGrade() {
         _elixirPerInterval += 100;
         _produceInterval -= 0.1f;

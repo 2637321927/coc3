@@ -357,7 +357,7 @@ private:
     std::vector<Vec2> _lastTilePos;           // 上一个选中的瓦片坐标
     bool _hasLastTile = false;   // 是否有上一个瓦片需要恢复
     Color3B _originalTileColor;  // 瓦片原始颜色（用于恢复）
-
+    void createInfoPanel(BaseBuilding* targetBuilding);
     // 训练营相关
     ui::Layout* _trainingPopup = nullptr; // 训练弹窗根节点
     TrainingCamp* _currentCamp = nullptr; // 当前关联的训练营
@@ -557,7 +557,7 @@ private:
     void beginFight(); //开始战斗
     void updateCountDown(float dt);//战斗计时
     void onFightSettle();//战斗结算
-
+    void showFightSettlePopup();
     // 星星相关
     void initStarRatingUI(); // 初始化星级UI
     void updateDestroyPercent(); // 更新摧毁百分比
