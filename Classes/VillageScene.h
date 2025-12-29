@@ -322,7 +322,7 @@ private:
     static const int MAX_TILE_X = 400;  // 瓦片x轴最大索引（0 ~ 49）
     static const int MAX_TILE_Y = 400;  // 瓦片y轴最大索引（0 ~ 49）
 
-    // 核心：二维布尔数组，标记瓦片是否被占用（全局初始化默认false，未占用）
+    // 二维布尔数组，标记瓦片是否被占用（全局初始化默认false，未占用）
     bool _tileOccupiedGrid[MAX_TILE_X][MAX_TILE_Y] = { false };
     // 获取建筑所有占用的格子
     std::vector<Vec2> getBuildingAllTiles(BaseBuilding* building) {

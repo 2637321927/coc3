@@ -78,7 +78,7 @@ void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type) 
     }
 }
 
-// 新增：恢复上一个瓦片的原始颜色
+// 恢复上一个瓦片的原始颜色
 void VillageScene::restoreLastTileColor() {
     if (!_hasLastTile) {
         return;
@@ -481,21 +481,21 @@ void VillageScene::initBtns(BaseMode baseMode) {
         _buildModeBtn->addClickEventListener([this](Ref* sender) {
             this->toggleBuildBar(); // 点击切换建筑栏
             });
+        // 创建一键收集按钮
+        _collectAllBtn = ui::Button::create(
+            "ui/collect_all_btn_normal.png",
+            "ui/collect_all_btn_normal.png"
+        );
+        _uiLayer->addChild(_collectAllBtn, 200);
+        _collectAllBtn->setScale(0.8f);
+        _collectAllBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 200));
+        _collectAllBtn->addClickEventListener([this](Ref* sender) {
+            this->collectAllResources(); // 点击收集所有资源
+            });
+        CCLOG("canrun：%s", _collectAllBtn ? "yes" : "no");
+        CCLOG("width=%.2f, height=%.2f", _collectAllBtn->getContentSize().width, _collectAllBtn->getContentSize().height);
+        CCLOG("cansee：%s", _collectAllBtn->isVisible() ? "yes" : "no");
     }
-    // 创建一键收集按钮
-    _collectAllBtn = ui::Button::create(
-        "ui/collect_all_btn_normal.png",
-        "ui/collect_all_btn_normal.png"
-    );
-    _uiLayer->addChild(_collectAllBtn, 200);
-    _collectAllBtn->setScale(0.8f);
-    _collectAllBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 200));
-    _collectAllBtn->addClickEventListener([this](Ref* sender) {
-        this->collectAllResources(); // 点击收集所有资源
-        });
-    CCLOG("canrun：%s", _collectAllBtn ? "yes" : "no");
-    CCLOG("width=%.2f, height=%.2f", _collectAllBtn->getContentSize().width, _collectAllBtn->getContentSize().height);
-    CCLOG("cansee：%s", _collectAllBtn->isVisible() ? "yes" : "no");
     // 创建关卡选择按钮（左下角）
     if (baseMode != BaseMode::FIGHT) {
         _levelSelectBtn = ui::Button::create(
@@ -1249,10 +1249,12 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
             auto townHall = dynamic_cast<TownHall*>(building);
             if (townHall) {
                 // 绑定建造/升级完成回调
-                townHall->bindBuildFinishCallback([this, townHall](BaseBuilding* b) {
-                    checkCanGetBuilding();
-                    _maxLevel = townHall->getLevel() * 2;
-                    });
+                if (_baseMode == BaseMode::NORMAL) {
+                    townHall->bindBuildFinishCallback([this, townHall](BaseBuilding* b) {
+                        checkCanGetBuilding();
+                        _maxLevel = townHall->getLevel() * 2;
+                        });
+                }
             }
         }
         else if (type == BuildingType::GOLD_MINE) {
@@ -1300,11 +1302,11 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 elixirBottle->bindBuildFinishCallback([this, elixirBottle](BaseBuilding* b) {
                     // 升级时增加容量
                     if (elixirBottle->getLevel() > 1) {
-                        this->addGoldStorageCapacity(elixirBottle->getStoragePulse());
+                        this->addElixirStorageCapacity(elixirBottle->getStoragePulse());
                     }
                     // 增加新的容量加成
                     else {
-                        this->addGoldStorageCapacity(elixirBottle->getStorageCapacity());
+                        this->addElixirStorageCapacity(elixirBottle->getStorageCapacity());
                     }
                     });
             }
@@ -2439,7 +2441,12 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
         if (building) {
             // 恢复建筑状态/等级
             //TODO:恢复建造中的建筑有问题，需要额外处理建造进度
-            building->setState(bData.state);    // 需给BaseBuilding添加setState方法
+            if (_baseMode != BaseMode::FIGHT) {
+                building->setState(bData.state);    // 需给BaseBuilding添加setState方法
+            }
+            else {
+                building->setState(BuildingState::IDLE);
+            }
             building->setLevel(bData.level);    // 需给BaseBuilding添加setLevel方法
             if (bData.immediatelyBuild) {
                 building->buildImmediately();

@@ -119,11 +119,11 @@ void TitleScene::initButtons()
     );
 
     // ========== 2. 设置按钮位置 ==========
-    // 创造模式按钮居中偏下
-    startMenuItem->setPosition(origin.x + visibleSize.width / 2,
+    // 创造模式按钮居左偏下
+    startMenuItem->setPosition(origin.x + visibleSize.width / 2-100,
         origin.y + visibleSize.height / 2 - 50);
 
-    // 普通模式按钮在右侧偏移100像素
+    // 普通模式按钮在右侧偏移200像素
     normalMenuItem->setPosition(origin.x + visibleSize.width / 2 + 100,
         origin.y + visibleSize.height / 2 - 50);
 
