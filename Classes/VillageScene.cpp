@@ -448,7 +448,6 @@ void VillageScene::initBtns(BaseMode baseMode) {
     if (baseMode == BaseMode::FIGHT) {
         _backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：战斗
             this->backfromFight();
-            _fightBtn->setVisible(false);
             });
     }
     else {
@@ -573,7 +572,6 @@ void VillageScene::initBtns(BaseMode baseMode) {
         _fightBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100)); // 右下角，距离右边缘和下边缘各50像素
         _fightBtn->addClickEventListener([this](Ref* sender) {
             this->gotoFight(); // 点击进入战斗场景
-            _fightBtn->setVisible(false);
             });
     }
     if (baseMode == BaseMode::FIGHT) {
@@ -583,6 +581,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
         _fightStartBtn->addClickEventListener([this](Ref* sender) {
             setTroopModeBtnInvisible();
             this->beginFight(); // 开始战斗
+            _fightStartBtn->setVisible(false);
             });
     }
 }
@@ -1582,6 +1581,7 @@ void VillageScene::initTroopButtonsInPopup() {
 
             // 扣除资源 + 添加到队列
             _currentCamp->addTrainTask(type);
+            _population += spaceCost;
             //deductTroopResource(type);
            //addTroopToQueue(type);
             // 刷新队列UI
@@ -1712,7 +1712,6 @@ void VillageScene::refreshTrainQueueUI() {
 }
 void VillageScene::onTroopTrainFinished(TroopType type) {
     _trainedTroops[type]+=1;
-    _population += g_troopTrainConfig[type].spaceCost;
     setPopulation(_population);
 }
 // 初始化建筑模式切换按钮
@@ -1971,8 +1970,6 @@ bool VillageScene::checkCanSpawnTroop(Vec2 tilePos) {
         return true; // 无属性时默认可放置
     }
 }
-// [VillageScene.cpp]
-
 // 生成兵种（放置到地图）
 void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     // ===== 第一步：计算瓦片坐标 =====
@@ -1984,8 +1981,10 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
         screenPos.x, screenPos.y, tilePos.x, tilePos.y);
 
     // ===== 第二步：可放置检测 =====
+
     if (!checkCanSpawnTroop(tilePos)) {
         showCannotPlaceTip(screenPos);
+
         return;
     }
 
@@ -2000,25 +1999,48 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
 
     // ===== 第四步：创建兵种 =====
+
+
+
+
     BaseTroop* troop = BaseTroop::create(type, tilePos, 1.0f);
 
     // 容错处理：如果创建失败（例如资源缺失）
     if (!troop) {
         CCLOG("BaseTroop创建失败");
+
+
+
+
+
+
+
+
+
+
+
+
+
         return;
     }
 
     // ===== 第五步：设置兵种属性并添加到场景 =====
+
     troop->setAnchorPoint(Vec2(0.5f, 0.5f));
     troop->setPosition(containerLocalPos);
     troop->setScale(1.0f);
     // 根据Y轴设置层级，产生遮挡关系（越往下层级越高）
     troop->setLocalZOrder(1500 - (tilePos.x + tilePos.y));
 
+
+
+
     _mapContainer->addChild(troop);
 
     // ===== 第六步：记录兵种数据 =====
     _spawnedTroops.push_back(troop);
+
+    _enemyTroops.push_back(troop);
 
     if (_Mode == Mode::FIGHT) {
         _enemyTroops.push_back(troop);
@@ -2075,7 +2097,30 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     }
 }
 
-// 【新增】实现按类型列表搜索最近建筑
+BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType) {
+    BaseBuilding* nearestBuilding = nullptr;
+    float minDistance = FLT_MAX;
+
+    // 遍历所有建筑
+    for (auto& building : _buildings) {
+        // 1. 基础判空和死亡检查
+        if (!building || building->getState() == BuildingState::DESTROYED) continue;
+
+        // 2. 【新增】如果是需要忽略的类型（比如弓箭手忽略围墙），直接跳过
+        if (building->getType() == ignoreType) {
+            continue;
+        }
+
+        // 3. 计算距离
+        float distance = troopPos.distance(building->getPosition());
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearestBuilding = building;
+        }
+    }
+    return nearestBuilding;
+}
+// 实现按类型列表搜索最近建筑
 BaseBuilding* VillageScene::findNearestBuildingByTypes(const Vec2& troopPos, const std::vector<BuildingType>& targetTypes) {
     BaseBuilding* nearestBuilding = nullptr;
     float minDistance = FLT_MAX;
@@ -2653,10 +2698,107 @@ void VillageScene::initSaveLoadButtons() {
     }
 }
 
+// 创建存档选择菜单
+void VillageScene::createSaveSelectMenu() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 创建半透明背景层
+    _saveSelectLayer = Layer::create();
+    _saveSelectLayer->setVisible(false);
+    this->addChild(_saveSelectLayer, 99); // 层级高于其他UI
+
+    // 添加半透明黑色背景（覆盖整个屏幕）
+    auto bg = LayerColor::create(Color4B(0, 0, 0, 180));
+    bg->setContentSize(visibleSize);
+    _saveSelectLayer->addChild(bg);
+
+    // 添加背景框
+    auto frame = Sprite::create("ui/menu_bg.png");
+    if (!frame) {
+        // 如果没有背景图片，创建一个纯色背景
+        frame = Sprite::create();
+        auto colorBg = LayerColor::create(Color4B(50, 50, 100, 230), 400, 400);
+        colorBg->setPosition(Vec2::ZERO);
+        frame->addChild(colorBg);
+    }
+    frame->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    frame->setScale(0.8f);
+    _saveSelectLayer->addChild(frame);
+
+    // 标题
+    auto title = Label::createWithTTF("choose save path", "fonts/Marker Felt.ttf", 36);
+    title->setColor(Color3B::YELLOW);
+    title->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2 + 150));
+    _saveSelectLayer->addChild(title);
+    auto save1Btn = MenuItemImage::create(
+        "ui/btn_1.png",
+        "ui/btn_1.png",
+
+            [this](Ref* sender) {
+                if (_baseMode == BaseMode::CREATING) {
+                    this->saveTip("normal1.txt");
+                }
+                else {
+                    this->saveTip("create1.txt");
+                }
+                
+        }
+    );
+    save1Btn->setPosition(Vec2(-200, -110));
+    save1Btn->setScale(0.9f);
+    auto save2Btn = MenuItemImage::create(
+        "ui/btn_2.png",
+        "ui/btn_2.png",
+        [this](Ref* sender) {
+            if (_baseMode == BaseMode::CREATING) {
+                this->saveTip("normal2.txt");
+            }
+            else {
+                this->saveTip("create2.txt");
+            }
+        }
+    );
+    save2Btn->setPosition(Vec2(0, -110));
+    save2Btn->setScale(0.9f);
+
+    auto save3Btn = MenuItemImage::create(
+        "ui/btn_3.png",
+        "ui/btn_3.png",
+        [this](Ref* sender) {
+            if (_baseMode == BaseMode::CREATING) {
+                this->saveTip("normal3.txt");
+            }
+            else {
+                this->saveTip("create3.txt");
+            }
+        }
+    );
+    save3Btn->setPosition(Vec2(200, -110));
+    save3Btn->setScale(0.9f);
+
+    // 关闭按钮
+    auto closeBtn = MenuItemImage::create(
+        "ui/close_btn_normal.png",
+        "ui/close_btn_selected.png",
+        [this](Ref* sender) {
+            this->hideSaveSelectMenu();
+        }
+    );
+    closeBtn->setPosition(Vec2(200, 0));
+    closeBtn->setScale(0.8f);
+
+    // 创建菜单
+    auto menu = Menu::create(save1Btn, save2Btn, save3Btn, closeBtn, nullptr);
+    menu->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    _saveSelectLayer->addChild(menu);
+}
 //存档按钮点击回调
 void VillageScene::onSaveBtnClicked(Ref* sender) {
     // 调用已实现的存档方法
-    bool success = saveGame();
+    toggsaveSelectMenu();
+}
+void VillageScene::saveTip(std::string path) {
+    bool success = saveGame(path);
     // 提示玩家存档结果
     std::string tip = success ? "save success" : "save failed";
     CCLOG("%s", tip.c_str());
@@ -2674,28 +2816,217 @@ void VillageScene::onSaveBtnClicked(Ref* sender) {
         nullptr
     ));
 }
+void VillageScene::hideSaveSelectMenu() {
+    if (_saveSelectLayer) {
+        // 添加淡出动画
+        auto fadeOut = FadeOut::create(0.2f);
+        auto hide = CallFunc::create([this]() {
+            if (_saveSelectLayer) {
+                _saveSelectLayer->setVisible(false);
+            }
+            });
+        _saveSelectLayer->runAction(Sequence::create(fadeOut, hide, nullptr));
+    }
+}
+void VillageScene::showSaveSelectMenu() {
+    // 如果关卡选择层不存在，则创建
+    if (!_saveSelectLayer) {
+        createSaveSelectMenu();
+    }
 
-//读档按钮点击回调
+    if (_saveSelectLayer) {
+        _saveSelectLayer->setVisible(true);
+
+        // 添加淡入动画
+        _saveSelectLayer->setOpacity(0);
+        _saveSelectLayer->runAction(FadeIn::create(0.3f));
+    }
+}
+void VillageScene::toggsaveSelectMenu() {
+    if (!_isSaveSelectShow) {
+        // 显示关卡选择菜单
+        showSaveSelectMenu();
+        _isSaveSelectShow = true;
+    }
+    else {
+        // 隐藏关卡选择菜单
+        hideSaveSelectMenu();
+        _isSaveSelectShow = false;
+    }
+}
+void VillageScene::createLoadSelectMenu() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 创建半透明背景层
+    _loadSelectLayer = Layer::create();
+    _loadSelectLayer->setVisible(false);
+    this->addChild(_loadSelectLayer, 99); // 层级高于其他UI
+
+    // 添加半透明黑色背景（覆盖整个屏幕）
+    auto bg = LayerColor::create(Color4B(0, 0, 0, 180));
+    bg->setContentSize(visibleSize);
+    _loadSelectLayer->addChild(bg);
+
+    // 添加背景框
+    auto frame = Sprite::create("ui/menu_bg.png");
+    if (!frame) {
+        // 如果没有背景图片，创建一个纯色背景
+        frame = Sprite::create();
+        auto colorBg = LayerColor::create(Color4B(100, 50, 50, 230), 400, 400);
+        colorBg->setPosition(Vec2::ZERO);
+        frame->addChild(colorBg);
+    }
+    frame->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    frame->setScale(0.8f);
+    _loadSelectLayer->addChild(frame);
+
+    // 标题（与存档区分，改为“选择读档”）
+    auto title = Label::createWithTTF("choose load path", "fonts/Marker Felt.ttf", 36);
+    title->setColor(Color3B::RED);
+    title->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2 + 150));
+    _loadSelectLayer->addChild(title);
+
+    // 读档1按钮
+    auto load1Btn = MenuItemImage::create(
+        "ui/btn_1.png",
+        "ui/btn_1.png",
+        [this](Ref* sender) {
+            if (_baseMode == BaseMode::CREATING) {
+                this->loadTip("normal1.txt");
+            }
+            else {
+                this->loadTip("create1.txt");
+            }
+        }
+    );
+    load1Btn->setPosition(Vec2(-200, -110));
+    load1Btn->setScale(0.9f);
+
+    // 读档2按钮
+    auto load2Btn = MenuItemImage::create(
+        "ui/btn_2.png",
+        "ui/btn_2.png",
+        [this](Ref* sender) {
+            if (_baseMode == BaseMode::CREATING) {
+                this->loadTip("normal2.txt");
+            }
+            else {
+                this->loadTip("create2.txt");
+            }
+        }
+    );
+    load2Btn->setPosition(Vec2(0, -110));
+    load2Btn->setScale(0.9f);
+
+    // 读档3按钮
+    auto load3Btn = MenuItemImage::create(
+        "ui/btn_3.png",
+        "ui/btn_3.png",
+        [this](Ref* sender) {
+            if (_baseMode == BaseMode::CREATING) {
+                this->loadTip("normal3.txt");
+            }
+            else {
+                this->loadTip("create3.txt");
+            }
+        }
+    );
+    load3Btn->setPosition(Vec2(200, -110));
+    load3Btn->setScale(0.9f);
+
+    // 关闭按钮
+    auto closeBtn = MenuItemImage::create(
+        "ui/close_btn_normal.png",
+        "ui/close_btn_selected.png",
+        [this](Ref* sender) {
+            this->hideLoadSelectMenu();
+        }
+    );
+    closeBtn->setPosition(Vec2(200, 0));
+    closeBtn->setScale(0.8f);
+
+    // 创建菜单
+    auto menu = Menu::create(load1Btn, load2Btn, load3Btn, closeBtn, nullptr);
+    menu->setPosition(Vec2(visibleSize.width / 2, visibleSize.height / 2));
+    _loadSelectLayer->addChild(menu);
+}
+
+// 读档按钮点击回调（与存档按钮对应）
 void VillageScene::onLoadBtnClicked(Ref* sender) {
-    // 调用已实现的读档方法
-    bool success = loadGame("village_save.txt",false);
+    // 调用读档菜单切换方法
+    toggleLoadSelectMenu();
+}
+
+// 读档结果提示
+void VillageScene::loadTip(std::string path) {
+    bool success = loadGame(path,false); // 调用读档核心方法（需你实现loadGame逻辑）
+    // 提示玩家读档结果
     std::string tip = success ? "load success" : "load failed";
     CCLOG("%s", tip.c_str());
 
-    // 弹窗提示
+    // 添加弹窗提示（与存档提示样式一致）
     auto tipLabel = Label::createWithSystemFont(tip, "Arial", 30);
     tipLabel->setColor(success ? Color3B::GREEN : Color3B::RED);
     tipLabel->setPosition(Director::getInstance()->getWinSize() / 2);
     this->addChild(tipLabel, 300);
+    // 2秒后隐藏提示（带动画效果）
     tipLabel->runAction(Sequence::create(
         DelayTime::create(2.0f),
         FadeOut::create(0.5f),
         RemoveSelf::create(),
         nullptr
     ));
+
+    // 读档成功后，可额外添加逻辑（如隐藏读档菜单、刷新游戏场景等）
+    if (success) {
+        this->hideLoadSelectMenu();
+        _isLoadSelectShow = false;
+    }
 }
 
+// 隐藏读档选择菜单（带动画）
+void VillageScene::hideLoadSelectMenu() {
+    if (_loadSelectLayer) {
+        // 添加淡出动画
+        auto fadeOut = FadeOut::create(0.2f);
+        auto hide = CallFunc::create([this]() {
+            if (_loadSelectLayer) {
+                _loadSelectLayer->setVisible(false);
+            }
+            });
+        _loadSelectLayer->runAction(Sequence::create(fadeOut, hide, nullptr));
+    }
+}
 
+// 显示读档选择菜单（带动画）
+void VillageScene::showLoadSelectMenu() {
+    // 如果读档选择层不存在，则创建
+    if (!_loadSelectLayer) {
+        createLoadSelectMenu();
+    }
+
+    if (_loadSelectLayer) {
+        _loadSelectLayer->setVisible(true);
+
+        // 添加淡入动画
+        _loadSelectLayer->setOpacity(0);
+        _loadSelectLayer->runAction(FadeIn::create(0.3f));
+    }
+}
+
+// 切换读档选择菜单的显示/隐藏状态
+void VillageScene::toggleLoadSelectMenu() {
+    if (!_isLoadSelectShow) {
+        // 显示读档选择菜单
+        showLoadSelectMenu();
+        _isLoadSelectShow = true;
+    }
+    else {
+        // 隐藏读档选择菜单
+        hideLoadSelectMenu();
+        _isLoadSelectShow = false;
+    }
+}
 // 初始化关卡选择按钮
 void VillageScene::initLevelSelectBtn() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
@@ -3072,7 +3403,7 @@ void VillageScene::initStarRatingUI() {
 void VillageScene::updateDestroyPercent() {
     // 计算百分比（防止超过100%）
     destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
-    if (destroyPercent = 100) {
+    if (destroyPercent == 100) {
         this->unschedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown));
         // 触发战斗结算
         this->onFightSettle();
@@ -3150,29 +3481,8 @@ void VillageScene::destroyScene() {
     }
 }
 
-// 【修改】支持忽略特定类型的搜索逻辑
-BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType) {
-    BaseBuilding* nearestBuilding = nullptr;
-    float minDistance = FLT_MAX; // 初始化为无穷大
+// 【修改】实现查找最近敌方建筑（支持忽略特定类型）
 
-    for (auto& building : _buildings) {
-        // 1. 基础检查：指针为空或已经被销毁，跳过
-        if (!building || building->getState() == BuildingState::DESTROYED) continue;
-
-        // 2. 【核心修改】如果是我们想忽略的类型（比如围墙），直接跳过！
-        if (building->getType() == ignoreType) {
-            continue;
-        }
-
-        // 3. 寻找距离最近的
-        float distance = troopPos.distance(building->getPosition());
-        if (distance < minDistance) {
-            minDistance = distance;
-            nearestBuilding = building;
-        }
-    }
-    return nearestBuilding;
-}
 
 void VillageScene::onExit() {
     Scene::onExit();

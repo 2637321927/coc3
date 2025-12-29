@@ -189,8 +189,8 @@ public:
     const std::vector<Vec2>& getOccupiedTiles() const {    // 返回占用瓦片
         return _occupiedTiles;
     }
+    BaseBuilding* findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType = BuildingType::UNKNOWN);
     BaseBuilding* findNearestBuildingByTypes(const Vec2& troopPos, const std::vector<BuildingType>& targetTypes);
-    BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType = BuildingType::UNKNOWN);
     void VillageScene::init_level_Btns(BaseMode baseMode);
     static VillageScene* getInstance() { // 提供外部访问接口
         auto currentScene = Director::getInstance()->getRunningScene();
@@ -379,7 +379,7 @@ private:
     int _maxElixir = 10000;
     int _maxPopulation = 0; //人口总数(兵营）
     int _population = 0; //当前人口数
-
+    std::unordered_map<TroopType, int> _troopStorage;// 兵营存储的兵种信息：兵种类型 -> 数量
     std::unordered_map<TroopType, int> _troopLevel; // 兵种等级信息：兵种类型 -> 等级
     int _builder;    //建造者数量
     cocos2d::Label* _goldLabel;      // 金币显示标签
@@ -521,8 +521,23 @@ private:
     //资源管控
     void initResourceBar();
     // 关卡选择相关
-    cocos2d::Layer* _levelSelectLayer;
+    Layer* _levelSelectLayer;
+    Layer*  _saveSelectLayer;
+    bool _isSaveSelectShow;
+    bool _isLoadSelectShow;
+    Layer*  _loadSelectLayer;
     bool _isLevelSelectShow;
+    void createSaveSelectMenu();
+    void showSaveSelectMenu();
+    void toggsaveSelectMenu();
+    void hideSaveSelectMenu();
+    void createLoadSelectMenu();
+    void loadTip(std::string path);
+    void hideLoadSelectMenu();
+    void showLoadSelectMenu();
+    void toggleLoadSelectMenu();
+    void saveTip(std::string path);
+
     void createLevelSelectMenu();
     void showLevelSelectMenu();
     void hideLevelSelectMenu();

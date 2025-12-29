@@ -562,9 +562,10 @@ TrainingCamp* TrainingCamp::create(const Vec2& tilePos, float mapScale) {
 void TrainingCamp::initTroopTrainTimeConfig() {
     // 配置不同兵种的基础训练时间
     _troopTrainTimeMap = {
-        {TroopType::BARBARIAN, 5.0f},     // 野蛮人：5秒
-        {TroopType::ARCHER, 8.0f},     // 弓箭手：8秒
-        {TroopType::GIANT, 15.0f},     // 巨人：15秒
+        {TroopType::BARBARIAN, 2.0f},    
+        {TroopType::ARCHER, 3.0f},     
+        {TroopType::GIANT, 8.0f},     
+        {TroopType::BOMBER,2.0f}
         // 可扩展更多兵种
     };
 }
