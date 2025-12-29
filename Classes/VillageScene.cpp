@@ -7,7 +7,7 @@
 #include "EnumType.h" 
 #include "LevelScene.h"
 #include "TitleScene.h"
-#include "SimpleAudioEngine.h"
+//#include "SimpleAudioEngine.h"
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
@@ -2986,7 +2986,7 @@ void VillageScene::onFightSettle() {
     else {
 
     }
-    backfromFight();
+    //backfromFight();
 }
 void VillageScene::initStarRatingUI() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
