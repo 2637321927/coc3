@@ -21,7 +21,7 @@ BarbarianTroop* BarbarianTroop::create(const Vec2& spawnPos, float mapScale) {
         // --- 属性配置 ---
         config.hp = 400;                // 生命值（较高，肉盾）
         config.attackPower = 80;        // 攻击力
-        config.attackRange = 50.0f;     // 攻击范围（近战）
+        config.attackRange = 10.0f;     // 攻击范围（近战）
         config.attackSpeed = 1.0f;      // 攻击速度（较快）
         config.moveSpeed = 120.0f;      // 移动速度（快）
 

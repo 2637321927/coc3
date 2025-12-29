@@ -14,8 +14,7 @@ std::vector<Vec2> PathFinder::findPath(
     std::vector<Vec2> path;
 
     // 检查起点和终点是否有效
-    if (!isTilePassable(startPos, pathLayer, mapSize, occupiedTiles) ||
-        !isTilePassable(targetPos, pathLayer, mapSize, occupiedTiles)) {
+    if (!isTilePassable(startPos, pathLayer, mapSize, occupiedTiles)) {
         return path;
     }
 
@@ -55,8 +54,9 @@ std::vector<Vec2> PathFinder::findPath(
         // 处理邻居节点
         std::vector<Vec2> neighbors = getNeighbors(currentNode->tilePos);
         for (const Vec2& neighborPos : neighbors) {
-            // 检查邻居是否可通过
-            if (!isTilePassable(neighborPos, pathLayer, mapSize, occupiedTiles)) {
+            bool isTarget = neighborPos.equals(targetPos);
+
+            if (!isTarget && !isTilePassable(neighborPos, pathLayer, mapSize, occupiedTiles)) {
                 continue;
             }
 
@@ -88,10 +88,7 @@ std::vector<Vec2> PathFinder::findPath(
         }
     }
 
-    // 清理内存
-    for (auto& pair : allNodes) {
-        delete pair.second;
-    }
+
 
     return path;
 }
@@ -114,11 +111,11 @@ bool PathFinder::isTilePassable(
     }
 
     // 检查是否被建筑占用
-    /*for (const Vec2& occupied : occupiedTiles) {
+    for (const Vec2& occupied : occupiedTiles) {
         if (occupied.equals(tilePos)) {
             return false;
         }
-    }*/
+    }
 
     return true;
 }

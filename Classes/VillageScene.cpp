@@ -12,7 +12,7 @@ bool VillageScene::init()
 {
     if (!Scene::init()) return false;
     // 初始化流程
-
+    this->scheduleUpdate();
     _mapContainer = Node::create();
     this->addChild(_mapContainer);
     _uiLayer = ui::Layout::create();
@@ -44,7 +44,7 @@ bool VillageScene::init()
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
     if (_baseMode == BaseMode::FIGHT) {
-        loadGame("fight.txt",false);
+        loadGame("village_save.txt",false);
     }
     return true;
 }
@@ -736,7 +736,7 @@ void VillageScene::init_level_Btns(BaseMode baseMode) {
     //origin.x, origin.y为左下角
     // origin.x+visibleSize.width最右边
     // origin。y+visibleSize.heigh
-    if (baseMode == BaseMode::FIGHT) {
+    if (baseMode == BaseMode::LEVEL1) {
         if (_troopModeBtn) {
             _troopModeBtn->setVisible(true);
         }
@@ -744,88 +744,15 @@ void VillageScene::init_level_Btns(BaseMode baseMode) {
             initTroopModeBtn(); // 如果没初始化，先初始化
         }
     }
-    // 创建建筑模式开关按钮（右上角悬浮）
-    if (baseMode != BaseMode::FIGHT) {
-        _buildModeBtn = ui::Button::create(
-            "ui/build_mode_btn_normal.png",  // 正常状态图片
-            "ui/build_mode_btn_selected.png"// 按下状态图片
-        );
-        _uiLayer->addChild(_buildModeBtn, 200);
-        _buildModeBtn->setScale(0.8f);
-        _buildModeBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + visibleSize.height - 100));
-        _buildModeBtn->addClickEventListener([this](Ref* sender) {
-            this->toggleBuildBar(); // 点击切换建筑栏
-            });
-    }
 
 
-    // 创建关卡选择按钮（左下角）
-    if (baseMode != BaseMode::FIGHT) {
-        _levelSelectBtn = ui::Button::create(
-            "ui/level_select_btn_normal.png",  // 正常状态图片
-            "ui/level_select_btn_selected.png"// 按下状态图片
-        );
-        _uiLayer->addChild(_levelSelectBtn, 200);
-        // 初始化关卡选择层状态（TODO：为什么要加在这里？）
-        _isLevelSelectShow = false;
-        _levelSelectLayer = nullptr;
-        _levelSelectBtn->setScale(0.8f);
-        _levelSelectBtn->setPosition(Vec2(origin.x + 100, origin.y + 100)); // 左下角，距离左边缘和下边缘各50像素
-        _levelSelectBtn->addClickEventListener([this](Ref* sender) {
-            this->toggleLevelSelectMenu(); // 点击切换关卡选择菜单
-            });
-    }
-
-    if (baseMode != BaseMode::FIGHT) {
-        // 创建存档按钮
-        _loadBtn = ui::Button::create(
-            "ui/btn_normal.png",
-            "ui/btn_pressed.png",
-            "ui/btn_disabled.png"
-        );
-        _uiLayer->addChild(_loadBtn, 200);
-        // 创建存档按钮
-        _saveBtn = ui::Button::create(
-            "ui/btn_normal.png",   // 正常状态图片（替换为你的资源路径）
-            "ui/btn_pressed.png",  // 按下状态图片
-            "ui/btn_disabled.png"  // 禁用状态图片（可选）
-        );
-        _uiLayer->addChild(_saveBtn, 200);
-        _saveBtn->setContentSize(Size(120, 60));
-        _saveBtn->setPosition(Vec2(_backBtn->getPositionX(), _backBtn->getPositionY() - 80));
-
-        _loadBtn->setContentSize(Size(120, 60));// 位置在存档按钮下方，间距20
-        _loadBtn->setPosition(Vec2(_saveBtn->getPositionX(), _saveBtn->getPositionY() - 80));
-        // 设置按钮文字
-        auto saveText = ui::Text::create("save", "fonts/Marker Felt.ttf", 24);
-        saveText->setColor(Color3B::WHITE);
-        _saveBtn->addChild(saveText);
-        auto loadText = ui::Text::create("load", "fonts/Marker Felt.ttf", 24);
-        loadText->setColor(Color3B::WHITE);
-        _loadBtn->addChild(loadText);
-        _saveBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onSaveBtnClicked, this));
-        _loadBtn->addClickEventListener(CC_CALLBACK_1(VillageScene::onLoadBtnClicked, this));
-    }
-
-    if (baseMode != BaseMode::FIGHT) {
-        _fightBtn = ui::Button::create(
-            "ui/fight_btn_normal.png",  // 正常状态图片
-            "ui/fight_btn_selected.png"// 按下状态图片
-        );
-        _uiLayer->addChild(_fightBtn, 200);
-        _fightBtn->setScale(0.8f);
-        _fightBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100)); // 右下角，距离右边缘和下边缘各50像素
-        _fightBtn->addClickEventListener([this](Ref* sender) {
-            this->gotoFight(); // 点击进入战斗场景
-            });
-    }
-    if (baseMode == BaseMode::FIGHT) {
+    if (baseMode == BaseMode::LEVEL1) {
         _fightStartBtn = ui::Button::create("ui/fight_start_btn.png");
         _uiLayer->addChild(_fightStartBtn, 200);
         _fightStartBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100));
         _fightStartBtn->addClickEventListener([this](Ref* sender) {
             // 点击开始战斗后，隐藏掉选兵按钮
-            if (_troopModeBtn) _troopModeBtn->setVisible(false);
+            if (_troopModeBtn) _troopModeBtn->setVisible(true);
             this->beginFight();
             });
     }
@@ -886,8 +813,8 @@ void VillageScene::createBuildBar() {
 
     // 建筑按钮 - 大本营
      _townHallBtn = MenuItemImage::create(
-        "building\\town_hall_icon.png",
-        "building\\town_hall_icon_selected.png",
+        "building/gold_mine_icon.png",
+        "building/town_hall_icon_selected.png",
         [this](Ref* sender) {
              if (_baseMode == BaseMode::NORMAL && _townHall != nullptr) {
                  return;
@@ -898,6 +825,15 @@ void VillageScene::createBuildBar() {
             _buildPreview->setTexture("building/town_hall_preview.png");
         }
     );
+     if (_townHallBtn == nullptr) {
+         CCLOG("ERROR: Failed to create _townHallBtn! Check image path: building/town_hall_icon.png");
+         // 可以在这里做一些容错处理，比如创建一个纯色块代替，或者直接 return 防止后续崩溃
+     }
+     else {
+         CCLOG("Successfully created _townHallBtn. Size: %f, %f",
+             _townHallBtn->getContentSize().width,
+             _townHallBtn->getContentSize().height);
+     }
 
 
     // 建筑按钮 - 金矿
@@ -1393,10 +1329,36 @@ void VillageScene::addOccupiedTile(const Vec2& tile) {
 // 摧毁建筑（新增建筑类型可能需要扩展此函数）
 void VillageScene::destroyBuilding(BaseBuilding* building) {
     if (!building) return; // 空指针防护
-    // 返还建造资源
+    if (!_spawnedTroops.empty()) {
+        for (auto troop : _spawnedTroops) {
+            // 务必判空
+            if (troop && troop->getAttackTarget() == building) {
+                troop->setAttackTarget(nullptr); // 现在这个调用能正确置空了
+                troop->setState(TroopState::IDLE);
+            }
+        }
+    }
+    for (auto troop : _spawnedTroops) {
+        // 假设你在 Troop.h 中有一个 getAttackTarget() 方法，或者 _attackTarget 是 public/friend
+        // 如果没有 getter，你需要去 Troop.h 加一个: BaseBuilding* getAttackTarget() const { return _attackTarget; }
+
+        // 或者是直接判断兵种状态
+        if (troop->getAttackTarget() == building) {
+            // 1. 立即清除兵种的目标引用
+            troop->setAttackTarget(nullptr);
+
+            // 2. 将兵种状态重置为 IDLE (发呆)
+            troop->setState(TroopState::IDLE);
+
+            // 3. 可选：让兵种重新寻找下一个目标 (自动索敌)
+            // troop->findNextTarget(); 
+        }
+    }
     
-    
-    
+    auto it = std::find(_buildings.begin(), _buildings.end(), building);
+    if (it != _buildings.end()) {
+        _buildings.erase(it);
+    }
 
     // 释放建筑占用的瓦片（地图位置）
     releaseBuildingTiles(building);
@@ -1409,10 +1371,7 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
 
     // 从管理列表中移除建筑引用（逻辑层清理）
     // 从总列表移除
-    auto it = std::find(_buildings.begin(), _buildings.end(), building);
-    if (it != _buildings.end()) {
-        _buildings.erase(it);
-    }
+
     // 酚类型列表移除
     if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
         auto it1 = std::find(_elixirCollectors.begin(), _elixirCollectors.end(), dynamic_cast<ElixirCollector*>(building));
@@ -1446,6 +1405,7 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         updateDestroyPercent();
         checkStarUnlock();
     }
+    building->removeFromParentAndCleanup(true);
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
     // 建筑实例会在下次主循环被自动销毁，无需手动delete
@@ -2080,24 +2040,29 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     if (_Mode == Mode::FIGHT) {
         _enemyTroops.push_back(troop);
     }    // 新增的寻路部分
-    addEnemyTroop(troop);
-    // 1. 绑定场景指针（让兵种能访问寻路相关接口）
-    troop->setVillageScene(this);  // 需要在 BaseTroop 中声明该方法
 
-    // 2. 查找最近的敌方建筑作为目标
+    addEnemyTroop(troop);
+    troop->setVillageScene(this);
+
+
     BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
+
     if (targetBuilding) {
-        // 3. 触发寻路（使用兵种已实现的 setTargetWorldPosition 方法）
-       // CCLOG("troop is %s", troop ? "valid" : "null");
-        troop->setTargetWorldPosition(targetBuilding->getTilePos());
-        // CCLOG("YEoS!!!!!!!");
-         //CCLOG("为兵种设置寻路目标，目标building位置(%.1f,%.1f)",
-        //targetBuilding->getPosition().x, targetBuilding->getPosition().y;
+        // 【修改】使用新接口 setAttackTarget
+        // 这个函数内部会自动调用 setTargetTilePosition 进行寻路
+        // 并且会把 _attackTarget 指针赋值给兵种
+        troop->setAttackTarget(targetBuilding);
+
+        CCLOG("生成兵种，锁定目标: %s (%.0f, %.0f)",
+            targetBuilding->getConfig().name.c_str(),
+            targetBuilding->getTilePos().x,
+            targetBuilding->getTilePos().y);
     }
     else {
-        // CCLOG("未找到敌方建筑，兵种进入lazy状态");
+        CCLOG("未找到敌方建筑，兵种待机");
     }
 }
+
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {
     auto it = std::find(_enemyTroops.begin(), _enemyTroops.end(), troop);
     if (it != _enemyTroops.end()) {
@@ -2813,7 +2778,7 @@ bool VillageScene::level_init()
     _uiLayer->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
     this->addChild(_uiLayer, 200); // 布局层级200
     initMap();
-    init_level_Btns(BaseMode::FIGHT);
+    init_level_Btns(BaseMode::LEVEL1);
     go_back_Btn();
 
 
@@ -2830,10 +2795,15 @@ bool VillageScene::level_init()
     mouseListener->onMouseUp = CC_CALLBACK_1(VillageScene::onMouseUp, this);        // 鼠标松开
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
-    if (_baseMode == BaseMode::FIGHT) {
+    if (_baseMode == BaseMode::LEVEL1) {
         loadGame("level1.txt",true);
     }
-
+    if (_baseMode == BaseMode::LEVEL2) {
+        loadGame("level2.txt", true);
+    }
+    if (_baseMode == BaseMode::LEVEL3) {
+        loadGame("level3.txt", true);
+    }
     return true;
 }
 
@@ -2878,40 +2848,44 @@ void VillageScene::go_back(const std::string& fileName) {
 
 
 
-void VillageScene::gotoLevel1(const std::string& Path) {
-    hideLevelSelectMenu();
-    VillageScene::saveGame();
-    // 1. 调用 LevelScene 的工厂函数（返回 Scene*，需强转为 LevelScene*）
-    Scene* scene = LevelScene::createWithLevel(Path);
-    LevelScene* levelScene = dynamic_cast<LevelScene*>(scene); // 安全强转
+void VillageScene::gotoLevel1(const std::string& levelFilename) { // 传入 "level1_preset.txt"
+    // 1. 先保存当前村庄状态（如果需要）
+    saveGame("village_save.txt");
 
-    if (levelScene) { // 强转成功才继续
-        // 2. 获取文件完整路径（Cocos 自动从 Resources 目录查找）
-        std::string fullPath = FileUtils::getInstance()->fullPathForFilename(Path);
+    // 2. 创建一个新的战斗场景
+    // 注意：这里我们使用 FIGHT 模式创建场景
+    Scene* levelScene = VillageScene::createScene(BaseMode::FIGHT);
 
-        if (FileUtils::getInstance()->isFileExist(fullPath)) {
-            // 3. 调用 loadGame（无需加 VillageScene::，子类已继承）
-            bool success = levelScene->loadGame(Path,true);
+    // 3. 获取 VillageScene 实例
+    // createScene 返回的是 Scene*，我们需要拿到里面的 Layer (VillageScene*)
+    // 根据你的 createScene 实现，Layer 被加为了 Scene 的子节点
+    // 假设 createScene 里 layer->setTag(25) 用于 FIGHT 模式
+    VillageScene* villageLayer = dynamic_cast<VillageScene*>(levelScene->getChildByTag(25));
 
-            if (success) {
-                CCLOG("成功将关卡数据注入 levelScene: %s", Path.c_str());
-            }
-            else {
-                CCLOGERROR("加载关卡数据失败: %s", Path.c_str());
-                return; // 加载失败则不切换场景
-            }
+    if (villageLayer) {
+        // 4. 关键：加载关卡预设文件
+        // 使用我们之前修改过的支持 Resources 目录加载的 loadGame
+        // 第二个参数 true 表示允许回退到 Resources 目录查找
+        bool loadSuccess = villageLayer->loadGame(levelFilename, true);
+
+        if (loadSuccess) {
+            CCLOG("成功加载关卡: %s", levelFilename.c_str());
+
+            // 5. 初始化战斗 UI 和数据
+            // 如果 loadGame 没有包含这些初始化，可能需要手动调用
+            // 例如：设置倒计时、隐藏建造按钮等
+            // villageLayer->beginFight(); // 如果你想进场就开始倒计时
+
+            // 6. 切换场景
+            Director::getInstance()->pushScene(levelScene);
         }
         else {
-            CCLOGERROR("错误：找不到关卡文件 %s", fullPath.c_str());
-            return;
+            CCLOG("加载关卡失败: %s", levelFilename.c_str());
+            // 如果加载失败，不要切换场景
         }
-
-        // 4. 场景切换（确保传入 Scene* 类型）
-        auto transition = TransitionSlideInR::create(0.5f, scene);
-        Director::getInstance()->replaceScene(transition);
     }
     else {
-        CCLOGERROR("LevelScene::createWithLevel 创建实例失败！");
+        CCLOG("获取 VillageScene 层失败");
     }
 }
 
@@ -3095,4 +3069,27 @@ void VillageScene::cleanup() {
     _eventDispatcher->removeEventListenersForTarget(this);
     this->removeAllChildrenWithCleanup(true);
     CCLOG("VillageScene 已完全whole清理所有资源");
+}
+// VillageScene.cpp
+
+void VillageScene::update(float dt)
+{
+    // 【新增】每帧清理无效兵种
+    // 如果兵种已经被移除（引用计数为0或已被销毁），需要从列表中剔除
+    // 使用 C++ 标准库的 remove_if 算法
+    if (!_spawnedTroops.empty()) {
+        auto it = std::remove_if(_spawnedTroops.begin(), _spawnedTroops.end(),
+            [](BaseTroop* troop) {
+                // 判断条件：指针为空，或者兵种已经被移出父节点
+                return troop == nullptr || troop->getParent() == nullptr;
+            });
+
+        // 真正的物理删除
+        if (it != _spawnedTroops.end()) {
+            _spawnedTroops.erase(it, _spawnedTroops.end());
+        }
+    }
+
+    // 如果有倒计时或其他逻辑，也可以放在这里
+    // updateCountDown(dt); 
 }

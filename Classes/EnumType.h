@@ -14,7 +14,10 @@ enum class BaseMode {
     NORMAL,   ///< 普通浏览模式
     CREATING, ///< 创造/编辑模式
     LEVEL,    ///< 关卡选择模式
-    FIGHT     ///< 战斗模式
+    FIGHT,     ///< 战斗模式
+    LEVEL1,
+    LEVEL2,
+    LEVEL3
 };
 
 /**
