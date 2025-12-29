@@ -64,7 +64,7 @@ public:
     BaseBuilding* getAttackTarget() const {
         return _attackTarget;
     }
-    void BaseTroop::setAttackTarget(BaseBuilding* target, BuildingType ignoretype);
+    void BaseTroop::setAttackTarget(BaseBuilding* target);
     void setTargetTilePosition(const cocos2d::Vec2& targetTilePos);
     void setTargetPos(const Vec2& targetPos) {
         _targetPos = targetPos;

@@ -1969,6 +1969,8 @@ bool VillageScene::checkCanSpawnTroop(Vec2 tilePos) {
         return true; // 无属性时默认可放置
     }
 }
+// [VillageScene.cpp]
+
 // 生成兵种（放置到地图）
 void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     // ===== 第一步：计算瓦片坐标 =====
@@ -1976,98 +1978,129 @@ void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
     tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
 
     // 调试日志
-    CCLOG("adasdasdasvs生成：屏幕坐标(%.1f,%.1f) → 瓦片坐标(%.1f,%.1f)",
+    CCLOG("生成兵种请求：屏幕坐标(%.1f,%.1f) → 瓦片坐标(%.1f,%.1f)",
         screenPos.x, screenPos.y, tilePos.x, tilePos.y);
 
     // ===== 第二步：可放置检测 =====
-    // 注意：兵种检测应该使用checkCanSpawnTroop而不是checkCanPlace
     if (!checkCanSpawnTroop(tilePos)) {
         showCannotPlaceTip(screenPos);
-        CCLOG("failure：1111111");
         return;
     }
 
-    // ===== 第三步：计算兵种位置（复用建筑的坐标转换逻辑） =====
-    // 对于单格兵种，中心点就是瓦片中心
-    float centerTileX = tilePos.x - 0.5f;  // 单格兵种，中心在瓦片中心
-    float centerTileY = tilePos.y - 2.0f;
+    // ===== 第三步：计算兵种位置 =====
+    // 计算瓦片中心点（用于设置兵种的实际像素位置）
+    // 对于单格兵种，中心在瓦片中心
+    float centerTileX = tilePos.x - 0.5f;
+    float centerTileY = tilePos.y - 2.0f; // 稍微调整Y轴偏移以匹配视觉
     Vec2 centerTilePos(centerTileX, centerTileY);
 
-    // 使用与建筑相同的坐标转换方法
+    // 转换为容器内的像素坐标
     Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
 
-    // 调试坐标转换
-   // CCLOG("troop种坐标转换：瓦片(%.1f,%.1f) → 容器(%.1f,%.1f)",
-       // centerTilePos.x, centerTilePos.y, containerLocalPos.x, containerLocalPos.y);
-
-    // ===== 第四步：创建兵种并设置位置 =====
+    // ===== 第四步：创建兵种 =====
     BaseTroop* troop = BaseTroop::create(type, tilePos, 1.0f);
+
+    // 容错处理：如果创建失败（例如资源缺失）
     if (!troop) {
-        // 兜底创建纯色占位
-       // CCLOG("BaseTroop创建失败，创建纯色占位");
-        auto troopSprite = LayerColor::create(Color4B(255, 150, 0, 200), 40, 60);
-        if (!troopSprite) {
-            CCLOG("占位都创建失败！");
-            return;
-        }
-        troopSprite->setAnchorPoint(Vec2(0.5f, 0.5f));
-        troopSprite->setPosition(containerLocalPos);
-        troopSprite->setScale(1.0f); // 固定缩放
-        troopSprite->setLocalZOrder(2000 - (tilePos.x + tilePos.y)); // 层级比建筑高
-        _mapContainer->addChild(troopSprite);
-        _spawnedTroops.push_back(nullptr);
-        //CCLOG("成功：纯色占位已生成");
+        CCLOG("BaseTroop创建失败");
         return;
     }
 
-    // ===== 第五步：设置兵种属性 =====
-    // 关键：兵种也需要设置锚点居中，与建筑保持一致
+    // ===== 第五步：设置兵种属性并添加到场景 =====
     troop->setAnchorPoint(Vec2(0.5f, 0.5f));
     troop->setPosition(containerLocalPos);
-    troop->setScale(1.0f); // 固定缩放
-    troop->setLocalZOrder(1500 - (tilePos.x + tilePos.y)); // 层级比建筑高
+    troop->setScale(1.0f);
+    // 根据Y轴设置层级，产生遮挡关系（越往下层级越高）
+    troop->setLocalZOrder(1500 - (tilePos.x + tilePos.y));
+
     _mapContainer->addChild(troop);
-    BuildingType ignoreType = BuildingType::UNKNOWN;
 
-
-
-
-    // ===== 第六步：记录兵种 =====
+    // ===== 第六步：记录兵种数据 =====
     _spawnedTroops.push_back(troop);
-    //_enemyTroops.push_back(troop);
-   // CCLOG("success：兵种已生成，容器位置(%.1f,%.1f)，总数=%zu",
-        //containerLocalPos.x, containerLocalPos.y, _spawnedTroops.size());
+
     if (_Mode == Mode::FIGHT) {
         _enemyTroops.push_back(troop);
-    }    // 新增的寻路部分
+    }
 
-    addEnemyTroop(troop);
+    // 注入场景引用，用于兵种内部寻路
     troop->setVillageScene(this);
+    BaseBuilding* targetBuilding = nullptr;
 
+    // 1. 【巨人逻辑】优先攻击防御建筑 (加农炮、箭塔)
+    if (type == TroopType::GIANT) {
+        // 定义防御建筑列表
+        std::vector<BuildingType> defenseTypes = { BuildingType::CANNON, BuildingType::ARROW_TOWER };
+        // 尝试寻找最近的防御建筑
+        targetBuilding = findNearestBuildingByTypes(containerLocalPos, defenseTypes);
+    }
+    // 2. 【炸弹人逻辑】优先攻击城墙
+    else if (type == TroopType::BOMBER) {
+        std::vector<BuildingType> wallType = { BuildingType::WALL };
+        targetBuilding = findNearestBuildingByTypes(containerLocalPos, wallType);
+    }
 
-    BaseBuilding* targetBuilding = findNearestEnemyBuilding(containerLocalPos);
-
-    if (targetBuilding) {
+    // 3. 【通用/兜底逻辑】
+    // 如果不是特殊兵种，或者特殊兵种没找到优先目标（例如防御塔全被拆光了），则执行通用逻辑
+    if (!targetBuilding) {
         BuildingType ignoreType = BuildingType::UNKNOWN;
 
-        // 如果是弓箭手，初始索敌时忽略围墙
+        // 弓箭手忽略围墙 (原有逻辑)
         if (type == TroopType::ARCHER) {
             ignoreType = BuildingType::WALL;
         }
+        // 巨人如果没有防御塔可打，也应该忽略围墙去打普通建筑（防止盯着墙发呆）
+        else if (type == TroopType::GIANT) {
+            ignoreType = BuildingType::WALL;
+        }
 
-        // 【修改】使用新接口 setAttackTarget
-        // 这个函数内部会自动调用 setTargetTilePosition 进行寻路
-        // 并且会把 _attackTarget 指针赋值给兵种
-        troop->setAttackTarget(targetBuilding,ignoreType);
+        // 搜索最近的普通目标
+        targetBuilding = findNearestEnemyBuilding(containerLocalPos, ignoreType);
 
-        CCLOG("生成兵种，锁定目标: %s (%.0f, %.0f)",
-            targetBuilding->getConfig().name.c_str(),
-            targetBuilding->getTilePos().x,
-            targetBuilding->getTilePos().y);
+        // 【二次兜底】如果连“非墙”建筑也没了（全图只剩墙），且我们设置了忽略墙
+        // 那么必须允许攻击墙，否则兵种会发呆
+        if (!targetBuilding && ignoreType == BuildingType::WALL) {
+            targetBuilding = findNearestEnemyBuilding(containerLocalPos, BuildingType::UNKNOWN);
+        }
+    }
+
+    // 4. 锁定目标
+    if (targetBuilding) {
+        troop->setAttackTarget(targetBuilding);
+        CCLOG("生成兵种[%d]，锁定目标: %s", (int)type, targetBuilding->getConfig().name.c_str());
     }
     else {
         CCLOG("未找到敌方建筑，兵种待机");
     }
+}
+
+// 【新增】实现按类型列表搜索最近建筑
+BaseBuilding* VillageScene::findNearestBuildingByTypes(const Vec2& troopPos, const std::vector<BuildingType>& targetTypes) {
+    BaseBuilding* nearestBuilding = nullptr;
+    float minDistance = FLT_MAX;
+
+    for (auto& building : _buildings) {
+        if (!building || building->getState() == BuildingState::DESTROYED) continue;
+
+        // 检查建筑类型是否在目标列表中
+        bool isTargetType = false;
+        for (auto type : targetTypes) {
+            if (building->getType() == type) {
+                isTargetType = true;
+                break;
+            }
+        }
+
+        // 如果不是目标类型，跳过
+        if (!isTargetType) continue;
+
+        // 计算距离
+        float distance = troopPos.distance(building->getPosition());
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearestBuilding = building;
+        }
+    }
+    return nearestBuilding;
 }
 
 void VillageScene::removeEnemyTroop(BaseTroop* troop) {
