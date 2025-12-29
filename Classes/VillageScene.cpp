@@ -23,6 +23,7 @@ bool VillageScene::init()
     _uiLayer->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
     this->addChild(_uiLayer, 200); // 布局层级200
     initMap();
+
     initBtns(_baseMode);
     if (_baseMode == BaseMode::FIGHT) {
         initFightScene();
@@ -30,6 +31,7 @@ bool VillageScene::init()
     if (_baseMode != BaseMode::FIGHT) {
         initBuildPreview();
         initResourceBar();
+        init_troop_upgrade_ModeBtn();
     }
     initTroopPreview();
     //initSaveLoadButtons();
@@ -1336,69 +1338,30 @@ void VillageScene::addOccupiedTile(const Vec2& tile) {
 
 }
 // 摧毁建筑（新增建筑类型可能需要扩展此函数）
+// [VillageScene.cpp]
 void VillageScene::destroyBuilding(BaseBuilding* building) {
-    if (!building) return; // 空指针防护
-    if (!_spawnedTroops.empty()) {
-        for (auto troop : _spawnedTroops) {
-            // 务必判空
-            if (troop && troop->getAttackTarget() == building) {
-                troop->setAttackTarget(nullptr); // 现在这个调用能正确置空了
-                troop->setState(TroopState::IDLE);
-            }
-        }
-    }
-    for (auto troop : _spawnedTroops) {
-        // 假设你在 Troop.h 中有一个 getAttackTarget() 方法，或者 _attackTarget 是 public/friend
-        // 如果没有 getter，你需要去 Troop.h 加一个: BaseBuilding* getAttackTarget() const { return _attackTarget; }
+    if (!building) return;
 
-        // 或者是直接判断兵种状态
-        if (troop->getAttackTarget() == building) {
-            // 1. 立即清除兵种的目标引用
-            troop->setAttackTarget(nullptr);
-
-            // 2. 将兵种状态重置为 IDLE (发呆)
-            troop->setState(TroopState::IDLE);
-
-            // 3. 可选：让兵种重新寻找下一个目标 (自动索敌)
-            // troop->findNextTarget(); 
-        }
-    }
-    
+    // 1. 【关键步骤】先从 _buildings 总列表中移除
+    // 这样后续兵种调用 findNewTarget -> findNearestEnemyBuilding 时，
+    // 就不会再搜索到这个即将死亡的建筑，而是找到第二近的。
     auto it = std::find(_buildings.begin(), _buildings.end(), building);
     if (it != _buildings.end()) {
         _buildings.erase(it);
     }
 
-    // 释放建筑占用的瓦片（地图位置）
-    releaseBuildingTiles(building);
-    // 从渲染层移除建筑节点(basebuilding中已经调用过一次了，可以不调用)
-    //building->removeFromParentAndCleanup(true);
-    // removeFromParentAndCleanup(true)：
-    // 从_mapContainer的节点树中移除建筑
-    // 清理建筑的所有子节点（图片、进度条、UI）
-    // 调用建筑的onExit()，自动停止所有定时器/监听器
-
-    // 从管理列表中移除建筑引用（逻辑层清理）
-    // 从总列表移除
-
-    // 酚类型列表移除
+    // 2. 处理分类列表移除 (保持你原有的逻辑不变)
     if (building->getType() == BuildingType::ELIXIR_COLLECTOR) {
         auto it1 = std::find(_elixirCollectors.begin(), _elixirCollectors.end(), dynamic_cast<ElixirCollector*>(building));
-        if (it1 != _elixirCollectors.end()) {
-            _elixirCollectors.erase(it1);
-        }
+        if (it1 != _elixirCollectors.end()) _elixirCollectors.erase(it1);
     }
     else if (building->getType() == BuildingType::GOLD_MINE) {
         auto it1 = std::find(_goldMines.begin(), _goldMines.end(), dynamic_cast<GoldMine*>(building));
-        if (it1 != _goldMines.end()) {
-            _goldMines.erase(it1);
-        }
+        if (it1 != _goldMines.end()) _goldMines.erase(it1);
     }
     else if (building->getType() == BuildingType::BARRACKS) {
         auto barrack = dynamic_cast<Barracks*>(building);
         this->removeTroopCapacity(barrack->getTroopSpace());
-    }
-    else if (building->getType() == BuildingType::TRAINING_CAMP) {
     }
     else if (building->getType() == BuildingType::VAULT) {
         auto vault = dynamic_cast<Vault*>(building);
@@ -1408,15 +1371,32 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         auto elixirBottle = dynamic_cast<ElixirBottle*>(building);
         this->addElixirStorageCapacity(-(elixirBottle->getStorageCapacity()));
     }
+
+    // 3. 【核心修复】通知兵种寻找新目标
+    // 之前你在这里还有一个循环先把 target 设为 nullptr，必须删掉那个循环！
+    // 直接检查谁的目标是当前建筑，然后命令它找新的。
+    if (!_spawnedTroops.empty()) {
+        for (auto troop : _spawnedTroops) {
+            // 只有兵种存在，且当前锁定的目标就是这个正在销毁的建筑时
+            if (troop && troop->getAttackTarget() == building) {
+                // 命令它寻找新目标
+                // findNewTarget 内部会自动调用 setAttackTarget(new)
+                // 如果找不到新目标，内部也会自动设为 nullptr 并 IDLE
+                troop->findNewTarget();
+            }
+        }
+    }
+
+    // 4. 释放资源和物理销毁
+    releaseBuildingTiles(building);
     building->destroy();
+
+    // 5. 战斗统计更新 (保持不变)
     if (_baseMode == BaseMode::FIGHT) {
         _destroyedBuildingCount++;
         updateDestroyPercent();
         checkStarUnlock();
     }
-    // 内存释放（Cocos2d-x 自动管理)
-    // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
-    // 建筑实例会在下次主循环被自动销毁，无需手动delete
 }
 // 辅助：释放建筑占用的瓦片（摧毁后该位置可重新建造）
 void VillageScene::releaseBuildingTiles(BaseBuilding* building) {
@@ -2840,7 +2820,7 @@ bool VillageScene::level_init()
     init_level_Btns(BaseMode::LEVEL1);
     go_back_Btn();
 
-
+    initStarRatingUI();
     initTroopPreview();
     //initSaveLoadButtons();
     //TODO：建筑和触摸暂时屏蔽
@@ -3124,6 +3104,31 @@ void VillageScene::destroyScene() {
     }
 }
 
+// 【修改】实现查找最近敌方建筑（支持忽略特定类型）
+BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType) {
+    BaseBuilding* nearestBuilding = nullptr;
+    float minDistance = FLT_MAX;
+
+    // 遍历所有建筑
+    for (auto& building : _buildings) {
+        // 1. 基础判空和死亡检查
+        if (!building || building->getState() == BuildingState::DESTROYED) continue;
+
+        // 2. 【新增】如果是需要忽略的类型（比如弓箭手忽略围墙），直接跳过
+        if (building->getType() == ignoreType) {
+            continue;
+        }
+
+        // 3. 计算距离
+        float distance = troopPos.distance(building->getPosition());
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearestBuilding = building;
+        }
+    }
+    return nearestBuilding;
+}
+
 void VillageScene::onExit() {
     Scene::onExit();
     // 释放自定义资源：比如定时器、监听器、指针等
@@ -3164,4 +3169,203 @@ void VillageScene::update(float dt)
 
     // 如果有倒计时或其他逻辑，也可以放在这里
     // updateCountDown(dt); 
+}
+
+
+
+
+
+// [VillageScene.cpp]
+
+// 初始化升级栏
+void VillageScene::createUpgradeBar() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 【修复3】不要覆盖 _buildBarLayer，建议使用局部变量或新建一个成员变量 _upgradeBarLayer
+    // 这里暂时用局部变量演示，如果你需要后续隐藏它，请在头文件定义 Layer* _upgradeBarLayer;
+    // 并将下面这行改为: _upgradeBarLayer = Layer::create();
+    auto upgradeLayer = Layer::create();
+    this->addChild(upgradeLayer, 99);
+
+    // 1. 创建背景（带判空保护）
+    _barBg = Sprite::create("ui/build_bar_bg.png");
+    if (_barBg) {
+        _barBg->setPosition(Vec2(visibleSize.width / 2, 50));
+        _barBg->setScaleX(visibleSize.width / _barBg->getContentSize().width * 0.8f);
+        upgradeLayer->addChild(_barBg);
+    }
+    else {
+        CCLOG("ERROR: 'ui/build_bar_bg.png' not found! Upgrade bar background will be missing.");
+    }
+
+    // 2. 创建野蛮人升级按钮（带判空保护）
+    _BarbarianBtn = MenuItemImage::create(
+        "building/barbarian_upgrade_icon.png",
+        "building/barbarian_upgrade_selected.png",
+        [this](Ref* sender) {
+            CCLOG("Barbarian upgrade clicked");
+            int currentLevel = _troopLevel[TroopType::BARBARIAN];
+            if (currentLevel == 0) currentLevel = 1; // 默认防错
+
+            // 2. 检查资源 (假设升级消耗：等级 * 1000 圣水)
+            int cost = currentLevel * 500;
+            if (_elixir < cost) {
+                showResourceShortageTip("圣水不足！");
+                return;
+            }
+
+            // 3. 扣除资源 & 提升等级
+            spendElixir(cost);
+            _troopLevel[TroopType::BARBARIAN]++;
+            int newLevel = _troopLevel[TroopType::BARBARIAN];
+
+            // 4. 【核心】修改全局配置表 g_troopTrainConfig
+            // 只有改了这里，Barbarian.cpp 里的 create 才能读到新数据
+            TroopConfig& config = g_troopTrainConfig[TroopType::BARBARIAN];
+
+            config.level = newLevel;
+            config.hp += 50;           // 每次升级 +50 血量
+            config.attackPower += 10;  // 每次升级 +10 攻击力
+        }
+    );
+    if (!_BarbarianBtn) CCLOG("ERROR: Barbarian upgrade icon not found!");
+
+    // 3. 创建弓箭手升级按钮（带判空保护）
+    _ArcherBtn = MenuItemImage::create(
+        "building/archer_upgrade_icon.png",
+        "building/archer_upgrade_selected.png",
+        [this](Ref* sender) {
+            CCLOG("Archer upgrade clicked");
+            // 1. 获取等级
+            int currentLevel = _troopLevel[TroopType::ARCHER];
+            if (currentLevel == 0) currentLevel = 1;
+
+            // 2. 检查资源 (弓箭手升级稍贵一点)
+            int cost = currentLevel * 1200;
+            if (_elixir < cost) {
+                showResourceShortageTip("圣水不足！");
+                return;
+            }
+
+            // 3. 扣资源 & 升级
+            spendElixir(cost);
+            _troopLevel[TroopType::ARCHER]++;
+            int newLevel = _troopLevel[TroopType::ARCHER];
+
+            // 4. 修改全局配置 (HP+30, 攻击+8)
+            TroopConfig& config = g_troopTrainConfig[TroopType::ARCHER];
+            config.level = newLevel;
+            config.hp += 30;
+            config.attackPower += 8;
+        }
+    );
+    if (!_ArcherBtn) CCLOG("ERROR: Archer upgrade icon not found!");
+    // 2. 创建giant升级按钮（带判空保护）
+    _GiantBtn = MenuItemImage::create(
+        "building/giant_upgrade_icon.png",
+        "building/giant_upgrade_selected.png",
+        [this](Ref* sender) {
+            CCLOG("Giant upgrade clicked");
+            int currentLevel = _troopLevel[TroopType::GIANT];
+            if (currentLevel == 0) currentLevel = 1;
+
+            // 巨人升级比较贵
+            int cost = currentLevel * 2000;
+            if (_elixir < cost) {
+                showResourceShortageTip("圣水不足！");
+                return;
+            }
+
+            spendElixir(cost);
+            _troopLevel[TroopType::GIANT]++;
+            int newLevel = _troopLevel[TroopType::GIANT];
+
+            // 巨人成长性高 (HP+200, 攻击+15)
+            TroopConfig& config = g_troopTrainConfig[TroopType::GIANT];
+            config.level = newLevel;
+            config.hp += 200;
+            config.attackPower += 15;
+        }
+    );
+    if (!_GiantBtn) CCLOG("ERROR: Giant upgrade icon not found!");
+    // 2. 创建野蛮人升级按钮（带判空保护）
+    _BomberBtn = MenuItemImage::create(
+        "building/bomber_upgrade_icon.png",
+        "building/bomber_upgrade_selected.png",
+        [this](Ref* sender) {
+            CCLOG("Bomber upgrade clicked");
+            int currentLevel = _troopLevel[TroopType::BOMBER];
+            if (currentLevel == 0) currentLevel = 1;
+
+            int cost = currentLevel * 1500;
+            if (_elixir < cost) {
+                showResourceShortageTip("圣水不足！");
+                return;
+            }
+
+            spendElixir(cost);
+            _troopLevel[TroopType::BOMBER]++;
+            int newLevel = _troopLevel[TroopType::BOMBER];
+
+            // 炸弹人主要提升伤害 (HP+10, 攻击+100)
+            TroopConfig& config = g_troopTrainConfig[TroopType::BOMBER];
+            config.level = newLevel;
+            config.hp += 10;
+            config.attackPower += 100; // 炸弹人攻击力成长很高
+        }
+    );
+    if (!_BomberBtn) CCLOG("ERROR: Bomber upgrade icon not found!");
+    // 4. 创建取消按钮
+    _cancelPlaceBtn = MenuItemImage::create(
+        "ui/btn_close.png",
+        "ui/btn_close.png",
+        [this, upgradeLayer](Ref* sender) {
+            // 点击取消，移除升级栏
+            upgradeLayer->removeFromParent();
+        }
+    );
+
+    // 5. 安全创建菜单
+    // Vector 容器可以容纳有效的 MenuItem，避免传入 nullptr 导致 Menu 截断
+    Vector<MenuItem*> menuItems;
+    if (_BarbarianBtn) menuItems.pushBack(_BarbarianBtn);
+    if (_ArcherBtn) menuItems.pushBack(_ArcherBtn);
+    if (_GiantBtn) menuItems.pushBack(_GiantBtn);
+    if (_BomberBtn) menuItems.pushBack(_BomberBtn);
+
+    if (_cancelPlaceBtn) menuItems.pushBack(_cancelPlaceBtn);
+
+    if (menuItems.empty()) {
+        CCLOG("ERROR: No buttons created for Upgrade Bar!");
+        return;
+    }
+
+    auto menu = Menu::createWithArray(menuItems);
+    menu->alignItemsHorizontallyWithPadding(30);
+    menu->setPosition(Vec2(visibleSize.width / 2, 50));
+    upgradeLayer->addChild(menu);
+
+    // 如果你在头文件定义了 _upgradeBarLayer，记得赋值
+    // _upgradeBarLayer = upgradeLayer;
+}
+
+// 初始化建筑模式切换按钮
+void VillageScene::init_troop_upgrade_ModeBtn() {
+    Size visibleSize = Director::getInstance()->getVisibleSize();
+
+    // 创建建筑模式开关按钮（右上角悬浮）
+    auto troop_upgrade_ModeBtn = MenuItemImage::create(
+        "ui/upgrade_mode_btn_normal.png",  // 正常状态图片
+        "ui/upgrade_mode_btn_selected.png",// 按下状态图片
+        [this](Ref* sender) {
+            this->createUpgradeBar(); // 点击切换建筑栏
+        }
+    );
+    // 设置按钮大小和位置（可根据需求调整）
+    troop_upgrade_ModeBtn->setScale(0.8f);
+    troop_upgrade_ModeBtn->setPosition(Vec2(visibleSize.width - 300, visibleSize.height - 100));
+
+    auto menu = Menu::create(troop_upgrade_ModeBtn, nullptr);
+    menu->setPosition(Vec2::ZERO);
+    this->addChild(menu, 100);
 }

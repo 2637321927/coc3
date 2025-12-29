@@ -1,5 +1,6 @@
 #include "Barbarian.h"
 #include "cocos2d.h"
+#include "VillageScene.h"
 USING_NS_CC;
 
 /**
@@ -12,24 +13,14 @@ USING_NS_CC;
 BarbarianTroop* BarbarianTroop::create(const Vec2& spawnPos, float mapScale) {
     auto troop = new (std::nothrow) BarbarianTroop();
     if (troop) {
-        TroopConfig config;
-        config.id = 1001;               // 野蛮人唯一ID
-        config.type = TroopType::BARBARIAN; // 兵种类型
-        config.name = "Barbarian";      // 兵种名称
-        config.imgPath = "troops/barbarian_default.png"; // 纹理路径
 
-        // --- 属性配置 ---
-        config.hp = 400;                // 生命值（较高，肉盾）
-        config.attackPower = 80;        // 攻击力
-        config.attackRange = 10.0f;     // 攻击范围（近战）
-        config.attackSpeed = 1.0f;      // 攻击速度（较快）
-        config.moveSpeed = 120.0f;      // 移动速度（快）
 
-        // --- 训练消耗 ---
-        config.elixirCost = 25;         // 训练消耗
-        config.trainingTime = 2.0f;     // 训练时长
-        config.level = 1;               // 初始等级
-        config.spaceCost = 1;           // 占用人口
+        // 【修改后】 直接使用全局配置表中的数据！
+        // 这样当我们在升级按钮里修改了全局数据后，这里创建的新兵种就会自动拥有新属性
+        TroopConfig config = g_troopTrainConfig[TroopType::BARBARIAN];
+
+        // 依然保留手动设置人口，防止配置表漏填（可选）
+        config.spaceCost = 1;
 
         // 调用初始化方法
         if (troop->init(config, spawnPos, mapScale)) {

@@ -1,5 +1,6 @@
 #include "Bomber.h"
 #include "cocos2d.h"
+#include "VillageScene.h"
 USING_NS_CC;
 
 /**
@@ -12,26 +13,11 @@ USING_NS_CC;
 BomberTroop* BomberTroop::create(const Vec2& spawnPos, float mapScale) {
     auto troop = new (std::nothrow) BomberTroop();
     if (troop) {
-        TroopConfig config;
-        config.id = 1004;               // 炸弹人唯一ID
-        config.type = TroopType::BOMBER;// 兵种类型
-        config.name = "Bomber";         // 兵种名称
-        config.imgPath = "troops/bomber.png"; // 纹理路径
+        // 【修改后】从全局配置表读取
+        TroopConfig config = g_troopTrainConfig[TroopType::BOMBER];
 
-        // --- 属性配置 ---
-        config.hp = 100;                // 极低血量（核心特征：脆皮，一碰就炸）
-        config.attackPower = 500;       // 超高范围伤害（主要针对城墙）
-        config.attackRange = 80.0f;     // 攻击范围（自爆范围）
-        config.attackSpeed = 0.0f;      // 无攻速（一次性攻击）
-        config.moveSpeed = 90.0f;       // 移动速度中等
+        config.spaceCost = 2; // 炸弹人通常占2人口
 
-        // --- 训练消耗 ---
-        config.elixirCost = 100;        // 训练成本（圣水100）
-        config.trainingTime = 5.0f;     // 训练时长
-        config.level = 1;               // 初始等级
-        config.spaceCost = 2;           // 占用人口（2单位）
-
-        // 调用初始化方法
         if (troop->init(config, spawnPos, mapScale)) {
             troop->autorelease();
             return troop;
