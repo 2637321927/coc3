@@ -3,6 +3,8 @@
 #include "ui/CocosGUI.h" 
 #include "VillageScene.h"
 #include "EffectManager.h"
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 
 // 根据类型创建子类实例
@@ -324,6 +326,7 @@ void BaseBuilding::finishUpgrade() {
         this->unscheduleUpdate();
     _progressBar->setVisible(false);
     if (_buildFinishCallback) {
+        SimpleAudioEngine::getInstance()->playEffect("update.mp3", false);
         _buildFinishCallback(this);
     }
 }

@@ -128,8 +128,10 @@ public:
     int getStored() { return _goldStored; };
     void destroy() override;
     void upGrade() {
-        _goldPerInterval += 100;
-        _produceInterval -= 0.1f;
+        if (_currentLevel != 1) {
+            _goldPerInterval += 100;
+            _produceInterval -= 0.1f;
+        }
     }
 private:
     float _goldTimer = 0.0f;    // 金币生产计时器
@@ -153,8 +155,10 @@ public:
     int getProduceInterval() { return  _produceInterval; };
     int getStored() { return _elixirStored; };
     void upGrade() {
-        _elixirPerInterval += 100;
-        _produceInterval -= 0.1f;
+        if (_currentLevel != 1) {
+            _elixirPerInterval += 100;
+            _produceInterval -= 0.1f;
+        }
     }
 private:
     float _elixirTimer = 0.0f;    // 圣水生产计时器
@@ -220,12 +224,14 @@ public:
     int getPulseSpace()const { return _pulseSpace; }; // 获取升级后新增容量
     //应重写升级函数，升级后增加总容量
     void upGrade() {
-        _maxTroopSpace += 20;
-        _pulseSpace = 20;
+        if (_currentLevel != 1) {
+            _maxTroopSpace += 20;
+            _pulseSpace = 20;
+        }
     }
 private:
-    int _maxTroopSpace; // 总容量
-    int _pulseSpace; // 升级增加的容量
+    int _maxTroopSpace=20*_currentLevel; // 总容量
+    int _pulseSpace=20; // 升级增加的容量
 
 };
 // ========== 大本营类 ==========
@@ -279,8 +285,10 @@ public:
     int getStorageCapacity() const { return _storageCapacity; }
     int getStoragePulse() const { return _storagePulse; }
     void upGrade() {
-        _storageCapacity += 10000;
-        _storagePulse = 10000;
+        if (_currentLevel != 1) {
+            _storageCapacity += 10000;
+            _storagePulse = 10000;
+        }
     }
 private:
     int _storageCapacity = 10000; // 储存容量
@@ -298,8 +306,10 @@ public:
     int getStorageCapacity() const { return _storageCapacity; }
     int getStoragePulse() const { return _storagePulse; }
     void upGrade() {
-        _storageCapacity += 10000;
-        _storagePulse = 10000;
+        if (_currentLevel != 1) {
+            _storageCapacity += 10000;
+            _storagePulse = 10000;
+        }
     }
 private:
     int _storageCapacity = 10000; // 储存容量
@@ -354,9 +364,11 @@ public:
     // 特殊描述（重写）
     std::string getSpecialDesc();
     void upGrade() {
-        _attackRange += 8;
-        _attackCooldown -= 0.02;
-        _attackDamage += 75;
+        if (_currentLevel != 1) {
+            _attackRange += 8;
+            _attackCooldown -= 0.02;
+            _attackDamage += 75;
+        }
     }
 };
 class ArrowTower : public BaseAttackBuilding {
@@ -367,9 +379,11 @@ public:
     void attackTarget();
     std::string getSpecialDesc();
     void upGrade() {
-        _attackRange +=  10;
-        _attackCooldown -= 0.02;
-        _attackDamage += 50;
+        if (_currentLevel != 1) {
+            _attackRange += 10;
+            _attackCooldown -= 0.02;
+            _attackDamage += 50;
+        }
     }
 };
 

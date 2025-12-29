@@ -24,7 +24,7 @@ bool VillageScene::init()
     _uiLayer->setLayoutType(ui::Layout::Type::ABSOLUTE); // 绝对定位
     this->addChild(_uiLayer, 200); // 布局层级200
     initMap();
-
+    SimpleAudioEngine::getInstance()->preloadEffect("audio/update.mid");
     initBtns(_baseMode);
     if (_baseMode == BaseMode::FIGHT) {
         initFightScene();
@@ -33,9 +33,15 @@ bool VillageScene::init()
         initBuildPreview();
         initResourceBar();
         init_troop_upgrade_ModeBtn();
-        _bgmList.push_back("audio/village1.mp3"); // 可根据需要增减
+        _bgmList.push_back("audio/village1.mp3"); 
         _bgmList.push_back("audio/village2.mp3");
-        _bgmList.push_back("audio/village3.mp3"); // 可根据需要增减
+        _bgmList.push_back("audio/village3.mp3"); 
+        _bgmList.push_back("audio/village4.mp3");
+    }
+    else {
+        _bgmList.push_back("audio/fight1.mp3"); 
+        _bgmList.push_back("audio/fight2.mp3");
+        _bgmList.push_back("audio/fight3.mp3"); 
     }
     initTroopPreview();
     //initSaveLoadButtons();
@@ -1346,7 +1352,10 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                 if (_Mode != Mode::NONE) {
                     // 非 NONE 模式，直接返回（不触发任何交互）
                     return;
+
                 }
+                SimpleAudioEngine::getInstance()->playEffect("audio/update.mid", false);
+                
                 // 弹出功能窗口
                 auto popup = BuildingPopup::create(building, [this, building](BuildingPopup::ButtonType type) {
                     handleBuildingBtnClick(building, type);
@@ -1862,78 +1871,77 @@ void VillageScene::initTroopModeBtn() {
     menu->setPosition(Vec2::ZERO);
     _uiLayer->addChild(menu); // 最高层级
 }
-// 创建兵种栏（训练/放置按钮）
 void VillageScene::createTroopBar() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
 
-    // 兵种栏容器层（在建筑栏下方）
+    // Troop bar container
     auto troopBarLayer = Layer::create();
     this->addChild(troopBarLayer, 99);
-    troopBarLayer->setTag(1001); // 用Tag标记，方便后续查找
+    troopBarLayer->setTag(1001);
 
-    // 兵种栏背景
-    auto barBg = Sprite::create("ui/build_bar_bg.png"); // 兵种栏背景
-    barBg->setPosition(Vec2(visibleSize.width / 2, 50)); // 建筑栏同位置
+    // Background
+    auto barBg = Sprite::create("ui/build_bar_bg.png");
+    barBg->setPosition(Vec2(visibleSize.width / 2, 50));
     barBg->setScaleX(visibleSize.width / barBg->getContentSize().width * 0.8f);
     troopBarLayer->addChild(barBg);
 
-    // 野蛮人训练按钮
-    auto barbarianBtn = MenuItemImage::create(
-        "troops/barbarian.png",  // 野蛮人图标
-        "troops/barbarian.png",
-        [this](Ref* sender) {
-            _Mode = Mode::SPAWN_TROOP;
-            _selectedTroopType = TroopType::BARBARIAN;
-            // 设置预览图纹理
-            _troopPreview->setTexture("troops/barbarian.png");
-            _troopPreview->setVisible(true);
-        }
-    );
-    barbarianBtn->setScale(0.4f);
+    // Clear previous UI references to be safe
+    _troopCountLabels.clear();
+    _troopButtons.clear();
 
-    //弓箭手训练按钮
-    auto archerBtn = MenuItemImage::create(
-        "troops/archer.png",  // archer图标
-        "troops/archer.png",
-        [this](Ref* sender) {
-            _Mode = Mode::SPAWN_TROOP;
-            _selectedTroopType = TroopType::ARCHER;
-            // 设置预览图纹理
-            _troopPreview->setTexture("troops/archer.png");
-            _troopPreview->setVisible(true);
-        }
-    );
-    archerBtn->setScale(0.4f);
+    // Helper lambda to create buttons with counts
+    auto createTroopBtn = [this](std::string imgPath, TroopType type) -> MenuItemImage* {
+        auto btn = MenuItemImage::create(
+            imgPath,
+            imgPath,
+            [this, type](Ref* sender) {
+                // 1. Check if we have troops available (Logic Check)
+                if ((_baseMode == BaseMode::FIGHT || _baseMode == BaseMode::LEVEL1) && _trainedTroops[type] <= 0) {
+                    showText("No troops left!", Vec2(Director::getInstance()->getVisibleSize() / 2));
+                    return;
+                }
 
-    //bomber训练按钮
-    auto bomberBtn = MenuItemImage::create(
-        "troops/bomber.png",  // bomber图标
-        "troops/bomber.png",
-        [this](Ref* sender) {
-            _Mode = Mode::SPAWN_TROOP;
-            _selectedTroopType = TroopType::BOMBER;
-            // 设置预览图纹理
-            _troopPreview->setTexture("troops/bomber.png");
-            _troopPreview->setVisible(true);
-        }
-    );
-    bomberBtn->setScale(0.4f);
+                _Mode = Mode::SPAWN_TROOP;
+                _selectedTroopType = type;
 
-    //giant训练按钮
-    auto giantBtn = MenuItemImage::create(
-        "troops/giant.png",  // giant图标
-        "troops/giant.png",
-        [this](Ref* sender) {
-            _Mode = Mode::SPAWN_TROOP;
-            _selectedTroopType = TroopType::GIANT;
-            // 设置预览图纹理
-            _troopPreview->setTexture("troops/giant.png");
-            _troopPreview->setVisible(true);
-        }
-    );
-    giantBtn->setScale(0.4f);
+                // Update preview
+                if (g_troopTrainConfig.find(type) != g_troopTrainConfig.end()) {
+                    _troopPreview->setTexture(g_troopTrainConfig.at(type).imgPath);
+                }
+                _troopPreview->setVisible(true);
+            }
+        );
+        btn->setScale(0.4f);
 
-    // 取消放置按钮
+        // 2. Add Count Label (UI Display)
+        // Only show count in fight/level modes, not in creative/normal if not needed
+        if (_baseMode != BaseMode::CREATING) {
+            int count = _trainedTroops[type];
+            auto label = Label::createWithTTF(std::to_string(count), "fonts/Marker Felt.ttf", 36);
+            label->setPosition(Vec2(btn->getContentSize().width / 2, btn->getContentSize().height + 30));
+            label->setColor(Color3B::WHITE);
+            label->enableOutline(Color4B::BLACK, 2);
+            btn->addChild(label);
+
+            // Store references
+            _troopCountLabels[type] = label;
+            _troopButtons[type] = btn;
+
+            // Initial state check (Grey out if 0)
+            if (count <= 0) {
+                btn->setColor(Color3B::GRAY);
+            }
+        }
+        return btn;
+        };
+
+    // Create Buttons using the helper
+    auto barbarianBtn = createTroopBtn("troops/barbarian.png", TroopType::BARBARIAN);
+    auto archerBtn = createTroopBtn("troops/archer.png", TroopType::ARCHER);
+    auto bomberBtn = createTroopBtn("troops/bomber.png", TroopType::BOMBER);
+    auto giantBtn = createTroopBtn("troops/giant.png", TroopType::GIANT);
+
+    // Cancel Button
     auto cancelTroopBtn = MenuItemImage::create(
         "ui/cancel_place_btn.png",
         "ui/cancel_place_btn_selected.png",
@@ -1943,7 +1951,7 @@ void VillageScene::createTroopBar() {
         }
     );
 
-    // 排列按钮
+    // Align Buttons
     auto menu = Menu::create(barbarianBtn, archerBtn, bomberBtn, giantBtn, cancelTroopBtn, nullptr);
     menu->alignItemsHorizontallyWithPadding(30);
     menu->setPosition(Vec2(visibleSize.width / 2, 50));
@@ -2017,125 +2025,103 @@ bool VillageScene::checkCanSpawnTroop(Vec2 tilePos) {
         return true; // 无属性时默认可放置
     }
 }
+void VillageScene::updateTroopButtonState(TroopType type) {
+    // Check if the label exists in our map
+    if (_troopCountLabels.find(type) != _troopCountLabels.end()) {
+        int count = _trainedTroops[type];
+
+        // Update text
+        _troopCountLabels[type]->setString(std::to_string(count));
+
+        // Update button color (Gray if 0, White if > 0)
+        if (_troopButtons.find(type) != _troopButtons.end()) {
+            if (count <= 0) {
+                _troopButtons[type]->setColor(Color3B::GRAY);
+            }
+            else {
+                _troopButtons[type]->setColor(Color3B::WHITE);
+            }
+        }
+    }
+}
 // 生成兵种（放置到地图）
 void VillageScene::spawnTroop(Vec2 screenPos, TroopType type) {
-    // ===== 第一步：计算瓦片坐标 =====
+    // 1. [Logic Check] Validate troop count before anything else
+    // Only apply this restriction in Fight/Level modes, not Creative mode
+    if (_baseMode == BaseMode::FIGHT || _baseMode == BaseMode::LEVEL1 || _baseMode == BaseMode::LEVEL2 || _baseMode == BaseMode::LEVEL3) {
+        if (_trainedTroops[type] <= 0) {
+            showCannotPlaceTip(screenPos); // Reuse your existing tip or showText
+            return; // Stop execution
+        }
+    }
+
+    // ===== Step 1: Tile Calculation =====
     Vec2 tilePos = screenToIsoTile(screenPos);
     tilePos = Vec2(floor(tilePos.x), floor(tilePos.y));
 
-    // 调试日志
-    CCLOG("生成兵种请求：屏幕坐标(%.1f,%.1f) → 瓦片坐标(%.1f,%.1f)",
-        screenPos.x, screenPos.y, tilePos.x, tilePos.y);
-
-    // ===== 第二步：可放置检测 =====
-
+    // ===== Step 2: Placement Check =====
     if (!checkCanSpawnTroop(tilePos)) {
         showCannotPlaceTip(screenPos);
-
         return;
     }
 
-    // ===== 第三步：计算兵种位置 =====
-    // 计算瓦片中心点（用于设置兵种的实际像素位置）
-    // 对于单格兵种，中心在瓦片中心
+    // ===== Step 3: Create Troop =====
+    // ... existing calculation code ...
     float centerTileX = tilePos.x - 0.5f;
-    float centerTileY = tilePos.y - 2.0f; // 稍微调整Y轴偏移以匹配视觉
+    float centerTileY = tilePos.y - 2.0f;
     Vec2 centerTilePos(centerTileX, centerTileY);
-
-    // 转换为容器内的像素坐标
     Vec2 containerLocalPos = isoTileToContainerPos(centerTilePos);
 
-    // ===== 第四步：创建兵种 =====
-
-
-
-
     BaseTroop* troop = BaseTroop::create(type, tilePos, 1.0f);
-
-    // 容错处理：如果创建失败（例如资源缺失）
     if (!troop) {
-        CCLOG("BaseTroop创建失败");
-
-
-
-
-
-
-
-
-
-
-
-
-
+        CCLOG("BaseTroop create failed");
         return;
     }
 
-    // ===== 第五步：设置兵种属性并添加到场景 =====
-
+    // ===== Step 4: Add to Scene =====
     troop->setAnchorPoint(Vec2(0.5f, 0.5f));
     troop->setPosition(containerLocalPos);
     troop->setScale(1.0f);
-    // 根据Y轴设置层级，产生遮挡关系（越往下层级越高）
     troop->setLocalZOrder(1500 - (tilePos.x + tilePos.y));
-
-
-
-
     _mapContainer->addChild(troop);
 
-    // ===== 第六步：记录兵种数据 =====
+    // ... existing logic for adding to _spawnedTroops, _enemyTroops ...
     _spawnedTroops.push_back(troop);
-
     _enemyTroops.push_back(troop);
-
-    if (_Mode == Mode::FIGHT) {
-        _enemyTroops.push_back(troop);
-    }
-
-    // 注入场景引用，用于兵种内部寻路
     troop->setVillageScene(this);
+
+    // ... existing target finding logic ...
+    // (Your existing target finding logic here)
     BaseBuilding* targetBuilding = nullptr;
-
-    // 1. 【巨人逻辑】优先攻击防御建筑 (加农炮、箭塔)
-
-    // 2. 【炸弹人逻辑】优先攻击城墙
-   if (type == TroopType::BOMBER) {
+    if (type == TroopType::BOMBER) {
         std::vector<BuildingType> wallType = { BuildingType::WALL };
         targetBuilding = findNearestBuildingByTypes(containerLocalPos, wallType);
     }
-
-    // 3. 【通用/兜底逻辑】
-    // 如果不是特殊兵种，或者特殊兵种没找到优先目标（例如防御塔全被拆光了），则执行通用逻辑
     if (!targetBuilding) {
         BuildingType ignoreType = BuildingType::UNKNOWN;
-
-        // 弓箭手忽略围墙 (原有逻辑)
-        if (type == TroopType::ARCHER) {
-            ignoreType = BuildingType::WALL;
-        }
-
-
-        // 搜索最近的普通目标
+        if (type == TroopType::ARCHER) ignoreType = BuildingType::WALL;
         targetBuilding = findNearestEnemyBuilding(containerLocalPos, ignoreType);
-
-        // 【二次兜底】如果连“非墙”建筑也没了（全图只剩墙），且我们设置了忽略墙
-        // 那么必须允许攻击墙，否则兵种会发呆
         if (!targetBuilding && ignoreType == BuildingType::WALL) {
             targetBuilding = findNearestEnemyBuilding(containerLocalPos, BuildingType::UNKNOWN);
         }
     }
+    if (targetBuilding) troop->setAttackTarget(targetBuilding);
 
-    // 4. 锁定目标
-    if (targetBuilding) {
-        troop->setAttackTarget(targetBuilding);
-        CCLOG("生成兵种[%d]，锁定目标: %s", (int)type, targetBuilding->getConfig().name.c_str());
-    }
-    else {
-        CCLOG("未找到敌方建筑，兵种待机");
+    // ===== NEW Step 5: Update Count and UI =====
+    if (_baseMode != BaseMode::CREATING) { // Don't decrease count in creative mode
+        // 1. Decrease Data
+        _trainedTroops[type]--;
+
+        // 2. Update UI
+        updateTroopButtonState(type);
+
+        // 3. Auto-deselect if empty
+        if (_trainedTroops[type] <= 0) {
+            _Mode = Mode::NONE;
+            if (_troopPreview) _troopPreview->setVisible(false);
+        }
     }
 }
-
 BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType) {
     BaseBuilding* nearestBuilding = nullptr;
     float minDistance = FLT_MAX;
@@ -2466,7 +2452,66 @@ void VillageScene::addTroopCapacity(int bonus) {
 // 移除部队容量
 void VillageScene::removeTroopCapacity(int bonus) {
     _maxPopulation = _maxPopulation - bonus;
+    if (_population > _maxPopulation) {
+        removeTroopsFromStart(_population - _maxPopulation);
+    }
+    _population -= _population - _maxPopulation;
     setPopulation(_population);
+}
+int VillageScene::removeTroopsFromStart(int targetRemoveTotal)
+{
+    if (targetRemoveTotal <= 0)
+    {
+        return 0;
+    }
+
+    int actualRemoved = 0; 
+    int remainingToRemove = targetRemoveTotal; 
+    for (TroopType troopType = (TroopType)0; ; troopType = (TroopType)((int)troopType + 1))
+    {
+        auto it = _trainedTroops.find(troopType);
+        if (remainingToRemove <= 0 || ((int)troopType >= 5))
+        {
+            break;
+        }
+        if (it == _trainedTroops.end())
+        {
+            if (_trainedTroops.empty())
+            {
+                CCLOG("部队容器已空，停止移除");
+                break;
+            }
+            continue;
+        }
+
+        int currentTroopCount = it->second; 
+        int removeCountInThisType;
+        if ((int)troopType == 2) {
+            removeCountInThisType = std::min(remainingToRemove%5, currentTroopCount);
+
+        }
+        else {
+            removeCountInThisType = std::min(remainingToRemove, currentTroopCount);
+        }
+
+        actualRemoved += removeCountInThisType;
+        if ((int)troopType == 2) {
+            remainingToRemove -= removeCountInThisType*5;
+        }
+        else {
+            remainingToRemove -= removeCountInThisType;
+        }
+
+        if (currentTroopCount == removeCountInThisType)
+        {
+            _trainedTroops.erase(it);
+        }
+        else
+        {
+            it->second = currentTroopCount - removeCountInThisType;
+        }
+    }
+    return actualRemoved;
 }
 // 显示资源不足提示
 void VillageScene::showResourceShortageTip(const std::string& message) {
@@ -2501,7 +2546,14 @@ SaveData::Village VillageScene::packSaveData() {
     saveData.maxPopulation = _maxPopulation;
     CCLOG("Packing save data: gold=%d, elixir=%d, buildings=%zu",
         saveData.gold, saveData.elixir, _buildings.size());
+    for (auto const& pair : _trainedTroops) {
+        TroopType type = pair.first;
+        int count = pair.second;
+
+        saveData.troops[(int)type] = count;
+    }
     // 填充所有建筑数据
+
     for (const auto& building : _buildings) {
         SaveData::Building bData;
         bData.type = building->getType();
@@ -2576,6 +2628,16 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     setGold(saveData.gold);
     setElixir(saveData.elixir);
     setPopulation(saveData.poplation);
+    // 【新增】恢复兵种数据
+
+    _trainedTroops.clear();
+    for (auto const& pair : saveData.troops) {
+        int typeInt = pair.first;
+        int count = pair.second;
+
+        _trainedTroops[(TroopType)typeInt] = count;
+    }
+    CCLOG("Troops restored. Barbarian count: %d", _trainedTroops[TroopType::BARBARIAN]);
     // 重新创建所有建筑
     for (const auto& bData : saveData.buildings) {
         // 调用placeBuilding逻辑创建建筑（复用现有代码）
@@ -2584,12 +2646,12 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
             // 恢复建筑状态/等级
             //TODO:恢复建造中的建筑有问题，需要额外处理建造进度
             if (_baseMode != BaseMode::FIGHT) {
-                building->setState(bData.state);    // 需给BaseBuilding添加setState方法
+                building->setState(bData.state);   
             }
             else {
                 building->setState(BuildingState::IDLE);
             }
-            building->setLevel(bData.level);    // 需给BaseBuilding添加setLevel方法
+            building->setLevel(bData.level);    
             if (bData.immediatelyBuild) {
                 building->buildImmediately();
             }
@@ -2635,6 +2697,18 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
                 _elixirCollectors.push_back(dynamic_cast<ElixirCollector*>(building));
             }
         }
+    }
+    if (_baseMode == BaseMode::FIGHT || _baseMode == BaseMode::LEVEL1 || _baseMode == BaseMode::LEVEL2 || _baseMode == BaseMode::LEVEL3) {
+        // 1. 更新总建筑数
+        _totalBuildingCount = _buildings.size();
+
+        // 2. 重置已摧毁数量 (新关卡开始应当是0)
+        _destroyedBuildingCount = 0;
+
+        // 3. 立即刷新一次UI显示 (0/Total = 0%)
+        updateDestroyPercent();
+
+        CCLOG("关卡数据重置完成：总建筑数=%d", (int)_totalBuildingCount);
     }
 }
 
@@ -3311,47 +3385,69 @@ void VillageScene::go_back(const std::string& fileName) {
 
 
 
-void VillageScene::gotoLevel1(const std::string& levelFilename) { // 传入 "level1_preset.txt"
-    // 1. 先保存当前村庄状态（如果需要）
+void VillageScene::gotoLevel1(const std::string& levelFilename) {
+    // 1. 先保存当前村庄状态
     saveGame("village_save.txt");
 
     // 2. 创建一个新的战斗场景
-    // 注意：这里我们使用 FIGHT 模式创建场景
     Scene* levelScene = VillageScene::createScene(BaseMode::FIGHT);
-
-    // 3. 获取 VillageScene 实例
-    // createScene 返回的是 Scene*，我们需要拿到里面的 Layer (VillageScene*)
-    // 根据你的 createScene 实现，Layer 被加为了 Scene 的子节点
-    // 假设 createScene 里 layer->setTag(25) 用于 FIGHT 模式
     VillageScene* villageLayer = dynamic_cast<VillageScene*>(levelScene->getChildByTag(25));
 
     if (villageLayer) {
-        // 4. 关键：加载关卡预设文件
-        // 使用我们之前修改过的支持 Resources 目录加载的 loadGame
-        // 第二个参数 true 表示允许回退到 Resources 目录查找
+        // 尝试加载指定的关卡文件
         bool loadSuccess = villageLayer->loadGame(levelFilename, true);
 
-        if (loadSuccess) {
-            CCLOG("成功加载关卡: %s", levelFilename.c_str());
+        // 【修复】如果加载失败（文件不存在），尝试加载玩家的1号存档作为备用
+        if (!loadSuccess) {
+            CCLOG("关卡文件 %s 不存在，尝试加载 normal1.txt", levelFilename.c_str());
+            loadSuccess = villageLayer->loadGame("normal1.txt", true);
+        }
 
-            // 5. 初始化战斗 UI 和数据
-            // 如果 loadGame 没有包含这些初始化，可能需要手动调用
-            // 例如：设置倒计时、隐藏建造按钮等
-            // villageLayer->beginFight(); // 如果你想进场就开始倒计时
+        // 【修复】如果还是失败，强制允许进入（作为空地图测试），防止卡死
+        if (!loadSuccess) {
+            CCLOG("无可用存档，生成临时测试关卡");
+            // 手动添加一个大本营作为测试目标
+            // 注意：这里需要确保坐标在地图范围内
+            villageLayer->placeBuilding(Vec2(20, 20), BuildingType::TOWN_HALL);
 
-            // 6. 切换场景
-            Director::getInstance()->pushScene(levelScene);
+            // 手动触发布局更新
+            villageLayer->_totalBuildingCount = villageLayer->_buildings.size();
+            villageLayer->updateDestroyPercent();
+
+            loadSuccess = true; // 强制设为成功，以便进入场景
+        }
+        std::string playerSavePath = FileUtils::getInstance()->getWritablePath() + "village_save.txt";
+
+        if (FileUtils::getInstance()->isFileExist(playerSavePath)) {
+            // B. 读取文件内容字符串
+            std::string saveStr = FileUtils::getInstance()->getStringFromFile(playerSavePath);
+
+            // C. 使用 SaveData 解析字符串
+            SaveData::Village playerData = SaveData::Village::fromString(saveStr);
+
+            // D. 将解析出的兵种数据赋值给战斗场景的 _trainedTroops
+            villageLayer->_trainedTroops.clear();
+            for (auto const& pair : playerData.troops) {
+                int typeInt = pair.first;
+                int count = pair.second;
+                // 转换 int -> TroopType 并存入 map
+                villageLayer->_trainedTroops[(TroopType)typeInt] = count;
+            }
+
+            CCLOG("兵种数据已传输至战斗场景! 野蛮人数量: %d", villageLayer->_trainedTroops[TroopType::BARBARIAN]);
         }
         else {
-            CCLOG("加载关卡失败: %s", levelFilename.c_str());
-            // 如果加载失败，不要切换场景
+            CCLOG("警告：未找到 village_save.txt，无法带入兵种");
+        }
+        if (loadSuccess) {
+            CCLOG("进入战斗场景");
+            Director::getInstance()->pushScene(levelScene);
         }
     }
     else {
         CCLOG("获取 VillageScene 层失败");
     }
 }
-
 
 void VillageScene::gotoFight() {
     saveGame("fight.txt");
@@ -3553,16 +3649,30 @@ void VillageScene::initStarRatingUI() {
 
 // 更新摧毁百分比显示
 void VillageScene::updateDestroyPercent() {
+    // 【修复】防止除以0导致的崩溃 (NaN)
+    if (_totalBuildingCount <= 0) {
+        destroyPercent = 0.0f;
+        if (percentLabel) {
+            percentLabel->setString("0.0%");
+        }
+        return;
+    }
+
     // 计算百分比（防止超过100%）
     destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
-    if (destroyPercent == 100) {
-        this->unschedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown));
-        // 触发战斗结算
-        this->onFightSettle();
-    }
+
     // 更新标签显示
     if (percentLabel) {
         percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));
+    }
+
+    // 100% 结算逻辑
+    if (destroyPercent >= 100.0f) {
+        // 防止重复调用
+        if (this->isScheduled(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown))) {
+            this->unschedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown));
+            this->onFightSettle();
+        }
     }
 }
 

@@ -61,6 +61,7 @@ namespace SaveData {
 
     // 整个村庄的存档数据
     struct Village {
+
         std::vector<Building> buildings;       // 所有建筑数据
         cocos2d::Vec2 mapSize;                 // 地图尺寸（可选）
         std::vector<Vec2> occupiedTiles; // 已占用格子（可选，可通过建筑数据推导）
@@ -71,6 +72,7 @@ namespace SaveData {
         int maxGold;
         int maxElixir;
         int maxPopulation;
+        std::map<int, int> troops; // key为TroopType转int, value为数量
         // 序列化整个村庄数据
         std::string toString() const {
             std::stringstream ss;
@@ -87,6 +89,13 @@ namespace SaveData {
             }
             ss << "\n";
             ss << gold << "," << elixir << ","<<  poplation << "," << maxGold << ","<< maxElixir <<","<< maxPopulation <<"\n";
+            for (auto const& pair : troops) {
+                int type = pair.first;
+                int count = pair.second;
+                ss << type << ":" << count << ";";
+            }
+            if (troops.empty()) ss << "empty"; // 防止空行
+            ss << "\n";
             // 4. 存所有建筑（每行一个建筑）
             for (const auto& b : buildings) {
                 ss << b.toString() << "\n";
@@ -158,9 +167,23 @@ namespace SaveData {
                     }
                 }
             }
-
+            if (lines.size() >= 5 && !lines[4].empty() && lines[4] != "empty") {
+                std::vector<std::string> troopParts = split(lines[4], ";");
+                for (const auto& part : troopParts) {
+                    if (part.empty()) continue;
+                    std::vector<std::string> pair = split(part, ":");
+                    if (pair.size() == 2) {
+                        try {
+                            int type = std::stoi(pair[0]);
+                            int count = std::stoi(pair[1]);
+                            data.troops[type] = count;
+                        }
+                        catch (...) {}
+                    }
+                }
+            }
             // 建筑从第4行开始解析
-            for (int i = 4; i < lines.size(); i++) {
+            for (int i = 5; i < lines.size(); i++) {
                 if (lines[i].empty()) continue;
                 data.buildings.push_back(Building::fromString(lines[i]));
             }
@@ -297,6 +320,9 @@ protected:
     ui::Layout* _uiLayer;  // 资源显示层（方便统一管理）
 private:
     BaseMode _baseMode; // 所有模式管理器
+    std::map<TroopType, cocos2d::Label*> _troopCountLabels;      // Stores the number labels
+    std::map<TroopType, cocos2d::MenuItemImage*> _troopButtons;
+    void updateTroopButtonState(TroopType type);
     //static VillageScene* _instance;// 单例实例指针
     // -------------------------- 成员变量 --------------------------
     // 地图核心对象
@@ -389,6 +415,7 @@ private:
     Sprite* _troopPreview;               // 兵种放置预览图
     TroopType _selectedTroopType = TroopType::UNKNOWN; // 选中的兵种类型
     std::unordered_map<TroopType, int> _trainedTroops;//当前已经训练的兵种和数量
+    int removeTroopsFromStart(int targetRemoveTotal);
     std::vector<BaseTroop*> _spawnedTroops; // 已生成的所有兵种（用于管理生命周期，不一定是敌军）
     Vec2 _troopSpawnTilePos;             // 兵种出生瓦片坐标
     std::vector<BaseTroop*> _enemyTroops; // 敌方兵种列表(预留，用于战斗模式)
