@@ -1,5 +1,6 @@
 #include "Archer.h"
 #include "cocos2d.h"
+#include "VillageScene.h"
 USING_NS_CC;
 
 /**
@@ -9,29 +10,19 @@ USING_NS_CC;
  * @param mapScale 地图缩放比例.
  * @return 创建成功的 ArcherTroop 对象指针，失败返回 nullptr.
  */
+ // [Archer.cpp]
+
+
+
 ArcherTroop* ArcherTroop::create(const Vec2& spawnPos, float mapScale) {
     auto troop = new (std::nothrow) ArcherTroop();
     if (troop) {
-        TroopConfig config;
-        config.id = 1002;              // 弓箭手唯一ID（区别于野蛮人1001）
-        config.type = TroopType::ARCHER; // 兵种类型为弓箭手
-        config.name = "Archer";        // 兵种名称
-        config.imgPath = "troops/archer.png"; // 弓箭手纹理路径
+        // 【修改后】从全局配置表读取，支持动态升级
+        TroopConfig config = g_troopTrainConfig[TroopType::ARCHER];
 
-        // --- 属性配置 ---
-        config.hp = 200;               // 生命值（比野蛮人低，远程脆皮）
-        config.attackPower = 60;       // 攻击力（远程攻击，略低于野蛮人）
-        config.attackRange = 200.0f;   // 攻击范围（远程核心，远大于野蛮人）
-        config.attackSpeed = 1.5f;     // 攻击速度（比野蛮人慢，远程平衡）
-        config.moveSpeed = 100.0f;     // 移动速度（比野蛮人稍慢）
+        // 保留必要的硬性修正（防止配置表漏填）
+        config.spaceCost = 1;
 
-        // --- 训练消耗 ---
-        config.elixirCost = 50;        // 训练消耗（圣水50，比野蛮人高）
-        config.trainingTime = 3.0f;    // 训练时长（3秒）
-        config.level = 1;              // 初始等级
-        config.spaceCost = 1;          // 占用人口（和野蛮人一致）
-
-        // 调用初始化方法
         if (troop->init(config, spawnPos, mapScale)) {
             troop->autorelease();
             return troop;
@@ -40,7 +31,7 @@ ArcherTroop* ArcherTroop::create(const Vec2& spawnPos, float mapScale) {
     CC_SAFE_DELETE(troop);
     return nullptr;
 }
-
+// ... 其他代码不变
 /**
  * 初始化弓箭手.
  * 调用父类通用初始化逻辑，设置UI和状态.

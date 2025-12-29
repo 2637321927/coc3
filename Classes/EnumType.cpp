@@ -17,8 +17,8 @@ std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
       "troops/barbarian.png",
       400,
       80,
-      50.0f,
-      1.0f,
+      70.0f,
+      1.5f,
       120.0f,
       25,
       2.0f,
@@ -33,7 +33,7 @@ std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
       "troops/archer.png", // 弓箭手纹理路径（需替换为你的实际资源）
        200,                // 生命值（比野蛮人低，远程脆皮）
       60,         // 攻击力（远程攻击，略低于野蛮人）
-      200.0f,      // 攻击范围（远程核心，远大于野蛮人）
+      120.0f,      // 攻击范围（远程核心，远大于野蛮人）
       1.5f,         // 攻击速度（比野蛮人慢，远程平衡）
       100.0f,         // 移动速度（比野蛮人稍慢）
       50, // 训练消耗（圣水50，比野蛮人高）
@@ -49,7 +49,7 @@ std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
       "troops/giant.png",
       1000,
       50,
-      30.0f,
+      70.0f,
       1.5f,
       60.0f,
       150,
@@ -57,7 +57,25 @@ std::unordered_map<TroopType, TroopConfig> g_troopTrainConfig = {
       1,
       5,
       1
-  }}
+  }},
+    {
+TroopType::BOMBER, {
+ 1001,
+ TroopType::BOMBER,
+ "Bomber",
+ "troops/bomber.png",
+ 80,
+ 400,
+ 70.0f,
+ 1.0f,
+ 150.0f,
+ 50,
+ 2.0f,
+ 1,
+ 1,
+ 2
+}
+},
 };
 
 /**

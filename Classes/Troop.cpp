@@ -182,19 +182,17 @@ void BaseTroop::updateAttackCD() {
 // Troop.cpp
 
 // 【新增】实现设置瓦片目标的方法
+// [Troop.cpp]
 void BaseTroop::setTargetTilePosition(const Vec2& targetTilePos) {
     if (!_villageScene) return;
 
-    // 1. 获取起点（瓦片坐标）
     Vec2 startTile = getCurrentTilePos();
-
-    // 2. 记录终点（瓦片坐标）
     _targetPos = targetTilePos;
 
-    // 3. 直接调用 A* 寻路（不做任何坐标转换！）
+    // 调用 A* 寻路
     _pathPoints = PathFinder::findPath(
         startTile,
-        _targetPos, // 终点
+        _targetPos,
         _villageScene->getPathLayer(),
         _villageScene->getMapSize(),
         _villageScene->getOccupiedTiles()
@@ -202,31 +200,39 @@ void BaseTroop::setTargetTilePosition(const Vec2& targetTilePos) {
 
     _currentPathIndex = 0;
 
-    // Log调试：看看现在能不能算出来路径
-    CCLOG("寻路请求: 起点(%.0f,%.0f) -> 终点(%.0f,%.0f) | 路径点数: %zu",
-        startTile.x, startTile.y, _targetPos.x, _targetPos.y, _pathPoints.size());
-
     if (!_pathPoints.empty()) {
+        // 找到了路径，开始移动
         setState(TroopState::MOVING);
     }
     else {
-        setState(TroopState::IDLE);
+        // 【修改】如果没有路径（可能是就在旁边，也可能是不可达）
+        // 计算物理距离检查是否已经在攻击范围内
+        Vec2 myPos = this->getPosition();
+        Vec2 targetPixelPos = _villageScene->isoTileToContainerPosPublic(_targetPos);
+        float dist = myPos.distance(targetPixelPos);
+
+        // 注意：这里加一个缓冲距离（比如40像素），因为attackRange可能很小
+        // 如果真的很近，直接攻击；否则待机（防止隔空攻击）
+        if (dist <= _attackRange + 30.0f) { // 30.0f是预估的半个瓦片像素宽，容错用
+            setState(TroopState::ATTACKING);
+        }
+        else {
+            // 找不到路，又离得远 -> 呆着别动
+            findNewTarget();
+            CCLOG("无法到达目标，且不在攻击范围内，待机。");
+        }
     }
 }
 
-// 【修改】修正 updateMovement 逻辑
+// [Troop.cpp]
 void BaseTroop::updateMovement(float dt) {
     if (_state != TroopState::MOVING) return;
     if (!_villageScene) return;
 
-    // 1. 攻击范围检测
-    // _targetPos 现在存的是瓦片坐标，必须转成容器像素坐标才能计算距离
+    // 1. 攻击范围检测 (保持原样)
     Vec2 targetPixelPos = _villageScene->isoTileToContainerPosPublic(_targetPos);
-
-    // 计算兵种和目标的像素距离
     float distToTarget = this->getPosition().distance(targetPixelPos);
 
-    // 判断是否在攻击范围内 (减去30是简单的半径修正，避免兵种完全重叠到建筑中心)
     if (distToTarget <= _attackRange) {
         setState(TroopState::ATTACKING);
         _pathPoints.clear();
@@ -235,52 +241,41 @@ void BaseTroop::updateMovement(float dt) {
 
     // 2. 沿路径移动
     if (_currentPathIndex < _pathPoints.size()) {
-        // 获取下一个路径点（瓦片坐标）
+        // ... (保持你原有的移动代码不变) ...
         Vec2 nextTile = _pathPoints[_currentPathIndex];
-
-        // 将下一个瓦片转为像素坐标
         Vec2 nextWaypoint = _villageScene->isoTileToContainerPosPublic(nextTile);
-
         Vec2 direction = nextWaypoint - this->getPosition();
         float distToWaypoint = direction.length();
         float moveStep = _config.moveSpeed * dt * _mapScale;
 
         if (distToWaypoint < moveStep) {
-            // 到达当前节点，吸附并前往下一个
             this->setPosition(nextWaypoint);
             _currentPathIndex++;
         }
         else {
-            // 向当前节点移动
             direction.normalize();
             this->setPosition(this->getPosition() + direction * moveStep);
         }
     }
     else {
-        // 路径走完了（通常意味着到了目标旁边）
-        setState(TroopState::ATTACKING);
+        // 【修改】路径走完了
+        // 再次检查距离！防止路径被阻断导致只走了一半就停下
+        if (distToTarget <= _attackRange + 10.0f) { // 允许微小误差
+            setState(TroopState::ATTACKING);
+        }
+        else {
+            // 路径走完了但还没够着目标（比如目标在墙里，寻路只寻到了墙外）
+            // 暂时设为 IDLE 或者重新寻路
+            findNewTarget();
+            // 可选：这里可以触发 verifyAttackTarget() 再次尝试贴脸
+        }
     }
 }
 // ========== 通用：帧更新（核心逻辑） ==========
 void BaseTroop::update(float dt) {
     Sprite::update(dt);
-    if (_state == TroopState::ATTACKING && _attackTarget == nullptr) {
-        setState(TroopState::IDLE);
-        return;
-    }
-    if (_state == TroopState::ATTACKING) {
-        if (!_attackTarget) {
-            setState(TroopState::IDLE);
-            return;
-        }
-        // 如果能获取状态，且状态是 DESTROYED，也停止
-        // 注意：如果上面 destroyBuilding 没写好，这里访问 getState() 就会崩
-        if (_attackTarget->getState() == BuildingState::DESTROYED) {
-            setState(TroopState::IDLE);
-            _attackTarget = nullptr;
-            return;
-        }
-    }
+
+
     // 根据不同状态处理逻辑
     switch (_state) {
     case TroopState::TRAINING: {
@@ -300,21 +295,22 @@ void BaseTroop::update(float dt) {
     }
     case TroopState::ATTACKING: {
         // 1. 基础判空
-        if (!_attackTarget) {
-            setState(TroopState::IDLE);
-            return;
-        }
+
 
         // 2. [关键检查] 检查目标是否已经“死亡”
         // 如果建筑被 VillageScene::destroyBuilding 移除了，它的 parent 会变成 nullptr
         // 但因为我们 retain 了它，内存是安全的，这里可以放心访问
         if (_attackTarget->getParent() == nullptr || _attackTarget->getState() == BuildingState::DESTROYED) {
-            setAttackTarget(nullptr); // 释放引用，此时建筑内存才真正被销毁
-            setState(TroopState::IDLE);
+            
+            findNewTarget();
             return;
         }
 
         updateAttackCD();
+
+        // [Troop.cpp]
+
+// ... 在文件末尾或合适位置添加 ...
 
         // 3. 执行攻击
         if (_attackCDTimer >= _config.attackSpeed) {
@@ -326,8 +322,8 @@ void BaseTroop::update(float dt) {
 
             // 再次检查目标状态（防止刚才那一下把它打死了）
             if (_attackTarget && (_attackTarget->getParent() == nullptr || _attackTarget->getState() == BuildingState::DESTROYED)) {
-                setAttackTarget(nullptr);
-                setState(TroopState::IDLE);
+                
+                findNewTarget();
                 return;
             }
 
@@ -337,6 +333,43 @@ void BaseTroop::update(float dt) {
     }
     default:
         break;
+    }
+}
+
+// [Troop.cpp]
+
+void BaseTroop::findNewTarget() {
+    if (!_villageScene) return;
+
+    Vec2 myPos = this->getPosition();
+
+    // 1. 【新增】确定要忽略的建筑类型
+    BuildingType ignoreType = BuildingType::UNKNOWN;
+
+    // 如果是弓箭手，设置忽略围墙
+    if (_config.type == TroopType::ARCHER) {
+        ignoreType = BuildingType::WALL;
+    }
+
+    // 还可以扩展：比如巨人(GIANT)优先攻击防御建筑，这里可以写更复杂的逻辑
+    // 但目前只处理弓箭手不打墙
+
+    // 2. 第一次搜索：尝试寻找非围墙的目标
+    BaseBuilding* newTarget = _villageScene->findNearestEnemyBuilding(myPos, ignoreType);
+
+    // 3. 【兜底逻辑】如果没找到（比如全图只剩下围墙了），且我们确实设置了忽略
+    // 那么必须重新搜一次，这次不忽略围墙，否则弓箭手会发呆导致游戏无法结束
+    if (!newTarget && ignoreType != BuildingType::UNKNOWN) {
+        newTarget = _villageScene->findNearestEnemyBuilding(myPos, BuildingType::UNKNOWN);
+    }
+
+    // 4. 设置目标
+    if (newTarget) {
+        setAttackTarget(newTarget);
+    }
+    else {
+        setAttackTarget(nullptr);
+        setState(TroopState::IDLE);
     }
 }
 // ========== 寻路逻辑 ========== 
@@ -372,11 +405,7 @@ void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
     if (!_pathPoints.empty()) {
         setState(TroopState::MOVING);
     }
-    else {
-        // 如果找不到路，但就在旁边，可能直接判定攻击？
-        // 暂时先 IDLE
-        setState(TroopState::IDLE);
-    }
+
 }
 
 void BaseTroop::setAttackTarget(BaseBuilding* target) {

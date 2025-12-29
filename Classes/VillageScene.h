@@ -189,20 +189,7 @@ public:
     const std::vector<Vec2>& getOccupiedTiles() const {    // 返回占用瓦片
         return _occupiedTiles;
     }
-    BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos) {
-        BaseBuilding* nearestBuilding = nullptr;
-        float minDistance = FLT_MAX;
-
-        // 遍历所有建筑（假设场景中有存储建筑的容器 _buildings）
-        for (auto& building : _buildings) {
-            float distance = troopPos.distance(building->getPosition());
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestBuilding = building;
-            }
-        }
-        return nearestBuilding;
-    }
+    BaseBuilding* VillageScene::findNearestEnemyBuilding(const Vec2& troopPos, BuildingType ignoreType = BuildingType::UNKNOWN);
     void VillageScene::init_level_Btns(BaseMode baseMode);
     static VillageScene* getInstance() { // 提供外部访问接口
         auto currentScene = Director::getInstance()->getRunningScene();
@@ -322,6 +309,10 @@ private:
     MenuItemImage* _vaultBtn;
     MenuItemImage* _cancelPlaceBtn;
     BaseBuilding* _movingBuilding;
+    MenuItemImage* _BarbarianBtn;
+    MenuItemImage* _ArcherBtn;
+    MenuItemImage* _GiantBtn;
+    MenuItemImage* _BomberBtn;
     // 定义场景最大瓦片数（根据你的游戏场景调整，比如50x50、100x100，固定不变）
     static const int MAX_TILE_X = 400;  // 瓦片x轴最大索引（0 ~ 49）
     static const int MAX_TILE_Y = 400;  // 瓦片y轴最大索引（0 ~ 49）
@@ -447,9 +438,10 @@ private:
     Vec2 isoTileToContainerPos(Vec2 tilePos);
     // 初始化建筑放置按钮
     void initBuildModeBtn();
+    void VillageScene::init_troop_upgrade_ModeBtn();
     // 检测瓦片是否可放置建筑
     bool checkCanPlace(Vec2 tilePos, BuildingType type);
-
+    void VillageScene::createUpgradeBar();
     void moveBuilding(BaseBuilding* building, Vec2 newTilePos);
     // 切换建筑栏显示/隐藏
     void VillageScene::toggleBuildBar();

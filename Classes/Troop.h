@@ -9,7 +9,6 @@
 class VillageScene;
 class BaseBuilding;
 // 通用兵种配置（所有兵种都有的属性）
-// 特有属性在子类内部private
 
 // 抽象基类（不可实例化，只能继承）
 class BaseTroop : public cocos2d::Sprite {
@@ -80,7 +79,7 @@ public:
     void syncScale(float mapScale);     // 同步地图缩放（通用）
     float getAttackRange() const { return _attackRange; }
     float getAttackPower() const { return _attackPower; }
-
+    void findNewTarget();
     // ========== 交互接口（通用） ==========
     void bindAttackCallback(const std::function<void(BaseTroop*, BaseBuilding*)>& callback);
 

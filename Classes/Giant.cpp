@@ -1,5 +1,6 @@
 #include "Giant.h"
 #include "cocos2d.h"
+#include "VillageScene.h"
 USING_NS_CC;
 
 /**
@@ -12,26 +13,12 @@ USING_NS_CC;
 GiantTroop* GiantTroop::create(const Vec2& spawnPos, float mapScale) {
     auto troop = new (std::nothrow) GiantTroop();
     if (troop) {
-        TroopConfig config;
-        config.id = 1003;               // 巨人唯一ID
-        config.type = TroopType::GIANT; // 兵种类型
-        config.name = "Giant";          // 兵种名称
-        config.imgPath = "troops/giant.png"; // 纹理路径
+        // 【修改后】从全局配置表读取
+        TroopConfig config = g_troopTrainConfig[TroopType::GIANT];
 
-        // --- 属性配置 ---
-        config.hp = 1500;               // 高血量（核心特征：肉盾）
-        config.attackPower = 150;       // 高攻击力（近战重拳）
-        config.attackRange = 60.0f;     // 攻击范围略大于野蛮人（体型大）
-        config.attackSpeed = 2.5f;      // 低攻速（体现笨重）
-        config.moveSpeed = 80.0f;       // 移动速度慢（体现体型大）
+        // 巨人占5个人口，这里可以做个兜底，也可以完全信赖配置表
+        config.spaceCost = 5;
 
-        // --- 训练消耗 ---
-        config.elixirCost = 200;        // 高训练成本（圣水200）
-        config.trainingTime = 8.0f;     // 训练时长更长
-        config.level = 1;               // 初始等级
-        config.spaceCost = 5;           // 占用更多人口（5单位）
-
-        // 调用初始化方法
         if (troop->init(config, spawnPos, mapScale)) {
             troop->autorelease();
             return troop;
@@ -40,7 +27,6 @@ GiantTroop* GiantTroop::create(const Vec2& spawnPos, float mapScale) {
     CC_SAFE_DELETE(troop);
     return nullptr;
 }
-
 /**
  * 初始化巨人.
  * 调用父类通用初始化逻辑，并设置特有的视觉缩放（体型巨大）.
