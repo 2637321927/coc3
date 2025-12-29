@@ -338,36 +338,79 @@ void BaseTroop::update(float dt) {
 
 // [Troop.cpp]
 
+// [Troop.cpp]
+
 void BaseTroop::findNewTarget() {
+    // 0. 安全检查
     if (!_villageScene) return;
 
+    // 获取当前位置
     Vec2 myPos = this->getPosition();
+    BaseBuilding* newTarget = nullptr;
 
-    // 1. 【新增】确定要忽略的建筑类型
-    BuildingType ignoreType = BuildingType::UNKNOWN;
+    // ==================== 第一阶段：优先目标搜索 (偏好特定类型的兵种) ====================
 
-    // 如果是弓箭手，设置忽略围墙
-    if (_config.type == TroopType::ARCHER) {
-        ignoreType = BuildingType::WALL;
+    // 1. 【巨人逻辑】优先寻找防御建筑
+    if (_config.type == TroopType::GIANT) {
+        std::vector<BuildingType> defenseTypes = { BuildingType::CANNON, BuildingType::ARROW_TOWER };
+        newTarget = _villageScene->findNearestBuildingByTypes(myPos, defenseTypes);
+    }
+    // 2. 【炸弹人逻辑】优先寻找城墙
+    else if (_config.type == TroopType::BOMBER) {
+        std::vector<BuildingType> wallTypes = { BuildingType::WALL };
+        newTarget = _villageScene->findNearestBuildingByTypes(myPos, wallTypes);
     }
 
-    // 还可以扩展：比如巨人(GIANT)优先攻击防御建筑，这里可以写更复杂的逻辑
-    // 但目前只处理弓箭手不打墙
+    // 注意：弓箭手没有“优先目标”（她打最近的任意建筑），所以不需要在第一阶段处理
 
-    // 2. 第一次搜索：尝试寻找非围墙的目标
-    BaseBuilding* newTarget = _villageScene->findNearestEnemyBuilding(myPos, ignoreType);
+    // ==================== 第二阶段：通用搜索 (设定忽略规则) ====================
 
-    // 3. 【兜底逻辑】如果没找到（比如全图只剩下围墙了），且我们确实设置了忽略
-    // 那么必须重新搜一次，这次不忽略围墙，否则弓箭手会发呆导致游戏无法结束
-    if (!newTarget && ignoreType != BuildingType::UNKNOWN) {
-        newTarget = _villageScene->findNearestEnemyBuilding(myPos, BuildingType::UNKNOWN);
+    // 如果第一阶段没有找到目标（或者兵种没有优先偏好），执行通用搜索
+    if (!newTarget) {
+        BuildingType ignoreType = BuildingType::UNKNOWN;
+
+        // --- 设定忽略规则 ---
+
+        // A. 【弓箭手逻辑】
+        // 弓箭手是远程，始终忽略围墙，直接锁定墙后的建筑
+        if (_config.type == TroopType::ARCHER) {
+            ignoreType = BuildingType::WALL;
+        }
+        // B. 【巨人逻辑 (无防御塔时)】
+        // 如果防御塔都被拆光了，巨人转为普通攻击模式，但也应该忽略围墙（除非只剩围墙）
+        else if (_config.type == TroopType::GIANT) {
+            ignoreType = BuildingType::WALL;
+        }
+        // C. 【炸弹人逻辑 (无墙时)】
+        // 如果全图没墙了，炸弹人就打普通建筑，不忽略任何东西
+        else if (_config.type == TroopType::BOMBER) {
+            ignoreType = BuildingType::UNKNOWN;
+        }
+        // D. 【野蛮人逻辑】
+        // 默认不忽略，谁近打谁（包括墙）
+
+        // --- 执行搜索 ---
+        // 尝试寻找最近的、非忽略类型的建筑
+        newTarget = _villageScene->findNearestEnemyBuilding(myPos, ignoreType);
+
+        // ==================== 第三阶段：绝境兜底 ====================
+
+        // 如果我们设定了忽略墙（比如弓箭手/巨人），但找不到任何目标
+        // 说明全图只剩下围墙了（所有普通建筑都被摧毁）
+        // 这时必须强制允许攻击围墙，否则弓箭手会原地发呆
+        if (!newTarget && ignoreType == BuildingType::WALL) {
+            newTarget = _villageScene->findNearestEnemyBuilding(myPos, BuildingType::UNKNOWN);
+        }
     }
 
-    // 4. 设置目标
+    // ==================== 第四阶段：应用目标 ====================
+
     if (newTarget) {
+        // 找到新目标，锁定并自动触发寻路
         setAttackTarget(newTarget);
     }
     else {
+        // 全图没有任何敌方单位了，待机
         setAttackTarget(nullptr);
         setState(TroopState::IDLE);
     }
@@ -408,23 +451,29 @@ void BaseTroop::setTargetWorldPosition(const Vec2& targetPos) {
 
 }
 
+// [Troop.cpp]
+
+// 恢复为标准的一个参数，去掉多余的 ignoretype
 void BaseTroop::setAttackTarget(BaseBuilding* target) {
-    // 1. 如果目标没变，直接返回
+    // 1. 安全检查：如果目标没有变化，直接返回
     if (_attackTarget == target) return;
 
-    // 2. 释放旧目标（如果存在，引用计数-1）
-    // 如果旧目标引用计数降为0，它会在此时被销毁，这是安全的
+    // 2. 释放旧目标（防止内存泄漏）
     CC_SAFE_RELEASE(_attackTarget);
 
     // 3. 设置新目标
     _attackTarget = target;
 
-    // 4. 持有新目标（引用计数+1）
-    // 关键：这保证了只要 _attackTarget 不为空，由于兵种“抓”着它，它绝不会在别处被彻底删除
+    // 4. 持有新目标（防止野指针崩溃）
     CC_SAFE_RETAIN(_attackTarget);
 
-    // 5. 只有目标非空时才寻路
+    // 5. 执行寻路逻辑
     if (_attackTarget) {
+        // 只有目标存在时才去获取位置
         setTargetTilePosition(_attackTarget->getTilePos());
+    }
+    else {
+        // 如果目标被置空（比如没找到目标），兵种应当待机
+        setState(TroopState::IDLE);
     }
 }
