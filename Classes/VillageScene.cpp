@@ -448,6 +448,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
     if (baseMode == BaseMode::FIGHT) {
         _backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：战斗
             this->backfromFight();
+            _fightBtn->setVisible(false);
             });
     }
     else {
@@ -572,6 +573,7 @@ void VillageScene::initBtns(BaseMode baseMode) {
         _fightBtn->setPosition(Vec2(origin.x + visibleSize.width - 100, origin.y + 100)); // 右下角，距离右边缘和下边缘各50像素
         _fightBtn->addClickEventListener([this](Ref* sender) {
             this->gotoFight(); // 点击进入战斗场景
+            _fightBtn->setVisible(false);
             });
     }
     if (baseMode == BaseMode::FIGHT) {
