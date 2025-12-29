@@ -41,6 +41,7 @@ if(NOT DEFINED BUILD_ENGINE_DONE) # to test coc into root project
 
     include(CocosBuildSet)
     add_subdirectory(${COCOS2DX_ROOT_PATH}/cocos ${ENGINE_BINARY_PATH}/cocos/core)
+    add_subdirectory(${COCOS2DX_ROOT_PATH}/cocos/editor-support/cocostudio ${ENGINE_BINARY_PATH}/cocos/editor-support/cocostudio)
 endif()
 
 # record sources, headers, resources...
@@ -66,6 +67,11 @@ list(APPEND GAME_SOURCE
      Classes/TitleScene.cpp
      Classes/Troop.cpp
      Classes/VillageScene.cpp
+     Classes/EnumType.cpp
+     Classes/BuildingPopup.cpp
+     Classes/EffectManager.cpp
+     Classes/LevelScene.cpp
+     Classes/PathFinder.cpp
      )
 list(APPEND GAME_HEADER
      Classes/AppDelegate.h
@@ -78,6 +84,11 @@ list(APPEND GAME_HEADER
      Classes/TitleScene.h
      Classes/Troop.h
      Classes/VillageScene.h
+     Classes/EnumType.h
+     Classes/BuildingPopup.h
+     Classes/EffectManager.h
+     Classes/LevelScene.h
+     Classes/PathFinder.h
      )
 
 if(ANDROID)
@@ -144,11 +155,13 @@ else()
     add_subdirectory(${COCOS2DX_ROOT_PATH}/cocos/platform/android ${ENGINE_BINARY_PATH}/cocos/platform)
     target_link_libraries(${APP_NAME} -Wl,--whole-archive cpp_android_spec -Wl,--no-whole-archive)
 endif()
-
-target_link_libraries(${APP_NAME} cocos2d)
+target_link_libraries(${APP_NAME}
+    cocos2d
+)
 target_include_directories(${APP_NAME}
         PRIVATE Classes
         PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/
+	PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/editor-support/cocostudio/
 )
 
 # mark app resources

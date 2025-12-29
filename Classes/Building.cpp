@@ -121,6 +121,7 @@ void BaseBuilding::updateBuildingSprite() {
 // 刷新建筑属性
 void BaseBuilding::refreshBuildingAttributes() {
     _config = getBuildingConfigByType(_config.type, _currentLevel);
+    _currentHp = _config.hp;
     switch (_config.type) {
     case(BuildingType::ARROW_TOWER): {
         auto it1 = dynamic_cast<ArrowTower*>(this);
@@ -622,7 +623,10 @@ void TrainingCamp::removeTrainTask(int index) {
 
 // 训练完成逻辑
 void TrainingCamp::finishTrainTroop(TroopType type) {
-    // 训练完成回调（可扩展：通知兵营添加士兵）
+    // 训练完成回调（可扩展：通知兵营添加士兵） { // 检查回调是否已注册
+      if (_trainFinishCallback) { // 检查回调是否注册
+           _trainFinishCallback(type); // 只传1个参数：兵种类型
+      }; // 传递「兵种+数量」
     CCLOG("兵种%d训练完成！", (int)type);
     _troopsInTraining--;
 
@@ -654,7 +658,7 @@ void TrainingCamp::update(float dt) {
     // 处理第一个队列任务的计时
     _trainTimer += dt;
     float& currentTaskTime = _queueTimers[0];
-
+    _queueTimers[0] -= dt;
     // 检查是否训练完成
     if (_trainTimer >= currentTaskTime) {
         finishTrainTroop(_trainQueue[0]);
@@ -662,7 +666,6 @@ void TrainingCamp::update(float dt) {
 
     // 可选：更新训练进度UI（可扩展）
     float progress = _trainTimer / currentTaskTime;
-    CCLOG("当前训练进度：%.1f%%", progress * 100);
 }
 
 // 训练营特殊行为（核心训练逻辑）

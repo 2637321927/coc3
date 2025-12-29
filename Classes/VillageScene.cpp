@@ -7,6 +7,7 @@
 #include "EnumType.h" 
 #include "LevelScene.h"
 #include "TitleScene.h"
+//#include "SimpleAudioEngine.h"
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
@@ -1035,7 +1036,7 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
         // 建筑升级逻辑（调用BaseBuilding的升级方法）
         if (building->getState() == BuildingState::IDLE) { // 仅闲置状态可升级
             if (_baseMode == BaseMode::NORMAL) {
-                if ((building->getLevel()) <=_maxLevel) {
+                if ((building->getLevel()+1) >_maxLevel) {
                     showText("Not Enough TownHallLevel");
                     return;
                 }
@@ -1249,6 +1250,14 @@ void VillageScene::placeBuilding(Vec2 tilePos, BuildingType type) {
                     });
             }
         }
+        else if (type == BuildingType::TRAINING_CAMP) {
+            auto trainingCamp = dynamic_cast<TrainingCamp*>(building);
+            trainingCamp->setTrainFinishCallback(
+                [this](TroopType type) { // 仅1个参数
+                    this->onTroopTrainFinished(type);
+                }
+            );
+        }
         auto config = building->getConfig();
 
         // 记录该建筑占用的所有瓦片
@@ -1459,7 +1468,7 @@ void VillageScene::showTrainingCampPopup(TrainingCamp* camp) {
     initTrainingPopupUI();
     // 启动倒计时更新
     schedule([this](float dt) {
-        this->updateTrainQueueTimer(dt);
+        this->refreshTrainQueueUI();
         }, 0.1f, "updateTrainQueueTimerKey");
 }
 // 隐藏训练弹窗
@@ -1471,7 +1480,7 @@ void VillageScene::hideTrainingCampPopup() {
     auto mask = getChildByTag(1002);
     if (mask) mask->removeFromParent();
     _currentCamp = nullptr;
-    unschedule("updateTrainQueueTimerKey");//隐藏不代表训练停止
+    //unschedule("updateTrainQueueTimerKey");//隐藏不代表训练停止
 }
 // 初始化弹窗UI
 void VillageScene::initTrainingPopupUI() {
@@ -1527,7 +1536,7 @@ void VillageScene::initTrainQueuePanelInPopup() {
 // 初始化可训练兵种按钮
 void VillageScene::initTroopButtonsInPopup() {
     if (!_trainingPopup || !_currentCamp) return;
-
+    //TODO:兵种基本确定之后添加NORMAL限定
     // 兵种按钮容器（底部横向排列）
     auto btnPanel = ui::Layout::create();
     btnPanel->setContentSize(Size(550, 80));
@@ -1541,7 +1550,7 @@ void VillageScene::initTroopButtonsInPopup() {
     for (const auto& pair : g_troopTrainConfig) {
         TroopType type = pair.first;
         const TroopConfig& config = pair.second;
-
+        int spaceCost = config.spaceCost;
         // 等级不足则跳过
         if (config.unlockCampLevel > campLevel) continue;
 
@@ -1553,17 +1562,26 @@ void VillageScene::initTroopButtonsInPopup() {
         btnX += btnSize + 20;
 
         // 按钮点击事件
-        troopBtn->addClickEventListener([this, type](Ref*) {
+        troopBtn->addClickEventListener([this, type, spaceCost](Ref*) {
             // 检查队列是否已满
             if (_currentCamp->getTrainQueue().size() >= MAX_QUEUE_SIZE) {
-                showResourceShortageTip("训练队列已满!");
+                showResourceShortageTip("train queue max!");
                 return;
             }
+            if (_baseMode == BaseMode::NORMAL) {
+                if (_population + spaceCost > _maxPopulation) {
+                    showResourceShortageTip("Population Full!");
+                    return;
+                }
+                if (!checkTroopResourceEnough(type)) return;
+                deductTroopResource(type);
+            }
             // 检查资源
-            if (!checkTroopResourceEnough(type)) return;
+
             // 扣除资源 + 添加到队列
-            deductTroopResource(type);
-            addTroopToQueue(type);
+            _currentCamp->addTrainTask(type);
+            //deductTroopResource(type);
+           //addTroopToQueue(type);
             // 刷新队列UI
             refreshTrainQueueUI();
             });
@@ -1584,16 +1602,10 @@ void VillageScene::updateTrainQueueTimer(float dt) {
     auto& trainQueue = _currentCamp->getTrainQueue();
     auto& queueTimers = _currentCamp->getQueueTimers();
     if (trainQueue.empty()) return;
-
+    refreshTrainQueueUI();
     // 遍历更新倒计时
     for (int i = 0; i < trainQueue.size(); ++i) {
-        queueTimers[i] -= dt;
-        // 训练完成：移除队列项，创建兵种（此处简化，仅移除）
-        if (queueTimers[i] <= 0) {
-            removeTroopFromQueue(i);
-            refreshTrainQueueUI();
-            break; // 避免索引错乱，一次只处理一个完成项
-        }
+        refreshTrainQueueUI();
     }
 }
 // 检查兵种训练资源是否足够
@@ -1643,7 +1655,7 @@ void VillageScene::refreshTrainQueueUI() {
     // 清空原有队列项
     queuePanel->removeAllChildrenWithCleanup(true);
     // 重新添加队列标题
-    auto queueTitle = Label::createWithTTF("训练队列", "fonts/Marker Felt.ttf", 20);
+    auto queueTitle = Label::createWithTTF("Train Queue", "fonts/Marker Felt.ttf", 20);
     queueTitle->setPosition(Vec2(queuePanel->getContentSize().width / 2, queuePanel->getContentSize().height - 15));
     queueTitle->setColor(Color3B::BLACK);
     queuePanel->addChild(queueTitle);
@@ -1677,7 +1689,7 @@ void VillageScene::refreshTrainQueueUI() {
         queueItem->addChild(troopIcon);
 
         // 倒计时文本
-        auto timerLabel = Label::createWithTTF(StringUtils::format("剩余: %.1fs", remainTime),
+        auto timerLabel = Label::createWithTTF(StringUtils::format("remain: %.1fs", remainTime),
             "fonts/Marker Felt.ttf", 18);
         timerLabel->setPosition(Vec2(itemWidth / 2, itemHeight / 2));
         timerLabel->setColor(Color3B::BLACK);
@@ -1695,6 +1707,11 @@ void VillageScene::refreshTrainQueueUI() {
             });
         queueItem->addChild(cancelBtn);
     }
+}
+void VillageScene::onTroopTrainFinished(TroopType type) {
+    _trainedTroops[type]+=1;
+    _population += g_troopTrainConfig[type].spaceCost;
+    setPopulation(_population);
 }
 // 初始化建筑模式切换按钮
 void VillageScene::initBuildModeBtn() {
@@ -2137,7 +2154,28 @@ void VillageScene::initResourceBar() {
         _uiLayer->addChild(_elixirLabel, 1);
     }
 
+    _populationIcon = Sprite::create("ui/icon_population.png");
+    if (_populationIcon) {
+        _populationIcon->setScale(0.8f);
+        _populationIcon->setPosition(Vec2(590, visibleSize.height - 30));
+        _uiLayer->addChild(_populationIcon, 1);
+    }
+    if (_baseMode == BaseMode::NORMAL) {
+        _populationLabel = Label::createWithTTF(StringUtils::format("%d/%d", _population, _maxPopulation),
+            "fonts/Marker Felt.ttf", 24);
+    }
+    else {
+        _populationLabel = Label::createWithTTF(StringUtils::format("%d", _population),
+            "fonts/Marker Felt.ttf", 24);
+    }
 
+    if (_populationLabel) {
+        _populationLabel->setAnchorPoint(Vec2(0, 0.5f));
+        _populationLabel->setPosition(Vec2(620, visibleSize.height - 30));
+        _populationLabel->setColor(Color3B::RED);
+        _populationLabel->enableOutline(Color4B::BLACK, 2);
+        _uiLayer->addChild(_populationLabel, 1);
+    }
 
     // 可选：添加资源获取按钮（点击可打开商店等）
     auto addGoldBtn = MenuItemImage::create(
@@ -2216,7 +2254,27 @@ void VillageScene::setElixir(int elixir) {
         // 如果需要动画效果，可以像setGold那样实现
     }
 }
-
+void VillageScene::setPopulation (int amount) {
+    _population = amount;
+    if (_populationLabel) {
+        auto fadeOut = FadeOut::create(0.2f);
+        auto fadeIn = FadeIn::create(0.2f);
+        auto updateText = CallFunc::create([this]() {
+            if (_baseMode == BaseMode::NORMAL) {
+                _populationLabel->setString(StringUtils::format("%d/%d", _population, _maxPopulation));
+            }
+            else {
+                _populationLabel->setString(StringUtils::format("%d", _population));
+            }});
+            _populationLabel->runAction(Sequence::create(
+                fadeOut,
+                updateText,
+                fadeIn,
+                nullptr
+            ));
+            // 如果需要动画效果，可以像setGold那样实现
+    }
+}
 // 增加金币（带数量检查）
 bool VillageScene::addGold(int amount) {
     if (_baseMode == BaseMode::NORMAL&& _gold + amount>_maxGold) {
@@ -2283,11 +2341,13 @@ void VillageScene::addElixirStorageCapacity(int bonus) {
 // 部队容量相关方法
 void VillageScene::addTroopCapacity(int bonus) {
     _maxPopulation += bonus;
+    setPopulation(_population);
 }
 
 // 移除部队容量
 void VillageScene::removeTroopCapacity(int bonus) {
     _maxPopulation = _maxPopulation - bonus;
+    setPopulation(_population);
 }
 // 显示资源不足提示
 void VillageScene::showResourceShortageTip(const std::string& message) {
@@ -2931,7 +2991,13 @@ void VillageScene::updateCountDown(float dt)
     _countDownLabel->setString(StringUtils::format("%02d:%02d", minutes, seconds));
 }
 void VillageScene::onFightSettle() {
+    if (destroyPercent = 100) {
 
+    }
+    else {
+
+    }
+    //backfromFight();
 }
 void VillageScene::initStarRatingUI() {
     Size visibleSize = Director::getInstance()->getVisibleSize();
@@ -2971,6 +3037,11 @@ void VillageScene::initStarRatingUI() {
 void VillageScene::updateDestroyPercent() {
     // 计算百分比（防止超过100%）
     destroyPercent = std::min(100.0f, (_destroyedBuildingCount / _totalBuildingCount) * 100);
+    if (destroyPercent = 100) {
+        this->unschedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown));
+        // 触发战斗结算
+        this->onFightSettle();
+    }
     // 更新标签显示
     if (percentLabel) {
         percentLabel->setString(StringUtils::format("%.1f%%", destroyPercent));

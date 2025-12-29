@@ -160,7 +160,9 @@ class TrainingCamp : public BaseBuilding {
 public:
     static TrainingCamp* create(const cocos2d::Vec2& tilePos, float mapScale);
     bool init(const cocos2d::Vec2& tilePos, float mapScale);
-
+    void setTrainFinishCallback(const  std::function<void(TroopType)>& callback) {
+        _trainFinishCallback = callback;
+    }
     // 获取当前训练队列
     std::vector<TroopType>& getTrainQueue() { return _trainQueue; }
     // 新增训练任务
@@ -180,6 +182,7 @@ public:
     float getCurrentTrainRemainingTime() const { return _currentRemainingTime; } // 当前队列头剩余时间
 
 private:
+    std::function<void(TroopType)> _trainFinishCallback;
     std::unordered_map<TroopType, float> _troopTrainTimeMap; // 各兵种训练时长（预配置）
     float _trainTimer = 0.0f;    // 训练计时器
     float _trainInterval = 5.0f; // 训练间隔（秒）
