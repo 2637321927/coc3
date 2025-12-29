@@ -7,7 +7,8 @@
 #include "EnumType.h" 
 #include "LevelScene.h"
 #include "TitleScene.h"
-//#include "SimpleAudioEngine.h"
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 //VillageScene* VillageScene::_instance = nullptr;
 bool VillageScene::init()
 {
@@ -32,6 +33,9 @@ bool VillageScene::init()
         initBuildPreview();
         initResourceBar();
         init_troop_upgrade_ModeBtn();
+        _bgmList.push_back("audio/village1.mp3"); // 可根据需要增减
+        _bgmList.push_back("audio/village2.mp3");
+        _bgmList.push_back("audio/village3.mp3"); // 可根据需要增减
     }
     initTroopPreview();
     //initSaveLoadButtons();
@@ -49,7 +53,26 @@ bool VillageScene::init()
     if (_baseMode == BaseMode::FIGHT) {
         loadGame("fight.txt",false);
     }
+    srand((unsigned int)time(nullptr));
     return true;
+}
+void VillageScene::playRandomBackgroundMusic() {
+    if (_bgmList.empty()) {
+        CCLOG("BGM NULL");
+        return;
+    }
+
+    //生成随机索引，从BGM列表中随机选取一个音频
+    int randomIndex = rand() % _bgmList.size(); // 取模运算，确保索引在列表范围内
+ std::string randomBgmPath = _bgmList[randomIndex];; // 获取随机BGM路径
+    CCLOG("BGM：%s", randomBgmPath.c_str()); // 可选：打印日志，查看当前播放的BGM
+
+    // 播放随机选取的背景音乐（先停止当前播放的BGM，避免叠加）
+    SimpleAudioEngine::getInstance()->stopBackgroundMusic();
+    // 预加载该BGM
+    SimpleAudioEngine::getInstance()->preloadBackgroundMusic(randomBgmPath.c_str());
+    // 循环播放
+    SimpleAudioEngine::getInstance()->playBackgroundMusic(randomBgmPath.c_str(), true);
 }
 //设置瓦片颜色（放置预览）
 void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type) {
@@ -72,7 +95,6 @@ void VillageScene::setTileColor(Vec2 tilePos, Color3B color, BuildingType type) 
             if (!_hasLastTile) {
                 _originalTileColor = tileSprite->getColor();
             }
-
             // 设置瓦片颜色（叠加色，白色为原始色）
             tileSprite->setColor(color);
             //记录当前瓦片为“上一个瓦片”，用于下次恢复
@@ -447,11 +469,13 @@ void VillageScene::initBtns(BaseMode baseMode) {
 
     if (baseMode == BaseMode::FIGHT) {
         _backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：战斗
-            this->backfromFight();
+                onFightSettle();
             });
     }
     else {
-        _backBtn->addClickEventListener([this](Ref* sender) {    // 点击回调：销毁当前场景，返回主菜单
+        _backBtn->addClickEventListener([this](Ref* sender) {  
+            // 点击回调：销毁当前场景，返回主菜单
+            //SimpleAudioEngine::getInstance()->stopBackgroundMusic();
             this->destroyScene();
             });
     }
@@ -2471,6 +2495,10 @@ SaveData::Village VillageScene::packSaveData() {
     saveData.occupiedTiles = _occupiedTiles;
     saveData.gold = _gold;
     saveData.elixir = _elixir;
+    saveData.poplation = _population;
+    saveData.maxGold = _maxGold;
+    saveData.maxElixir = _maxElixir;
+    saveData.maxPopulation = _maxPopulation;
     CCLOG("Packing save data: gold=%d, elixir=%d, buildings=%zu",
         saveData.gold, saveData.elixir, _buildings.size());
     // 填充所有建筑数据
@@ -2542,8 +2570,12 @@ void VillageScene::unpackSaveData(const SaveData::Village& saveData) {
     //_occupiedTiles = saveData.occupiedTiles;
     addOccupiedTiles(saveData.occupiedTiles);
     // 恢复资源数值
+    _maxGold = saveData.maxGold;
+    _maxElixir = saveData.maxElixir;
+    _maxPopulation = saveData.maxPopulation;
     setGold(saveData.gold);
     setElixir(saveData.elixir);
+    setPopulation(saveData.poplation);
     // 重新创建所有建筑
     for (const auto& bData : saveData.buildings) {
         // 调用placeBuilding逻辑创建建筑（复用现有代码）
@@ -3405,9 +3437,29 @@ void VillageScene::showFightSettlePopup()
     int starShowCount = currentStars; // 从现有逻辑获取已解锁星级
     float starStartX = popupBg->getContentSize().width/2  - 180; // 星级居中排列
     float starY = popupBg->getContentSize().height-starShowCount * 180; // 星级在胜负图片下方
-    if (destroyPercent >= 50.0f) starShowCount = 1;
-    if (destroyPercent >= 80.0f) starShowCount = 2;
-    if (destroyPercent >= 100.0f) starShowCount = 3;
+    if (destroyPercent >= 50.0f&& destroyPercent < 80.0f) {
+        starShowCount = 1;
+        SimpleAudioEngine::getInstance()->stopBackgroundMusic();
+        SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/vectory1.mp3");
+        SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/vectory1.mp3");
+    }
+    else if (destroyPercent >= 80.0f&& destroyPercent < 100.0f) {
+        SimpleAudioEngine::getInstance()->stopBackgroundMusic();
+        SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/vectory1.mp3");
+        SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/vectory1.mp3");
+        starShowCount = 2;
+    }
+    else if (destroyPercent >= 100.0f) {
+        SimpleAudioEngine::getInstance()->stopBackgroundMusic();
+        SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/vectory3.mp3");
+        SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/vectory3.mp3");
+        starShowCount = 3;
+    }
+    else {
+        SimpleAudioEngine::getInstance()->stopBackgroundMusic();
+        SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/fail.mp3");
+        SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/fail.mp3");
+    }
 
     for (int i = 0; i < 3; i++) { // 固定显示3颗星（已解锁显示黄色，未解锁显示灰色）
         Sprite* starSprite = nullptr;
@@ -3582,11 +3634,14 @@ void VillageScene::destroyScene() {
 }
 
 
-
+void VillageScene::onEnter() {
+    Scene::onEnter();
+    playRandomBackgroundMusic();
+}
 void VillageScene::onExit() {
     Scene::onExit();
     // 释放自定义资源：比如定时器、监听器、指针等
-    //_eventDispatcher->removeEventListenersForTarget(this);// 移除本层下事件监听器，TODO：未知是否必要
+    //_eventDispatcher->removeEventListenersForTarget(this);// 移除本层下事件监听器，TODO：未知是否必要        
     CCLOG("VillageScene 已退出，准备销毁");
 }
 

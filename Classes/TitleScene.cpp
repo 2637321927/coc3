@@ -2,8 +2,8 @@
 #include "VillageScene.h" // 后续要跳转的主村庄场景
 #include "cocos2d.h"
 #include "EnumType.h" 
-//#include "SimpleAudioEngine.h" // 音效（可选）
-
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 //using namespace CocosDenshion;
 
@@ -78,12 +78,16 @@ void dumpNodeRecursive(Node* node, int depth = 0) {
 /**
  * 场景进入回调.
  * 场景被激活显示时调用，用于执行调试日志输出.
+ * 每次进入时播放背景音乐
  */
 void TitleScene::onEnter() {
     CCLOG("TitleScene::onEnter called");
     Scene::onEnter();
     // 打印当前场景的所有节点（含层级、位置、大小）
     auto node = Director::getInstance()->getRunningScene();
+    SimpleAudioEngine::getInstance()->stopBackgroundMusic();
+    SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/title.mp3");
+    SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/title.mp3");
     // dumpNodeRecursive(node); // 调试时可解开注释
 }
 
@@ -178,29 +182,7 @@ void TitleScene::onCreateGameClick(Ref* pSender)
     Director::getInstance()->pushScene(villageScene); // 将新场景压入栈顶，旧场景暂停保留
 }
 
-/**
- * 关卡选择按钮回调（预留）.
- * * @param pSender 触发事件的对象.
- */
-void TitleScene::onLevelSelectClick(Ref* pSender)
-{
-    /*
-    SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
-    log("点击了关卡选择按钮，待开发");
-    */
-}
 
-/**
- * 设置按钮回调（预留）.
- * * @param pSender 触发事件的对象.
- */
-void TitleScene::onSettingClick(Ref* pSender)
-{
-    /*
-    SimpleAudioEngine::getInstance()->playEffect("click_btn.mp3");
-    log("点击了设置按钮，待开发");
-    */
-}
 
 /**
  * 获取按钮碰撞区域.

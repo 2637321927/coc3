@@ -67,6 +67,10 @@ namespace SaveData {
         Mode currentMode = Mode::NONE;         // 当前模式（可选）
         int gold; 						   // 金币
         int elixir;					   // 圣水
+        int poplation;               //人口
+        int maxGold;
+        int maxElixir;
+        int maxPopulation;
         // 序列化整个村庄数据
         std::string toString() const {
             std::stringstream ss;
@@ -82,7 +86,7 @@ namespace SaveData {
                 ss << ','; // 结尾加分号
             }
             ss << "\n";
-            ss << gold << "," << elixir << "\n";
+            ss << gold << "," << elixir << ","<<  poplation << "," << maxGold << ","<< maxElixir <<","<< maxPopulation <<"\n";
             // 4. 存所有建筑（每行一个建筑）
             for (const auto& b : buildings) {
                 ss << b.toString() << "\n";
@@ -121,24 +125,36 @@ namespace SaveData {
                 }
             }
 
-            // 解析金币+圣水（第3行）
+            // 解析金币+圣水+人口+金币容量+圣水容量+人口容量（第3行）
             if (lines.size() >= 4 && !lines[3].empty()) {
                 std::vector<std::string> resParts = split(lines[3], ",");
-                if (resParts.size() >= 2) {
+                if (resParts.size() >= 6) {
                     // 异常捕获：避免存档数据错误导致崩溃
                     try {
                         data.gold = std::stoi(resParts[0]);
                         data.elixir = std::stoi(resParts[1]);
+                        data.poplation = std::stoi(resParts[2]);
+                        data.maxGold = std::stoi(resParts[3]);
+                        data.maxElixir = std::stoi(resParts[4]);
+                        data.maxPopulation = std::stoi(resParts[5]);
                     }
                     catch (const std::invalid_argument& e) {
                         CCLOG("解析金币234324/圣水失败：%s", e.what());
                         data.gold = 0;
                         data.elixir = 0;
+                        data.poplation = 0;
+                        data.maxGold = 0;
+                        data.maxElixir = 0; 
+                        data.maxPopulation = 0;
                     }
                     catch (const std::out_of_range& e) {
                         CCLOG("金币/圣234水数值超出范围：%s", e.what());
                         data.gold = 0;
                         data.elixir = 0;
+                        data.poplation = 0;
+                        data.maxGold = 0;
+                        data.maxElixir = 0;
+                        data.maxPopulation = 0;
                     }
                 }
             }
@@ -210,7 +226,11 @@ public:
     static cocos2d::Scene* createScene(BaseMode baseMode = BaseMode::CREATING);
     // 初始化方法
     virtual bool init();
+    void onEnter();
+    std::vector<std::string> _bgmList;
 
+    // 随机播放背景音乐的函数
+    void playRandomBackgroundMusic();
     // CREATE_FUNC 宏：自动生成 create() 方法
     CREATE_FUNC(VillageScene);
     // 存档（保存到本地文件）
