@@ -44,7 +44,7 @@ bool VillageScene::init()
     // 添加监听到事件分发器
     _eventDispatcher->addEventListenerWithSceneGraphPriority(mouseListener, this);
     if (_baseMode == BaseMode::FIGHT) {
-        loadGame("village_save.txt",false);
+        loadGame("fight.txt",false);
     }
     return true;
 }
@@ -813,7 +813,7 @@ void VillageScene::createBuildBar() {
 
     // 建筑按钮 - 大本营
      _townHallBtn = MenuItemImage::create(
-        "building/gold_mine_icon.png",
+        "building/town_hall_icon.png",
         "building/town_hall_icon_selected.png",
         [this](Ref* sender) {
              if (_baseMode == BaseMode::NORMAL && _townHall != nullptr) {
@@ -1405,7 +1405,6 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         updateDestroyPercent();
         checkStarUnlock();
     }
-    building->removeFromParentAndCleanup(true);
     // 内存释放（Cocos2d-x 自动管理)
     // Cocos2d-x 用 autorelease 池管理内存，removeFromParentAndCleanup(true) 后
     // 建筑实例会在下次主循环被自动销毁，无需手动delete
@@ -2916,6 +2915,7 @@ void VillageScene::beginFight() {
     _remainingTime = _totalTime;
     this->schedule(CC_SCHEDULE_SELECTOR(VillageScene::updateCountDown), 0.1f);
     _fightStartBtn->setVisible(false);
+    initStarRatingUI();
 }
 void VillageScene::updateCountDown(float dt)
 {
