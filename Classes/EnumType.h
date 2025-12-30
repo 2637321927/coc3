@@ -14,7 +14,7 @@ enum class BaseMode {
     NORMAL,   ///< 普通浏览模式
     CREATING, ///< 创造/编辑模式
     LEVEL,    ///< 关卡选择模式
-    FIGHT,     ///< 战斗模式
+    FIGHT,    ///< 战斗模式
     LEVEL1,
     LEVEL2,
     LEVEL3
@@ -49,6 +49,7 @@ enum class BuildingType {
     ELIXIR_BOTTLE,    ///< 圣水瓶 (存储圣水)
     UNKNOWN           ///< 未知/无效类型
 };
+
 /**
  * 建筑状态枚举.
  * 定义建筑当前的生命周期状态.
@@ -128,7 +129,8 @@ struct TroopConfig {
 
 /**
  * 获取指定类型的建筑配置.
- * * @param type 建筑类型.
+ *
+ * @param type 建筑类型.
  * @param level 建筑等级 (默认为1).
  * @return 对应的建筑配置结构体引用.
  */
@@ -136,15 +138,17 @@ const BuildingConfig& getBuildingConfigByType(BuildingType type, int level = 1);
 
 /**
  * 获取建筑建造的金币消耗.
- * * @param type 建筑类型.
+ *
+ * @param type 建筑类型.
  * @return 金币数量.
  */
-int getGoldCost(BuildingType type,int level=1);
+int getGoldCost(BuildingType type, int level = 1);
 
 /**
  * 获取建筑建造的圣水消耗.
- * * @param type 建筑类型.
+ *
+ * @param type 建筑类型.
  * @return 圣水数量.
  */
-int getElixirCost(BuildingType type, int level=1);
+int getElixirCost(BuildingType type, int level = 1);
 #endif // __ENUM_TYPE_H__

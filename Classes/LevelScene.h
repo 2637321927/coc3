@@ -18,7 +18,8 @@ public:
     /**
      * 创建关卡场景实例 (静态工厂方法).
      * 根据指定的关卡文件路径创建场景.
-     * * @param levelPath 关卡配置文件的路径 (如 "level1.txt").
+     *
+     * @param levelPath 关卡配置文件的路径 (如 "level1.txt").
      * @return 创建成功的 Scene 对象指针.
      */
     static Scene* createWithLevel(const std::string& levelPath);
@@ -26,7 +27,8 @@ public:
     /**
      * 初始化场景.
      * 重写父类初始化方法，进行关卡特有的设置（如屏蔽主界面按钮）.
-     * * @return 初始化成功返回 true，失败返回 false.
+     *
+     * @return 初始化成功返回 true，失败返回 false.
      */
     virtual bool init() override;
 
@@ -41,14 +43,16 @@ private:
 
     /**
      * 战斗结束按钮回调.
-     * * @param sender 触发事件的对象指针.
+     *
+     * @param sender 触发事件的对象指针.
      */
     void onEndBattleClicked(Ref* sender);
 
     /**
      * 返回村庄按钮回调.
      * 点击后切换回主村庄场景.
-     * * @param sender 触发事件的对象指针.
+     *
+     * @param sender 触发事件的对象指针.
      */
     void onReturnToVillageClicked(Ref* sender);
 };

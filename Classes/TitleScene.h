@@ -17,14 +17,16 @@ public:
     /**
      * 初始化场景.
      * 调用父类初始化，并加载背景与按钮.
-     * * @return 初始化成功返回 true.
+     *
+     * @return 初始化成功返回 true.
      */
     virtual bool init() override;
 
     /**
      * 创建场景实例 (静态工厂).
      * 创建一个通用 Scene 容器，并将 TitleScene 作为子节点添加进去.
-     * * @return 包含 TitleScene 的 Scene 对象指针.
+     *
+     * @return 包含 TitleScene 的 Scene 对象指针.
      */
     static Scene* createScene()
     {
@@ -38,7 +40,8 @@ public:
 
     /**
      * 获取全局单例.
-     * * @return TitleScene 的当前实例指针.
+     *
+     * @return TitleScene 的当前实例指针.
      */
     static TitleScene* getInstance() { return _instance; }
 
@@ -62,25 +65,29 @@ private:
 
     /**
      * 创造模式按钮点击回调.
-     * * @param pSender 触发事件的对象.
+     *
+     * @param pSender 触发事件的对象.
      */
     void onCreateGameClick(Ref* pSender);
 
     /**
      * 关卡选择按钮点击回调 (预留).
-     * * @param pSender 触发事件的对象.
+     *
+     * @param pSender 触发事件的对象.
      */
     void onLevelSelectClick(Ref* pSender);
 
     /**
      * 普通模式按钮点击回调.
-     * * @param pSender 触发事件的对象.
+     *
+     * @param pSender 触发事件的对象.
      */
     void onNormalGameClick(Ref* pSender);
 
     /**
      * 设置按钮点击回调 (预留).
-     * * @param pSender 触发事件的对象.
+     *
+     * @param pSender 触发事件的对象.
      */
     void onSettingClick(Ref* pSender);
 
@@ -93,7 +100,8 @@ private:
     /**
      * 获取按钮矩形区域 (辅助函数).
      * 用于自定义触摸检测逻辑.
-     * * @param btnSprite 按钮精灵对象.
+     *
+     * @param btnSprite 按钮精灵对象.
      * @return 按钮的包围盒 Rect.
      */
     Rect getButtonRect(Sprite* btnSprite);

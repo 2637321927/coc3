@@ -30,7 +30,8 @@ public:
     /**
      * 获取特效管理器单例实例.
      * 如果实例不存在则创建，否则返回已有实例.
-     * * @return EffectManager* 全局唯一的实例指针.
+     *
+     * @return EffectManager* 全局唯一的实例指针.
      */
     static EffectManager* getInstance();
 
@@ -43,7 +44,8 @@ public:
     /**
      * 播放抛射物特效.
      * 创建一个从起点飞向终点的精灵（如炮弹、箭矢），到达终点后自动销毁.
-     * * @param imgPath 特效图片的资源路径（如 "effect/cannon_ball.png"）.
+     *
+     * @param imgPath 特效图片的资源路径（如 "effect/cannon_ball.png"）.
      * @param start 特效起始位置（世界坐标）.
      * @param end 特效结束位置（世界坐标）.
      * @param duration 特效飞行时长（秒）.
@@ -56,7 +58,8 @@ public:
     /**
      * 播放爆炸/命中特效.
      * 在指定位置播放一次性的特效动画.
-     * * @param imgPath 爆炸图片的资源路径.
+     *
+     * @param imgPath 爆炸图片的资源路径.
      * @param pos 爆炸位置（世界坐标）.
      * @param duration 爆炸特效持续时长（秒，默认0.3秒）.
      */
