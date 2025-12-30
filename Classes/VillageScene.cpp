@@ -1084,6 +1084,10 @@ void VillageScene::handleBuildingBtnClick(BaseBuilding* building, BuildingPopup:
     switch (type) {
     case BuildingPopup::ButtonType::INFO:
         createInfoPanel(building);
+        if (building->getConfig().type == BuildingType::ARROW_TOWER || building->getConfig().type == BuildingType::CANNON) {
+            auto attackBuilding = dynamic_cast<BaseAttackBuilding*>(building);
+            attackBuilding->showAttackRange(attackBuilding->getIsShow()?false:true);
+        }
         break;
 
     case BuildingPopup::ButtonType::UPGRADE:
@@ -1417,8 +1421,10 @@ void VillageScene::destroyBuilding(BaseBuilding* building) {
         if (it1 != _goldMines.end()) _goldMines.erase(it1);
     }
     else if (building->getType() == BuildingType::BARRACKS) {
-        auto barrack = dynamic_cast<Barracks*>(building);
-        this->removeTroopCapacity(barrack->getTroopSpace());
+        if (_baseMode != BaseMode::CREATING) {
+            auto barrack = dynamic_cast<Barracks*>(building);
+            this->removeTroopCapacity(barrack->getTroopSpace());
+        }
     }
     else if (building->getType() == BuildingType::VAULT) {
         auto vault = dynamic_cast<Vault*>(building);

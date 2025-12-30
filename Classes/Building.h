@@ -329,11 +329,11 @@ protected:
     std::string _attackEffectPath; // 攻击特效路径
     float _attackEffectDuration;  // 特效时长
     DrawNode* _rangeDraw = nullptr;//范围显示节点
+    bool _isShow=0;
     // 纯虚函数：子类实现具体攻击逻辑
     virtual void attackTarget() = 0;
     // 目标检测：找攻击范围内的敌方兵种
     BaseTroop* findTargetInRange();
-
 public:
 
     // 初始化攻击属性（子类 init 中调用）
@@ -343,7 +343,7 @@ public:
 
     // 攻击范围可视化（调试用）
     void showAttackRange(bool isShow);
-
+    bool getIsShow() { return _isShow; };
     // 重写销毁逻辑
     virtual void destroy() override;
 

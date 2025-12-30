@@ -859,6 +859,7 @@ void BaseAttackBuilding::showAttackRange(bool isShow) {
             false,               // 不绘制扇形
             Color4F(1, 0, 0, 0.3f) // 红色半透明
         );
+        _isShow = 1;
     }
     else {
         // 隐藏/销毁攻击范围
@@ -867,6 +868,7 @@ void BaseAttackBuilding::showAttackRange(bool isShow) {
             _rangeDraw->removeFromParentAndCleanup(true); // 移除并释放内存
             _rangeDraw = nullptr;        // 置空，避免野指针
         }
+        _isShow = 0;
     }
 }
 
