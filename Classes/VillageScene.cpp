@@ -3547,8 +3547,8 @@ void VillageScene::showFightSettlePopup()
     }
     else if (destroyPercent >= 80.0f&& destroyPercent < 100.0f) {
         SimpleAudioEngine::getInstance()->stopBackgroundMusic();
-        SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/vectory1.mp3");
-        SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/vectory1.mp3");
+        SimpleAudioEngine::getInstance()->preloadBackgroundMusic("audio/vectory2.mp3");
+        SimpleAudioEngine::getInstance()->playBackgroundMusic("audio/vectory2.mp3");
         starShowCount = 2;
     }
     else if (destroyPercent >= 100.0f) {
