@@ -8,6 +8,8 @@
 #include "VillageScene.h"
 #include "PathFinder.h" 
 #include <cmath>
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 BaseTroop::~BaseTroop() {
     // 安全释放对目标的持有，防止内存泄漏
@@ -20,15 +22,19 @@ BaseTroop* BaseTroop::create(TroopType type, const Vec2& spawnPos, float mapScal
     switch (type) {
     case TroopType::BARBARIAN:
         troop = BarbarianTroop::create(spawnPos, mapScale);
+        SimpleAudioEngine::getInstance()->playEffect("audio/barbarian_place.mp3", false);
         break;
     case TroopType::ARCHER:
         troop = ArcherTroop::create(spawnPos, mapScale);
+        SimpleAudioEngine::getInstance()->playEffect("audio/archer_place.mp3", false);
         break;
     case TroopType::GIANT:
         troop = GiantTroop::create(spawnPos, mapScale);
+        SimpleAudioEngine::getInstance()->playEffect("audio/giant_place.mp3", false);
         break;
     case TroopType::BOMBER:
         troop = BomberTroop::create(spawnPos, mapScale);
+        SimpleAudioEngine::getInstance()->playEffect("audio/bomber_place.mp3", false);
         break;
     default:
         break;
@@ -98,7 +104,10 @@ void BaseTroop::startAttack(BaseBuilding* target) {
     if (_state == TroopState::DEAD) return; // 死亡状态无法攻击
 
     setState(TroopState::ATTACKING);
+
     _attackTarget = target;
+    // 修改后
+    
     _attackCDTimer = 0.0f; // 重置攻击冷却
     this->scheduleUpdate();
 }
@@ -116,6 +125,7 @@ void BaseTroop::takeDamage(int damage) {
 
     // 血量为0则死亡
     if (_currentHp <= 0) {
+
         die();
     }
 }
@@ -123,6 +133,28 @@ void BaseTroop::takeDamage(int damage) {
 // ========== 通用状态管理：死亡 ==========
 void BaseTroop::die() {
     setState(TroopState::DEAD);
+    std::string soundEffect = "";
+
+    switch (_config.type) {
+    case TroopType::BARBARIAN:
+        soundEffect = "audio/barbarian_die.mp3"; // 请替换为你实际的文件名
+        break;
+    case TroopType::ARCHER:
+        soundEffect = "audio/archer_die.mp3";
+        break;
+    case TroopType::GIANT:
+        soundEffect = "audio/giant_die.mp3";
+        break;
+    case TroopType::BOMBER:
+        soundEffect = "audio/bomber_die.mp3";
+        break;
+    default:
+        break;
+    }
+
+    if (!soundEffect.empty()) {
+        SimpleAudioEngine::getInstance()->playEffect(soundEffect.c_str(), false);
+    }
     this->setOpacity(100); // 半透明表示死亡
     _hpBar->setVisible(false); // 隐藏血条
     this->unscheduleUpdate();

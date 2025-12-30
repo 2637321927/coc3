@@ -220,6 +220,7 @@ void BaseBuilding::updateLevelLabel() {
     }
 }
 void BaseBuilding::takeDamage(int damage) {
+    SimpleAudioEngine::getInstance()->playEffect("audio/building_hit.mp3", false);
     _hpBar->setVisible(true);
     _currentHp -= damage;
     // 更新血条等UI...
@@ -228,6 +229,7 @@ void BaseBuilding::takeDamage(int damage) {
     // 检查是否摧毁
     if (_currentHp <= 0) {
         _currentHp = 0;
+        SimpleAudioEngine::getInstance()->playEffect("audio/building_destroyed.mp3", false);
         _hpBar->setPercentage(0);
         // 调用场景的销毁方法
         VillageScene::getInstance()->destroyBuilding(this);
@@ -287,6 +289,7 @@ void BaseBuilding::startBuild() {
 
 // 通用：完成建造
 void BaseBuilding::finishBuild() {
+    SimpleAudioEngine::getInstance()->playEffect("audio/building_finish.mp3", false);
     setState(BuildingState::IDLE);
     doSpecialAction(); // 执行特有行为
     _progressBar->setVisible(false);

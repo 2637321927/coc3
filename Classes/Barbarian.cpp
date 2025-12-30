@@ -1,6 +1,8 @@
 #include "Barbarian.h"
 #include "cocos2d.h"
 #include "VillageScene.h"
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 
 /**
@@ -65,7 +67,7 @@ void BarbarianTroop::doSpecialAttack() {
     auto tintRed = TintTo::create(0.05f, 255, 50, 50);     // ÉÁºì
     auto tintWhite = TintTo::create(0.05f, 255, 255, 255); // »Ö¸´°×É«
     auto attackTint = Sequence::create(tintRed, tintWhite, nullptr);
-
+    SimpleAudioEngine::getInstance()->playEffect("audio/barbarian_hit.mp3", false);
     // 3. Í¬Ê±²¥·ÅËõ·Å+ÉÁºì¶¯»­
     this->runAction(Spawn::create(attackScale, attackTint, nullptr));
 }

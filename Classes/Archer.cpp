@@ -1,6 +1,8 @@
 #include "Archer.h"
 #include "cocos2d.h"
 #include "VillageScene.h"
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 
 /**
@@ -74,6 +76,7 @@ void ArcherTroop::doSpecialAttack() {
             ));
         }
     }
+    SimpleAudioEngine::getInstance()->playEffect("audio/archer_hit.mp3", false);
 }
 
 /**

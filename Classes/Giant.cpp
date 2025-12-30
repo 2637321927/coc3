@@ -1,6 +1,8 @@
 #include "Giant.h"
 #include "cocos2d.h"
 #include "VillageScene.h"
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 
 /**
@@ -68,7 +70,7 @@ void GiantTroop::doSpecialAttack() {
     auto shake2 = MoveBy::create(0.05f, Vec2(-10, 0));      // 左移
     auto shake3 = MoveBy::create(0.05f, Vec2(5, 0));        // 回正
     auto attackShake = Sequence::create(shake1, shake2, shake3, nullptr);
-
+    SimpleAudioEngine::getInstance()->playEffect("audio/giant_hit.mp3", false);
     // 4. 同时播放缩放+闪黄+震动动画
     this->runAction(Spawn::create(attackScale, attackTint, attackShake, nullptr));
 }

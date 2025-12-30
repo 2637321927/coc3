@@ -1,6 +1,8 @@
 #include "Bomber.h"
 #include "cocos2d.h"
 #include "VillageScene.h"
+#include "SimpleAudioEngine.h"
+using namespace CocosDenshion;
 USING_NS_CC;
 
 /**
@@ -70,7 +72,7 @@ void BomberTroop::doSpecialAttack() {
             }),
         nullptr
     );
-
+    SimpleAudioEngine::getInstance()->playEffect("audio/bomber.mp3", false);
     // Ö´ÐÐ×Ô±¬¶¯»­
     this->runAction(explode);
 }
